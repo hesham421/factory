@@ -110,7 +110,7 @@
 
 | اسم الحقل | نوع البيانات (*) | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
 |---|---|---|---|---|---|---|
-| notePk | BIGINT (PK) | نظام | — | رقم إنشائي تلقائي (SEQUENCE — GOVERNANCE-CONFIG.md §3) | المعرف | ID |
+| noteId | BIGINT (PK) | نظام | — | رقم إنشائي تلقائي (SEQUENCE — GOVERNANCE-CONFIG.md §3) | المعرف | ID |
 | title | VARCHAR(200) | نعم | — | RULE-DEMO-001 | العنوان | Title |
 | content | TEXT | لا | — | RULE-DEMO-002 — قد يكون فارغاً | المحتوى | Content |
 | statusId | VARCHAR(50) | نعم | LOV-DEMO-001 | lookupKey: NOTE_STATUS — الحقل الوحيد لدورة الحياة/الحذف الناعم (يحل محل isActiveFl لهذا الكيان — انظر A2 ملاحظات عامة) | الحالة | Status |
