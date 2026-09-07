@@ -2,11 +2,11 @@
 ══════════════════════════════════════════════════════════════════
 Registry Version   : 1.0.0
 Registry Phase     : BOOTSTRAP
-Registered Modules : 1 (DEMO — CANDIDATE→pass-1 in progress)
-Registered Entities: 0 confirmed (Note — the entity itself is assigned by P1)
+Registered Modules : 1 (DEMO — pass-1 in progress, P1 done)
+Registered Entities: 1 confirmed (ENTITY-DEMO-001 Note)
 Open AQ-IDs        : 0
 Governance Decisions: 3 (GD-001..GD-003, inherited from GOVERNANCE-CONFIG.md)
-Last Updated       : 2026-09-07 by P-1 (bootstrap)
+Last Updated       : 2026-09-07 by P1 (srs-demo.md)
 ══════════════════════════════════════════════════════════════════
 
 Scope note: this factory instance runs a single implicit project (no
@@ -61,7 +61,7 @@ rules (Section 7 candidate format) — NOT a governance ID:
 
 | ENTITY-ID / Cand. | Entity Name | Owner Module | Type | Status | Source |
 |---|---|---|---|---|---|
-| CAND-DEMO-001 | Note | DEMO | PRIVATE | CANDIDATE | brief: "عنوان + محتوى + CRUD كامل" |
+| ENTITY-DEMO-001 | Note | DEMO | PRIVATE | CONFIRMED (P1, srs-demo.md A3) | brief: "عنوان + محتوى + CRUD كامل" |
 
 ---
 
@@ -88,6 +88,7 @@ dependency candidates identified in the brief.
 | 2026-09-07 | MODULE-REGISTERED | DEMO | Registered as CANDIDATE module in Section 2, pass 1 started |
 | 2026-09-07 | P0 | DEMO | platform-summary.md + module-registry-demo.md + business-policies-demo.md produced; Module 1.1, Layer L1, Type Transactional, ROOT (no dependencies) |
 | 2026-09-07 | P0.5 | DEMO | prd-demo.md produced; US-DEMO-001..005 (Create/List/Read/Update/Delete), all Source-traced to P0 outputs; 1 OPEN ITEM (cross-user sharing) not written as a story |
+| 2026-09-07 | P1 | DEMO | srs-demo.md produced; ENTITY-DEMO-001 (Note) confirmed; RULE-DEMO-001..005; LOV-DEMO-001 (NOTE_STATUS); SCR-DEMO-001 (PATTERN-2/SIDE_DRAWER); API-DEMO-001..005; 0 open OQs |
 
 ---
 
@@ -124,7 +125,7 @@ downstream engines confirm against artifact content, not this table.
 
 | Module | Pipeline Status | Attached Artifacts | Open Deps | Execution Readiness | LAST-VERIFIED | GOVERNANCE-STATE |
 |---|---|---|---|---|---|---|
-| DEMO | P0.5 done → entering P1 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md | none | READY | 2026-09-07 | FULL |
+| DEMO | P1 done (pending review gate) → entering P2 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md | none | READY | 2026-09-07 | FULL |
 
 ---
 
