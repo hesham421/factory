@@ -410,12 +410,8 @@ VALIDATIONS:
        Message-EN : Note content exceeds the allowed limit (20,000 characters).
 
 ERRORS:
-  ERR-0001 → RULE-DEMO-001 triggered → HTTP 400
-             Message-AR: يجب إدخال عنوان للملاحظة (200 حرف كحد أقصى).
-             Message-EN: A note title is required (max 200 characters).
-  ERR-0002 → RULE-DEMO-002 triggered → HTTP 400
-             Message-AR: محتوى الملاحظة يتجاوز الحد المسموح (20000 حرف).
-             Message-EN: Note content exceeds the allowed limit (20,000 characters).
+  ERR-0001 → RULE-DEMO-001 triggered → HTTP 400 (see SECTION A Error Catalog for message text)
+  ERR-0002 → RULE-DEMO-002 triggered → HTTP 400 (see SECTION A Error Catalog for message text)
 
 SERVICE ORCHESTRATION:
   1. [validate] — RULE-DEMO-001, RULE-DEMO-002 evaluated against the request body
@@ -510,12 +506,8 @@ VALIDATIONS: None (read-only) — RULE-DEMO-003/004 are enforced as
   lookup-and-authorize logic below, not input validation.
 
 ERRORS:
-  ERR-0004 → note not found OR statusId = DELETED → HTTP 404
-             Message-AR: الملاحظة غير موجودة.
-             Message-EN: Note not found.
-  ERR-0003 → row exists, ACTIVE, but ownerUserId ≠ requester → HTTP 403
-             Message-AR: لا تملك صلاحية الوصول لهذه الملاحظة.
-             Message-EN: You do not have access to this note.
+  ERR-0004 → note not found OR statusId = DELETED → HTTP 404 (see SECTION A Error Catalog for message text)
+  ERR-0003 → row exists, ACTIVE, but ownerUserId ≠ requester → HTTP 403 (see SECTION A Error Catalog for message text)
 
 SERVICE ORCHESTRATION:
   1. [load]     — FIND_ONE by PK, excluding statusId = DELETED (RULE-DEMO-004)
@@ -570,14 +562,12 @@ VALIDATIONS:
   3. RULE-DEMO-003 — Owner-only access
   4. RULE-DEMO-005 — No update on a deleted note
 
-ERRORS:
-  ERR-0004 → note not found → HTTP 404 (same text as API-DEMO-003)
-  ERR-0003 → not the owner → HTTP 403 (same text as API-DEMO-003)
+ERRORS (see SECTION A Error Catalog for message text):
+  ERR-0004 → note not found → HTTP 404
+  ERR-0003 → not the owner → HTTP 403
   ERR-0005 → RULE-DEMO-005 (row exists, owned, but statusId = DELETED) → HTTP 409
-             Message-AR: لا يمكن تعديل ملاحظة محذوفة.
-             Message-EN: A deleted note cannot be updated.
-  ERR-0001 → RULE-DEMO-001 triggered (title sent, invalid) → HTTP 400 (same text as API-DEMO-001)
-  ERR-0002 → RULE-DEMO-002 triggered (content sent, invalid) → HTTP 400 (same text as API-DEMO-001)
+  ERR-0001 → RULE-DEMO-001 triggered (title sent, invalid) → HTTP 400
+  ERR-0002 → RULE-DEMO-002 triggered (content sent, invalid) → HTTP 400
 
 SERVICE ORCHESTRATION:
   1. [load]     — FIND_ONE by PK → not found → ERR-0004 (404)
@@ -621,13 +611,16 @@ RESPONSE:
 
 VALIDATIONS:
   1. RULE-DEMO-003 — Owner-only access
-  2. RULE-DEMO-004 — Soft delete (this IS the operation, not a rejection path)
+  Note: RULE-DEMO-004 (soft delete) is NOT listed here — it is the
+  operation itself (see SERVICE ORCHESTRATION step 3), not a rejection
+  check, so it carries no ERR-ID and is deliberately excluded from
+  VALIDATIONS (RULE-ERR-CARRY applies only to rejection-triggering rules).
 
-ERRORS:
-  ERR-0004 → note not found or already DELETED → HTTP 404 (same text as API-DEMO-003;
-             deleting an already-deleted note is indistinguishable from
-             deleting a nonexistent one, per RULE-DEMO-004's exclusion rule)
-  ERR-0003 → not the owner → HTTP 403 (same text as API-DEMO-003)
+ERRORS (see SECTION A Error Catalog for message text):
+  ERR-0004 → note not found or already DELETED → HTTP 404 (deleting an
+             already-deleted note is indistinguishable from deleting a
+             nonexistent one, per RULE-DEMO-004's exclusion rule)
+  ERR-0003 → not the owner → HTTP 403
 
 SERVICE ORCHESTRATION:
   1. [load]     — FIND_ONE by PK, excluding statusId = DELETED → not
@@ -653,14 +646,16 @@ SECURITY:
 <!-- API:API-DEMO-005:END -->
 
 **API Governance Rules applied:** BC-B2-RULE-1/2/3 are N/A (no Business
-Code on this entity — DRV-DEMO-003). LOC-B2-RULE-1/2 applied (error
-responses always carry messageAr + messageEn, per each API block above).
-SEC-B2-RULE-1 applied (every controller method has a declared Permission).
-RULE-ERR-CARRY verified: every RULE-ID appearing in a Validations list
-has a matching ERR-ID in that API's Errors field (see table above) —
-except RULE-DEMO-004 on API-DEMO-005, which is the operation itself, not
-a validation failure, so it has no ERR-ID by design (its "message" is a
-success confirmation, embedded in the 200 response, not an error).
+Code on this entity — DRV-DEMO-003). LOC-B2-RULE-1/2 applied (every
+ERR-ID's messageAr + messageEn is defined once, canonically, in SECTION A
+Error Catalog — every API block above references it by ERR-ID + HTTP
+status only, never reproducing the text, per the Error Catalog Canonical
+Location Rule, Option A). SEC-B2-RULE-1 applied (every controller method
+has a declared Permission). RULE-ERR-CARRY verified: every RULE-ID
+appearing in a Validations list has a matching ERR-ID in that API's
+Errors field — RULE-DEMO-004 is deliberately excluded from API-DEMO-005's
+Validations list (see that block's note) because it is the operation
+itself, not a rejection check, so RULE-ERR-CARRY does not apply to it.
 RULE-PLATFORM-ERR applied to ERR-0004 (RULE-ID = PLATFORM-STD, DRV-DEMO-005).
 RULE-REPO-DRV: no deviation from defaults (READ_ONLY reads, LAZY fetch,
 NONE join) anywhere in this plan — no additional DRV-ID required beyond
