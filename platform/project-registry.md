@@ -130,7 +130,7 @@ downstream engines confirm against artifact content, not this table.
 
 | Module | Pipeline Status | Attached Artifacts | Open Deps | Execution Readiness | LAST-VERIFIED | GOVERNANCE-STATE |
 |---|---|---|---|---|---|---|
-| DEMO | P2 done → entering P2.5 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md, db-script-demo.md, registry-db-demo.md | none | READY | 2026-09-07 | FULL |
+| DEMO | P2 review(P2) APPROVED → entering P2.5 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md, db-script-demo.md, registry-db-demo.md | none | READY | 2026-09-07 | FULL |
 
 ---
 
