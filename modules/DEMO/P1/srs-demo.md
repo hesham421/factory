@@ -110,7 +110,7 @@
 
 | اسم الحقل | نوع البيانات (*) | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
 |---|---|---|---|---|---|---|
-| noteId | BIGINT (PK) | نظام | — | رقم إنشائي تلقائي (SEQUENCE — GOVERNANCE-CONFIG.md §3) | المعرف | ID |
+| notePk | BIGINT (PK) | نظام | — | رقم إنشائي تلقائي (SEQUENCE — GOVERNANCE-CONFIG.md §3) | المعرف | ID |
 | title | VARCHAR(200) | نعم | — | RULE-DEMO-001 | العنوان | Title |
 | content | TEXT | لا | — | RULE-DEMO-002 — قد يكون فارغاً | المحتوى | Content |
 | statusId | VARCHAR(50) | نعم | LOV-DEMO-001 | lookupKey: NOTE_STATUS — الحقل الوحيد لدورة الحياة/الحذف الناعم (يحل محل isActiveFl لهذا الكيان — انظر A2 ملاحظات عامة) | الحالة | Status |
@@ -193,7 +193,7 @@
 | **Message-AR** | لا يمكن تعديل ملاحظة محذوفة. |
 | **Message-EN** | A deleted note cannot be updated. |
 | **Source** | مشتقة (analyst-derived) للحفاظ على اتساق RULE-DEMO-004 |
-| **Test-Hint** | Update on a DELETED note's id → rejected (same status family as "not found" per RULE-DEMO-004, see Error Catalog owned by P3.1). |
+| **Test-Hint** | Update on a DELETED note's id must be rejected (exact ERR-ID / HTTP status is P3.1 Error Catalog's decision, CONTRACT-4 — not asserted here). |
 
 ---
 
@@ -206,15 +206,25 @@
 
 ### LOV-DEMO-001 — حالة الملاحظة (Note Status)
 
+> **REVISE fix (P1 review gate, self-check):** القيمة الافتراضية للقالب
+> تفترض بنية Lookup ديناميكية عامة (MD_MASTER_LOOKUP / MD_LOOKUP_DETAIL
+> + GET /api/lookups/{lookupKey}) — وهي بنية ERP لم تُعلَن في
+> platform-standards.md لهذه المنصة (GENERAL، ليست ERP)، وغير متناسبة
+> مع قائمة ثابتة من قيمتين فقط على كيان واحد بسيط. لذلك NOTE_STATUS
+> هنا قيمة ثابتة (fixed/static) داخل الموديول فقط — لا جدول Lookup
+> ديناميكي ولا API عام للاستهلاك. هذا انحراف متعمَّد وموثَّق عن قالب
+> ERP الافتراضي، مبرَّر بـ domain/domain-profile.md (لا مكتبة أنماط ERP
+> افتراضياً لهذا الدومين) ومبدأ التناسب.
+
 | البند | القيمة |
 |---|---|
 | **الحقل** | statusId |
 | **ENTITY-ID** | ENTITY-DEMO-001 |
-| **نوع التحكم** | Dropdown (≤15 — القيم هنا 2 فقط) |
-| **lookupKey** | NOTE_STATUS |
-| **المصدر** | MD_LOOKUP_DETAIL |
+| **نوع التحكم** | Dropdown (2 قيمتان فقط، ثابتتان) |
+| **lookupKey** | NOTE_STATUS (معرّف منطقي داخل SRS فقط — ليس lookupKey ديناميكي) |
+| **المصدر** | قيمة ثابتة معرَّفة في هذا الملف (fixed enum) — **ليس** MD_LOOKUP_DETAIL |
 | **المالك** | هذا الموديول (DEMO) |
-| **API الاستهلاك** | GET /api/lookups/NOTE_STATUS?active=true |
+| **API الاستهلاك** | لا يوجد API منفصل — القيم مُضمَّنة (embedded) في عقد B5 APIs مباشرة؛ لا حاجة لجلبها ديناميكياً |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
@@ -222,6 +232,8 @@
 | DELETED | محذوفة | Deleted |
 
 ⚠ القيمة المُخزَّنة في حقل statusId: code (ACTIVE / DELETED) — ليس id.
+⚠ P2 ينفّذ هذا كـ CHECK constraint بسيط على العمود (IN ('ACTIVE',
+  'DELETED')) — لا جدول Lookup منفصل مطلوب لهذه القائمة الثابتة.
 
 ---
 
