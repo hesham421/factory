@@ -115,6 +115,14 @@ ALTER TABLE DEMO_NOTE ADD CONSTRAINT CHK_DEMO_NOTE_TITLE_NOT_BLANK
 --   authoritative enforcement is the application validation layer
 --   (P3.1), this CHECK exists only to prevent direct-SQL corruption.
 
+ALTER TABLE DEMO_NOTE ADD CONSTRAINT CHK_DEMO_NOTE_CONTENT_LEN
+    CHECK (CONTENT IS NULL OR LENGTH(CONTENT) <= 20000);
+-- ^ DB-level backstop for RULE-DEMO-002 (content <= 20,000 chars),
+--   for the same reason and at the same defense-in-depth level as
+--   CHK_DEMO_NOTE_TITLE_NOT_BLANK above (P2 review-gate fix — CONTENT
+--   is TEXT/unbounded, so without this CHECK the DB layer enforced
+--   TITLE's rule but not CONTENT's, an unjustified asymmetry).
+
 -- 5d. INTRA-MODULE FK constraints
 -- (none — single-table module)
 
