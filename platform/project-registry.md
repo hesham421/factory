@@ -86,6 +86,7 @@ dependency candidates identified in the brief.
 | 2026-09-07 | ANALYSIS | — | domain/domain-profile.md authored (GENERAL identity, personal-productivity domain) |
 | 2026-09-07 | BOOTSTRAP | — | P-1 bootstrap: project-registry.md + platform-standards.md created |
 | 2026-09-07 | MODULE-REGISTERED | DEMO | Registered as CANDIDATE module in Section 2, pass 1 started |
+| 2026-09-07 | P0 | DEMO | platform-summary.md + module-registry-demo.md + business-policies-demo.md produced; Module 1.1, Layer L1, Type Transactional, ROOT (no dependencies) |
 
 ---
 
@@ -122,7 +123,7 @@ downstream engines confirm against artifact content, not this table.
 
 | Module | Pipeline Status | Attached Artifacts | Open Deps | Execution Readiness | LAST-VERIFIED | GOVERNANCE-STATE |
 |---|---|---|---|---|---|---|
-| DEMO | P(-1) bootstrap done → entering P0 | domain-profile.md (+DEMO inherit section) | none | READY | 2026-09-07 | FULL |
+| DEMO | P0 done → entering P0.5 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md | none | READY | 2026-09-07 | FULL |
 
 ---
 
