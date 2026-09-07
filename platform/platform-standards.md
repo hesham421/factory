@@ -71,10 +71,21 @@ Module prefix     : the factory's per-module naming scheme (see
 ENTITY-ID          : ENTITY-[MOD]-[3-digit seq]      e.g. ENTITY-DEMO-001
 RULE-ID            : RULE-[MOD]-[3-digit seq]        e.g. RULE-DEMO-001
 API-ID              : API-[MOD]-[3-digit seq]        e.g. API-DEMO-001
-DBF-ID              : DBF-[MOD]-[3-digit seq]        e.g. DBF-DEMO-001
-FIELD-ID            : FIELD-[MOD]-[3-digit seq]      e.g. FIELD-DEMO-001
-ERR-ID              : ERR-[MOD]-[3-digit seq]        e.g. ERR-DEMO-001
+QR-ID               : QR-[MOD]-[4-digit seq]         e.g. QR-DEMO-0001
 TC-BE-ID            : TC-BE-[MOD]-[3-digit seq]      e.g. TC-BE-DEMO-001
+
+Module-unqualified (per the owning engine's own ID-format rule — never
+a MOD-infixed variant, corrected here 2026-09-07 at the holistic review
+after pass 1 to match what P2/P3.1 actually produce, not an earlier
+aspirational draft of this table):
+DBF-ID              : DBF-[4-digit seq]              e.g. DBF-0001
+                       (PROJECT-2-DATABASE-GOVERNANCE-ENGINE.md — module
+                       is already implied by the file it lives in)
+FIELD-ID            : FIELD-[4-digit seq]            e.g. FIELD-0001
+                       (PROJECT-3-BACKEND-ENGINE.md §Section 4 — sequence
+                       continuous across the module, not MOD-qualified)
+ERR-ID              : ERR-[4-digit seq]              e.g. ERR-0001
+                       (PROJECT-3-BACKEND-ENGINE.md §Section 4)
 ```
 
 ## GOVERNANCE CONVENTIONS (inherited, not re-decided per module)

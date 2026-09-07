@@ -2,11 +2,11 @@
 ══════════════════════════════════════════════════════════════════
 Registry Version   : 1.0.0
 Registry Phase     : BOOTSTRAP
-Registered Modules : 1 (DEMO — pass-1 in progress, P1 done)
+Registered Modules : 1 (DEMO — pass-1 in progress, P3.5 done)
 Registered Entities: 1 confirmed (ENTITY-DEMO-001 Note)
 Open AQ-IDs        : 0
 Governance Decisions: 3 (GD-001..GD-003, inherited from GOVERNANCE-CONFIG.md)
-Last Updated       : 2026-09-07 by P1 (srs-demo.md)
+Last Updated       : 2026-09-07 by P3.5 (backend-test-plan-demo.md)
 ══════════════════════════════════════════════════════════════════
 
 Scope note: this factory instance runs a single implicit project (no
@@ -94,6 +94,11 @@ dependency candidates identified in the brief.
 | 2026-09-07 | P1 | DEMO | srs-demo.md produced; ENTITY-DEMO-001 (Note) confirmed; RULE-DEMO-001..005; LOV-DEMO-001 (NOTE_STATUS); SCR-DEMO-001 (PATTERN-2/SIDE_DRAWER); API-DEMO-001..005; 0 open OQs |
 | 2026-09-07 | review(P1) | DEMO | APPROVED after one REVISE→fix cycle (NOTE_STATUS disproportionate ERP lookup mechanism → fixed CHECK-constraint value set; noteId/notePk naming inconsistency fixed) |
 | 2026-09-07 | P2 | DEMO | db-script-demo.md produced; DBS-DEMO-01; table DEMO_NOTE (9 DBF-IDs); no XM-IDs; NOTE_STATUS implemented as CHECK constraint (no MD_LOOKUP tables, per SRS deviation) |
+| 2026-09-07 | review(P2) | DEMO | APPROVED after one REVISE→fix cycle (missing DB-level content-length CHECK constraint on DEMO_NOTE.CONTENT) |
+| 2026-09-07 | P2.5 | DEMO | flow-diagram-demo.md + ui-ux-spec-demo.md produced; SCR-DEMO-001 (PATTERN-2, Side Drawer); reconciled cleanly against srs-demo.md B1-B4, no drift, no OQ raised; DRAFT status pending human approval (CONTRACT-11/12) — does not gate P3.1/P3.5; no new governance IDs (P2.5 owns none) |
+| 2026-09-07 | P3.1 | DEMO | backend-execution-plan-demo.md produced; PLAN-DEMO-001; FIELD-0001..0009 (1:1 with DBF-0001..0009), ERR-0001..0005, QR-DEMO-0001..0005, DRV-DEMO-001..009; ALIGN-BE PASSED ✓; no XM-IDs (none exist for this module) |
+| 2026-09-07 | review(P3.1) | DEMO | APPROVED after one REVISE→fix cycle (SVC+API ERRORS blocks duplicated Error Catalog message text, contradicting the artifact's own Option-A no-duplicate claim; API-DEMO-005 VALIDATIONS listed RULE-DEMO-004 with no matching ERR-ID, violating RULE-ERR-CARRY) |
+| 2026-09-07 | P3.5 | DEMO | backend-test-plan-demo.md produced; TC-BE-DEMO-001..021 (21 TCs); 5/5 RULE-IDs, 5/5 API-IDs, 5/5 ERR-IDs covered; 4 mandatory scenarios applied/adapted, 4 N/A (documented); no per-engine review gate (P3.5 covered by the holistic gate) |
 
 ---
 
@@ -130,7 +135,7 @@ downstream engines confirm against artifact content, not this table.
 
 | Module | Pipeline Status | Attached Artifacts | Open Deps | Execution Readiness | LAST-VERIFIED | GOVERNANCE-STATE |
 |---|---|---|---|---|---|---|
-| DEMO | P2 review(P2) APPROVED → entering P2.5 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md, db-script-demo.md, registry-db-demo.md | none | READY | 2026-09-07 | FULL |
+| DEMO | P3.5 done → entering holistic review (after-pass-1, backend set) | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md, db-script-demo.md, registry-db-demo.md, flow-diagram-demo.md, ui-ux-spec-demo.md, backend-execution-plan-demo.md, registry-exec-be-demo.md, backend-test-plan-demo.md, registry-test-be-demo.md | none | READY | 2026-09-07 | FULL |
 
 ---
 
