@@ -26,9 +26,7 @@ This Registry's Section          │ Canonical Category
 Section 2 — Module Index          │ CAT-2 (Module/Component Index)
 Section 3 — Entity Ownership      │ CAT-3 (Entity/Data Object Ownership)
 Section 4 — Shared Entity Decl.   │ CAT-4 (Shared Entity Declarations)
-(no Table Registry section yet)   │ CAT-5 (Structural/Impl. Registry) —
-                                     no table exists until P2 gates DEMO;
-                                     added inline by P2's REGISTRY step
+Section 5 — Table Registry        │ CAT-5 (Structural/Impl. Registry)
 Section 6 — Global XM Index       │ CAT-6 (Cross-Component Dependency)
 Section 9 — Event Log             │ CAT-9 (Change/Event History)
 Section 10 — Domain Architecture  │ CAT-1 (architectural context)
@@ -37,10 +35,7 @@ Section 12 — Open Questions       │ CAT-7 (Open Question/Escalation)
 Section 15 — Pipeline Status/MGI  │ CAT-8 (Pipeline/Progress Status)
 Header block (top of file)        │ CAT-1 (Registry Identity/Versioning)
 ══════════════════════════════════════════════════════════════════
-Uncovered categories: none outstanding — CAT-5 (Table Registry) is
-intentionally empty until P2 produces db-script-demo.md; this is a
-sequencing fact, not a gap, and will be filled by P2's inline REGISTRY
-step.
+Uncovered categories: none.
 
 ---
 
@@ -72,6 +67,14 @@ module exists yet in this factory instance.
 
 ---
 
+## SECTION 5 — TABLE REGISTRY (CAT-5)
+
+| Table Name | Owner Module | DBS-ID | ENTITY-ID Source |
+|---|---|---|---|
+| DEMO_NOTE | DEMO | DBS-DEMO-01 | ENTITY-DEMO-001 |
+
+---
+
 ## SECTION 6 — GLOBAL XM (CROSS-MODULE) DEPENDENCY INDEX
 
 (none) — DEMO is a single, self-contained module with no cross-module
@@ -89,6 +92,8 @@ dependency candidates identified in the brief.
 | 2026-09-07 | P0 | DEMO | platform-summary.md + module-registry-demo.md + business-policies-demo.md produced; Module 1.1, Layer L1, Type Transactional, ROOT (no dependencies) |
 | 2026-09-07 | P0.5 | DEMO | prd-demo.md produced; US-DEMO-001..005 (Create/List/Read/Update/Delete), all Source-traced to P0 outputs; 1 OPEN ITEM (cross-user sharing) not written as a story |
 | 2026-09-07 | P1 | DEMO | srs-demo.md produced; ENTITY-DEMO-001 (Note) confirmed; RULE-DEMO-001..005; LOV-DEMO-001 (NOTE_STATUS); SCR-DEMO-001 (PATTERN-2/SIDE_DRAWER); API-DEMO-001..005; 0 open OQs |
+| 2026-09-07 | review(P1) | DEMO | APPROVED after one REVISE→fix cycle (NOTE_STATUS disproportionate ERP lookup mechanism → fixed CHECK-constraint value set; noteId/notePk naming inconsistency fixed) |
+| 2026-09-07 | P2 | DEMO | db-script-demo.md produced; DBS-DEMO-01; table DEMO_NOTE (9 DBF-IDs); no XM-IDs; NOTE_STATUS implemented as CHECK constraint (no MD_LOOKUP tables, per SRS deviation) |
 
 ---
 
@@ -125,7 +130,7 @@ downstream engines confirm against artifact content, not this table.
 
 | Module | Pipeline Status | Attached Artifacts | Open Deps | Execution Readiness | LAST-VERIFIED | GOVERNANCE-STATE |
 |---|---|---|---|---|---|---|
-| DEMO | P1 review(P1) APPROVED → entering P2 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md | none | READY | 2026-09-07 | FULL |
+| DEMO | P2 done → entering P2.5 | domain-profile.md (+DEMO inherit section), platform-summary.md, module-registry-demo.md, business-policies-demo.md, prd-demo.md, srs-demo.md, registry-srs-demo.md, db-script-demo.md, registry-db-demo.md | none | READY | 2026-09-07 | FULL |
 
 ---
 
