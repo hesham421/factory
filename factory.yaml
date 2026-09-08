@@ -1,0 +1,402 @@
+# ════════════════════════════════════════════════════════════════════════════
+# factory.yaml — THE single source of truth of the Governance Factory (C1)
+# ----------------------------------------------------------------------------
+# Every factory fact lives here and ONLY here: stages, passes, gates, lanes,
+# paths, naming, ID grammar, marker grammar, tracks, repos, review rubric.
+# Domain facts (vocabulary, phases, stack, languages …) live in
+# profiles/<id>.yaml and are validated against profiles/_schema.yaml.
+#
+# Nothing in engines/, shared/, reviewers/, governance-tools/ may restate a
+# value from this file — `gov.py lint` enforces that. Generated files
+# (SKILL.md, README pipeline map, START-HERE, contract tables) are produced
+# by `gov.py render` from this file + the active profile.
+# ════════════════════════════════════════════════════════════════════════════
+schema_version: 6
+
+factory:
+  name: governance-factory
+  boundary: analysis-only          # never implements, never audits code, never runs tests in the line
+  active_profile: erp              # profiles/<id>.yaml ; override with GOV_PROFILE
+
+# ── Paths (relative to the repo root) ──────────────────────────────────────
+paths:
+  profiles: profiles
+  domain: domain
+  platform: platform
+  engines: engines
+  standalone: standalone
+  shared: shared
+  reviewers: reviewers
+  decisions: decisions
+  modules: modules
+  commands: .claude/commands
+  tools: governance-tools
+  templates: governance-tools/templates
+  module:
+    state_dir: _state            # generated current-state files (read by engines)
+    inputs_dir: _inputs          # inputs fetched back from consumer repos
+    packages_dir: packages       # split output
+    manifest_file: manifest.json
+    analyze_report: "_state/analyze-{stage}.md"
+    gate_record: "_state/gate-pass-{pass}.md"
+    change_manifest: "change-manifest.md"
+
+# ── Naming — every pattern in one place ────────────────────────────────────
+naming:
+  module_code: "{MOD}"                       # upper-case module code
+  version_folder: "v{version}"               # v1 = module base folder (no subfolder)
+  stage_folder: "{stage_folder}"             # stage id with '.'/'-' → '_'  (P0.5 → P0_5)
+  tag: "{mod}-v{version}"
+  delivery_branch: "gov/{mod}-v{version}-{track}"
+  commit:
+    stage: "{stage}: [{MOD}] v{version} — {summary}"
+    gate: "gate(pass-{pass}): [{MOD}] v{version} {verdict}"
+    state: "state: [{MOD}] v{version} — regenerated current state"
+    version: "version: [{MOD}] v{version} created"
+  current_state_file: "current-{artifact}"   # + the artifact's own extension
+  adr_file: "ADR-{MOD}-{seq:03d}.md"
+
+# ── Human decision points (the ONLY two per module version, + PRD approval) ─
+gates:
+  - id: prd-approval
+    after: P0.5
+    type: human-approval           # the user approves the PRD file itself
+    blocks: [P1]
+  - id: pass-1
+    after: P3.1
+    type: review                   # one human review per pass (scorecard + analyze report)
+    lane: review-pass
+    requires_analyze: clean        # no CRITICAL findings
+    on_revise: merge-review-notes  # lane used to apply findings; re-gate once, then escalate
+  - id: pass-2
+    after: P3.2
+    type: review
+    lane: review-pass
+    requires_analyze: clean
+    on_revise: merge-review-notes
+
+# ── Stages — the governed pipeline (order = run order) ─────────────────────
+# questions: allowed | forbidden   (C6 — enforced by the orchestrator)
+# dialogue : true → the lane's implementer list runs a converging dialogue
+stages:
+  - id: domain-profile
+    title: Domain Profile
+    pass: pre
+    once_per: platform
+    questions: allowed
+    dialogue: true
+    lane: analysis-dialogue
+    research: web                  # absorbs the former idea-draft step
+    inputs: [raw-idea, "platform-brief?"]
+    produces:
+      - {artifact: domain-profile, file: "domain-profile.md", dir: domain}
+    owns_ids: []
+    next: P-1
+  - id: P-1
+    title: Registry & Steering Builder
+    pass: bootstrap
+    once_per: platform
+    questions: forbidden
+    lane: analysis
+    inputs: [domain-profile]
+    produces:
+      - {artifact: project-registry, file: "project-registry.md", dir: platform}
+    owns_ids: []
+    next: P0
+  - id: P0
+    title: Platform Inception
+    pass: 1
+    questions: allowed
+    dialogue: true
+    lane: analysis-dialogue
+    inputs: [domain-profile, project-registry]
+    produces:
+      - {artifact: platform-summary, file: "platform-summary.md"}
+      - {artifact: module-registry, file: "module-registry-{mod}.md"}
+      - {artifact: business-policies, file: "business-policies-{mod}.md"}
+    owns_ids: [POL]
+    next: P0.5
+  - id: P0.5
+    title: PRD
+    pass: 1
+    questions: allowed             # LAST stage where questions are allowed
+    dialogue: true
+    lane: analysis-dialogue
+    inputs: [platform-summary, module-registry, business-policies]
+    produces:
+      - {artifact: prd, file: "prd-{mod}.md"}
+    owns_ids: [US]
+    next: P1
+  - id: P1
+    title: SRS
+    pass: 1
+    questions: forbidden
+    lane: analysis
+    inputs: [prd, domain-profile, project-registry]
+    produces:
+      - {artifact: srs, file: "srs-{mod}.md"}
+      - {artifact: registry-srs, file: "registry-srs-{mod}.md", registry: true}
+    owns_ids: [REQ, AC, ENT, RULE, SCR-REQ]
+    requirement_format: EARS
+    next: P2
+  - id: P2
+    title: Database
+    pass: 1
+    questions: forbidden
+    lane: analysis
+    inputs: [srs, registry-srs]
+    produces:
+      - {artifact: db-script, file: "db-script-{mod}.md"}
+      - {artifact: registry-db, file: "registry-db-{mod}.md", registry: true}
+    owns_ids: [DBF, XM]
+    next: P3.1
+  - id: P3.1
+    title: Backend Execution Plan
+    pass: 1
+    track: backend
+    questions: forbidden
+    lane: analysis
+    inputs: [srs, db-script, registry-srs, registry-db]
+    produces:
+      - {artifact: backend-execution-plan, file: "backend-execution-plan-{mod}.md", plan: exec, track: backend}
+      - {artifact: registry-exec-be, file: "registry-exec-be-{mod}.md", registry: true}
+    owns_ids: [API, QR]
+    next: gate:pass-1
+  - id: P3.2
+    title: Frontend — UX Design + Execution Plan     # P2.5 + P3.2 merged
+    pass: 2
+    track: frontend
+    questions: forbidden
+    lane: analysis
+    inputs: [srs, prd, api-docs, registry-srs, registry-exec-be]
+    produces:
+      - {artifact: flow-diagram, file: "flow-diagram-{mod}.md"}
+      - {artifact: ui-ux-spec, file: "ui-ux-spec-{mod}.md"}
+      - {artifact: frontend-execution-plan, file: "frontend-execution-plan-{mod}.md", plan: exec, track: frontend}
+      - {artifact: registry-exec-fe, file: "registry-exec-fe-{mod}.md", registry: true}
+    owns_ids: [UXD, SCR]
+    next: gate:pass-2
+
+passes:
+  "1":
+    stages: [P0, P0.5, P1, P2, P3.1]
+    track: backend
+    then: [gate:pass-1, split, deliver]
+    session: bundled               # all stages in ONE delegate session, one commit per stage
+  "2":
+    stages: [P3.2]
+    track: frontend
+    required_inputs: [api-docs]    # fetched back from the backend repo (hard gate)
+    then: [gate:pass-2, split, deliver, tag]
+    session: bundled
+
+# ── Standalone stages — OUTSIDE the line, on demand, never a gate ───────────
+standalone:
+  - id: test-gen
+    title: Test Generation
+    lane: analysis
+    questions: forbidden
+    inputs: [srs, "backend-execution-plan?", "frontend-execution-plan?", registry-srs]
+    produces:
+      - {artifact: backend-test-plan, file: "backend-test-plan-{mod}.md", plan: test, track: backend}
+      - {artifact: frontend-test-plan, file: "frontend-test-plan-{mod}.md", plan: test, track: frontend}
+      - {artifact: test-execution-manifest, file: "test-execution-manifest-{mod}.md", optional: true}
+    owns_ids: [TC]
+    derives_from: AC               # every TC cites the AC it was derived from
+  - id: api-verify
+    title: API Verification (post-implementation)
+    lane: analysis
+    questions: forbidden
+    inputs: [api-docs, "test-execution-manifest?"]
+    produces:
+      - {artifact: api-verify-script, file: "api-verify-{mod}.py"}
+      - {artifact: api-verify-report, file: "api-verify-report-{mod}.md"}
+    owns_ids: []
+
+# ── Inputs that come back from consumer repos ───────────────────────────────
+inputs:
+  api-docs:
+    from_repo: backend
+    file: "api-docs-{mod}.md"
+
+# ── ID grammar — core atoms (profiles may ADD atoms, never redefine these) ──
+ids:
+  seq_width: 3
+  pattern: "{prefix}-{MOD}-{seq}"
+  atoms:
+    POL:  {owner: P0,        title: business policy}
+    US:   {owner: P0.5,      title: user story,            traces_to: [POL]}
+    REQ:  {owner: P1,        title: requirement (EARS),    traces_to: [US],       requires: [AC]}
+    AC:   {owner: P1,        title: acceptance criterion (Given/When/Then), traces_to: [REQ]}
+    ENT:  {owner: P1,        title: entity}
+    RULE: {owner: P1,        title: business rule,         traces_to: [REQ]}
+    DBF:  {owner: P2,        title: db field,              traces_to: [REQ, ENT]}
+    XM:   {owner: P2,        title: cross-module dependency, traces_to: [REQ]}
+    API:  {owner: P3.1,      title: api endpoint,          traces_to: [REQ, DBF]}
+    QR:   {owner: P3.1,      title: query reference}
+    UXD:  {owner: P3.2,      title: ux decision,           traces_to: [REQ, AC]}
+    SCR:  {owner: P3.2,      title: screen,                traces_to: [REQ, UXD]}
+    SCR-REQ: {owner: P1,     title: screen requirement,    traces_to: [REQ]}
+    TC:   {owner: test-gen,  title: test case,             traces_to: [AC]}
+    ADR:  {owner: any,       title: analysis decision record}
+    CS:   {owner: versioning,title: change set}
+  ears:
+    patterns:
+      ubiquitous:   "^The system shall "
+      state:        "^While .+, the system shall "
+      event:        "^When .+, the system shall "
+      optional:     "^Where .+, the system shall "
+      unwanted:     "^If .+, then the system shall "
+    # a REQ whose text matches none of these is a contract violation (analyze: CRITICAL)
+
+# ── Marker grammar — what the toolkit parses; phase KEYS come from the profile
+markers:
+  schema_version: 2
+  syntax: html-comment              # <!-- KIND:ID:START [key=value …] -->  …  <!-- KIND:ID:END -->
+  attributes: [traces]              # traces=REQ-ORG-012,DBF-ORG-044
+  kinds:
+    PHASE: {level: 1, allowed_parents: [],            keys_from: "profile.tracks.<track>.plans.<plan>.phases"}
+    SUB:   {level: 2, allowed_parents: [PHASE],       qualified_by_phase: true}
+    API:   {level: 3, allowed_parents: [PHASE, SUB],  atom: API, tracks: [backend]}
+    XM:    {level: 3, allowed_parents: [PHASE, SUB],  atom: XM,  tracks: [backend]}
+    TC:    {level: 3, allowed_parents: [PHASE, SUB],  atom: TC,  plans: [test]}
+  rules:
+    unknown_phase: refuse           # never skip silently (C3)
+    sub_unqualified_exempt_plans: [test]
+    split_unit: [SUB, PHASE]        # never an atom
+    verify: sha256                  # content-hash verification of every atom after split
+  autofix:
+    phase_key_normalise: true       # '+', '_', ' ', '--' → '-' when it maps to exactly one canonical key
+    qualify_bare_sub: true
+
+# ── Tracks ──────────────────────────────────────────────────────────────────
+tracks:
+  backend:
+    pass: "1"
+    exec_stage: P3.1
+    packages: {exec: backend-execution, test: backend-test}
+  frontend:
+    pass: "2"
+    exec_stage: P3.2
+    packages: {exec: frontend-execution, test: frontend-test}
+
+# ── Consumer repos — link by editing here (or /link-repos) ──────────────────
+repos:
+  backend:
+    url: ""                          # e.g. git@github.com:org/backend.git ; empty = not linked
+    checkout_env: GOV_BACKEND_CHECKOUT
+    checkout_default: "../backend"
+    deliver_to: "governance/modules/{MOD}"
+    publishes:
+      api-docs: "governance/api-docs/api-docs-{mod}.md"
+  frontend:
+    url: ""
+    checkout_env: GOV_FRONTEND_CHECKOUT
+    checkout_default: "../frontend"
+    deliver_to: "governance/modules/{MOD}"
+    publishes: {}
+
+delivery:
+  items: [packages, execution-state]
+  execution_state:
+    file: execution-state.json
+    schema:                          # generated by `gov.py deliver`, never hand-written
+      module: str
+      version: int
+      track: str
+      profile: str
+      markers_schema_version: int
+      packages: "list[str]"
+      phases: "list[{key, files, atoms, traces}]"
+      traceability: "{covered_ids: list[str], orphan_ids: list[str]}"
+      analyze: "{critical: int, major: int, minor: int}"
+      gate: "{pass: int, verdict: str, scores: dict}"
+      generated_at: iso8601
+
+# ── Delegate lanes — model/effort per reasoning step (implementers = list) ──
+lanes:
+  analysis:
+    implementers: ["claude:opus"]
+    effort: high
+  analysis-dialogue:                 # two Claude models converge on each open point
+    implementers: ["claude:opus", "claude:sonnet"]
+    effort: high
+    dialogue:
+      max_rounds: 4
+      converge_on: mutually-acceptable   # not perfection — the bar the user set
+      output: resolved-decisions       # closed in-dialogue; no external open-questions file
+  review-pass:
+    implementers: ["claude:sonnet"]
+    effort: medium
+    read_only: true                    # reviewer never edits or commits
+  merge-review-notes:
+    implementers: ["claude:sonnet"]
+    effort: low
+  tools:
+    implementers: []                   # split / deliver / state / analyze — no model, no cost
+
+# ── Review rubric (ISO/IEC/IEEE 29148 attributes) used by every gate ────────
+review:
+  rubric: [unambiguous, verifiable, complete, consistent, singular, feasible, traceable]
+  scale: {min: 0, max: 3}
+  pass_threshold: 2                  # every attribute must score ≥ threshold to APPROVE
+  verdicts: [APPROVE, REVISE, ESCALATE]
+  revise_max: 1                      # a second REVISE on the same finding → ESCALATE to the human
+
+# ── Ambiguity rule after PRD approval (no new questions) ────────────────────
+ambiguity:
+  non_breaking: {action: adr, then: continue}   # decisions/<MOD>/ADR-… with the chosen best practice
+  breaking:     {action: adr, status: BLOCKED, then: stop}
+
+# ── Versioning ──────────────────────────────────────────────────────────────
+versioning:
+  authority: filesystem              # vN/ folders + tags; no registry-based version
+  delta_only: true                   # vN holds only ADDED/MODIFIED/REMOVED + change-manifest
+  current_state: generated           # gov.py state → _state/current-*.md ; engines read _state only
+  freeze_previous: tag
+
+# ── Commands (thin wrappers over gov.py; rendered into .claude/commands) ────
+commands:
+  - {id: bootstrap,     runs: "run-stage P-1",          args: "[--profile ID]"}
+  - {id: analyze-pass1, runs: "run-pass 1",             args: "MOD [--version N|--new]"}
+  - {id: analyze-pass2, runs: "run-pass 2",             args: "MOD --version N"}
+  - {id: gate,          runs: "gate",                   args: "<1|2> MOD --version N [--model …] [--effort …]"}
+  - {id: micro-feature, runs: "version --new + run-pass 1 + run-pass 2 (delta)", args: "MOD \"<free text>\""}
+  - {id: link-repos,    runs: "edit factory.yaml repos", args: ""}
+  - {id: new-domain,    runs: "new-domain",             args: "ID"}
+  - {id: render,        runs: "render",                 args: ""}
+  - {id: lint,          runs: "lint",                   args: "[--profile ID]"}
+  - {id: test-gen,      runs: "run-standalone test-gen",  args: "MOD --version N"}
+  - {id: api-verify,    runs: "run-standalone api-verify", args: "MOD --version N"}
+
+# ── Lint — Constitution enforcement (C1–C5) ─────────────────────────────────
+lint:
+  generated_marker: "<!-- GENERATED by `gov.py render` from factory.yaml + profile — do not edit by hand -->"
+  exempt_paths: [history, profiles, _archive-v5, modules, decisions, .git, node_modules, __pycache__]
+  scan_paths: [engines, standalone, shared, reviewers, governance-tools, .claude, README.md]
+  forbidden_terms:                 # concepts removed by blueprint v6 — must not appear outside history/
+    - P4.1
+    - P4.2
+    - P-REG
+    - ui-shell
+    - ui_shell
+    - /audit
+    - MASTER-REVIEWER
+    - FACTORY-PRECEDENCE
+    - journey ledger
+    - journey_loader
+    - Google Drive
+    - GOVERNANCE-ROOT
+    - "_ref/"
+    - platform-standards.md
+    - Claude Projects
+  profile_terms_forbidden_in: [engines, standalone, shared, reviewers, governance-tools]   # domain vocabulary must come from the profile, never be typed
+  profile_term_sources:            # which profile values are treated as forbidden literals (multi-char, distinctive)
+    - conventions.entity_defaults
+    - conventions.security_model.page_registry
+    - stack.backend.framework
+    - stack.frontend.framework
+    - stack.mobile.framework
+    - stack.frontend.libraries
+    - stack.db.dialects
+  code_paths: [governance-tools]   # python: no stage ids / phase keys / id prefixes as literals

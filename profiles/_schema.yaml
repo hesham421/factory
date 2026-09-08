@@ -1,0 +1,98 @@
+# ════════════════════════════════════════════════════════════════════════════
+# profiles/_schema.yaml — what every domain profile MUST / MAY declare (C5)
+# ----------------------------------------------------------------------------
+# A domain is DATA. Engines never mention a domain; they read {{profile.*}}.
+# `gov.py lint --profile <id>` validates a profile against this schema.
+# `gov.py new-domain <id>` scaffolds a profile from it.
+#
+# Type strings: str | int | bool | list[T] | map[K, V] | (a|b) = one of ;
+# a key ending in `?` is optional. `$phase` refers to the `phase` type below.
+# ════════════════════════════════════════════════════════════════════════════
+schema_version: 6
+
+identity:                                   # REQUIRED
+  id: "str"                                 # slug, = filename stem
+  display: "str"
+  description: "str"
+
+languages:                                  # REQUIRED
+  all: "list[str]"                          # ISO 639-1 codes, e.g. [ar, en]
+  primary: "str"                            # must be in `all`
+  require_all: "bool"                       # true → every artifact carries every language
+
+vocabulary:                                 # REQUIRED — the domain's ubiquitous language (DDD)
+  module_prefixes: "map[str, str]"          # code → display, e.g. ORG: Organization
+  keyword_map?: "map[str, list[str]]"       # module code → free-text keywords (any language) P0 uses to detect modules
+  entity_kinds: "list[str]"                 # e.g. [master, transactional, lookup, config]
+  glossary?: "map[str, str]"                # term → definition (used verbatim by every stage)
+  bounded_contexts?: "list[{id: str, owns: list[str]}]"
+
+ids?:                                       # OPTIONAL — domain atoms ADDED to factory.yaml ids.atoms
+  atoms?: "map[str, {owner: str, title: str, traces_to?: list[str]}]"
+
+tracks:                                     # REQUIRED — phase vocabulary per track and plan
+  backend:
+    plans:
+      exec:
+        phases: "list[$phase]"              # ordered; keys are the canonical PHASE marker keys
+      test?:
+        phases: "list[$phase]"
+  frontend:
+    plans:
+      exec:
+        phases: "list[$phase]"
+      test?:
+        phases: "list[$phase]"
+
+$types:
+  phase:
+    key: "str"                              # canonical marker key, [A-Z0-9-]+
+    display?: "str"                         # human label (may contain '+')
+    folder?: "str"                          # package folder, defaults to key
+    never_split?: "bool"                    # phase may not carry SUB blocks
+    split_threshold?: "{kind: (API|XM|TC|SCR), count: int, op: (>=|>), grouping?: str}"
+    sub_labels?: "list[str]"                # expected SUB labels when split (test plans: bare; others: phase-qualified)
+    sub_bearing?: "bool"                    # frontend: per-screen SUB blocks expected
+
+stack:                                      # REQUIRED — every technology fact lives here
+  db:
+    dialects: "list[str]"                   # e.g. [postgresql16] ; first = target
+    naming?: "{flag_suffix?: str, audit_fields?: list[str], pk_pattern?: str}"
+    syntax_map?: "map[str, map[str, str]]"  # type → dialect → syntax
+  backend:
+    framework: "str"                        # e.g. spring-boot-java
+    api:
+      base_path: "str"                      # e.g. /api/v1/{module}/{resource}
+      verbs: "map[str, str]"                # POST: create, GET: read, PUT: update, DELETE: deactivate, PATCH: partial
+      envelope?: "str"                      # response wrapper name
+      paging?: "str"                        # e.g. Page<T>
+      error_envelope?: "str"
+    layers?: "list[str]"                    # controller, service, mapper, domain, repository …
+  frontend:
+    framework: "str"
+    libraries?: "map[str, str]"             # routing, server-state, forms, validation, state …
+    lazy_chunk_per?: "str"                  # e.g. composite-screen
+  mobile?:
+    framework: "str"                        # a stack name or NONE
+  testing:
+    backend?: "str"                         # framework/tool name, or agnostic
+    frontend?: "str"
+    manifest: "bool"                        # emit test-execution-manifest for api-verify
+
+conventions?:                               # OPTIONAL — absent = not applied (no exceptions in prose)
+  entity_defaults?: "map[str, list[str]]"   # entity kind → default fields
+  security_model?:
+    page_registry: "str"                    # e.g. SEC_PAGES
+    permission_pattern: "str"               # e.g. PERM_<PAGE_CODE>_<ACTION>
+    actions: "list[str]"
+    gateway_action: "str"                   # e.g. VIEW
+  composite_screen?: "bool"                 # Search + Entry (+Master/Detail, Wizard) = ONE SCR-ID
+  numbering?: "str"                         # numbering-engine rule
+  lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
+  workflow_engine?: "(forbidden|allowed)"
+
+knowledge?:                                 # OPTIONAL — primary sources the engines may cite
+  files?: "list[str]"                       # paths under profiles/<id>/knowledge/
+
+review?:                                    # OPTIONAL — extra domain checks scored at the gate (data, not prose)
+  extra_checks?: "list[{id: str, stage: str, check: str, severity: (CRITICAL|MAJOR|MINOR)}]"

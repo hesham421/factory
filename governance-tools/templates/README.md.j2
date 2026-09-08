@@ -1,0 +1,81 @@
+{{ marker }}
+# {{ factory.factory.name }} — the Analysis Factory (v{{ factory.schema_version }})
+
+A git-native, **domain-agnostic analysis factory**. Input: a raw product idea + a domain profile.
+Output: reviewed, versioned, traceable analysis artifacts and **backend + frontend execution
+plans**, delivered as packages to consumer repos. Boundary: **{{ factory.factory.boundary }}** — it
+never implements, never audits implementations inside the line, never runs tests inside the line.
+
+Everything below is generated from `factory.yaml` + `profiles/{{ profile.identity.id }}.yaml` by `gov.py render`.
+The constitution that governs the repo is `shared/CONSTITUTION.md`.
+
+## Layout
+```
+factory.yaml                 single source of truth: stages, passes, gates, lanes, paths, naming, ID grammar, marker grammar
+{{ factory.paths.profiles }}/                    a domain is DATA — _schema.yaml + <id>.yaml (+ <id>/knowledge/*)
+{{ factory.paths.domain }}/                      domain-profile.md saved from the conversational domain-profile stage = entry gate
+{{ factory.paths.platform }}/                    P-1 output: project-registry.md
+{{ factory.paths.engines }}/<id>/                the governed pipeline: SKILL.md (generated) + references/ENGINE.md (Jinja2 template)
+{{ factory.paths.standalone }}/<id>/             outside the line, on demand, never a gate
+{{ factory.paths.shared }}/                      the core doc set (tables generated in place)
+{{ factory.paths.reviewers }}/pass-review.md     the single gate template
+{{ factory.paths.decisions }}/<MOD>/             ADR stream
+{{ factory.paths.modules }}/<MOD>/[vN/]          v1 = base folder, vN = delta only; {{ factory.paths.module.state_dir }}/ generated current state; {{ factory.paths.module.inputs_dir }}/ fetched inputs; {{ factory.paths.module.packages_dir }}/ split output
+{{ factory.paths.commands }}/                    thin command wrappers (generated)
+{{ factory.paths.tools }}/            config.py (loader) · gov.py (orchestrator) · toolkit/ (one parser/splitter/structure/archive) · tests/
+history/                     pre-v6 artefacts, loaded by nothing
+```
+
+## The pipeline
+<!-- RENDER:stages -->
+<!-- /RENDER:stages -->
+
+Passes: {% for k, p in factory.passes.items() %}**pass {{ k }}** = {{ p.stages | join(' → ') }} → {{ p.then | join(' → ') }} (track `{{ p.track }}`{% if p.required_inputs %}, requires {{ p.required_inputs | join(', ') }} fetched back{% endif %}){% if not loop.last %}; {% endif %}{% endfor %}.
+{% for k, p in factory.passes.items() if p.session == 'bundled' %}{% if loop.first %}All stages of a pass run in one delegate session with one commit per stage.{% endif %}{% endfor %}
+
+### Standalone stages (outside the line)
+<!-- RENDER:standalone -->
+<!-- /RENDER:standalone -->
+
+### Human decision points
+<!-- RENDER:gates -->
+<!-- /RENDER:gates -->
+
+### Lanes (model/effort per reasoning step)
+<!-- RENDER:lanes -->
+<!-- /RENDER:lanes -->
+
+## Active profile
+<!-- RENDER:profile-summary -->
+<!-- /RENDER:profile-summary -->
+
+Add a domain: `gov.py new-domain <id>` scaffolds `{{ factory.paths.profiles }}/<id>.yaml` from `_schema.yaml`; `gov.py lint --profile <id>` validates it; no engine text changes.
+
+## Commands
+<!-- RENDER:commands -->
+<!-- /RENDER:commands -->
+
+## Operating a module (the orchestrator owns the protocol — `gov.py`, exit 0 ok · 1 blocked · 2 awaiting the operator)
+```
+gov.py run-stage domain-profile -m MOD      # writes the brief; run it as the conversational stage, save domain/domain-profile.md
+gov.py run-stage P-1 -m MOD [--complete]     # bootstrap once per platform → platform/project-registry.md
+gov.py run-pass 1 -m MOD [--new]             # ONE bundled brief for the whole pass (stages run in one delegate session)
+gov.py run-stage <id> -m MOD -v N --complete # after each stage's files exist: analyze → commit (stops on CRITICAL / [QUESTION] / BLOCKED ADR)
+gov.py approve prd-approval -m MOD -v N      # the human decision after P0.5 — nothing asks a question after this
+gov.py gate 1 -m MOD -v N                    # analyze must be CLEAN → reviewer brief; then --complete --result review.json
+gov.py split --track backend -m MOD -v N     # marker protocol → packages (+ SHA verification)
+gov.py deliver --track backend -m MOD -v N   # branch + execution-state.json in the consumer repo
+gov.py fetch-inputs -m MOD -v N              # pass-2 hard gate: api-docs back from the backend repo
+gov.py run-pass 2 … · gate 2 … · split/deliver --track frontend … · gov.py tag -m MOD -v N
+gov.py run-standalone test-gen|api-verify -m MOD -v N   # outside the line, on demand
+gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
+```
+Runners: `GOV_RUNNER=manual` (default — Claude Code + delegate skills execute each brief), `GOV_RUNNER=cmd` with `GOV_RUNNER_CMD="… {brief} {model} {effort} {out}"` (dialogue lanes alternate implementers until `<!-- CONVERGED -->`).
+
+## Quality gates in code
+- `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.
+- `gov.py lint` — the constitution: profile schema, no removed concepts, no domain literals outside profiles, no stage/phase/prefix literals in code, generated files fresh.
+- `python3 -m pytest {{ factory.paths.tools }}/tests -q` — the toolkit and orchestrator tests (ERP profile + a non-ERP toy profile).
+
+## Linking consumer repos
+Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `{{ factory.repos.backend.publishes['api-docs'] }}`; the factory delivers to `{{ factory.repos.backend.deliver_to }}` on branch `{{ factory.naming.delivery_branch }}` and tags `{{ factory.naming.tag }}`.

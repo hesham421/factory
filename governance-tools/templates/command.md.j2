@@ -1,0 +1,8 @@
+{{ marker }}
+# /{{ command.id }} — `gov.py {{ command.runs }}`
+
+```
+/{{ command.id }} {{ command.args }}
+```
+
+Thin wrapper: runs `python3 {{ factory.paths.tools }}/gov.py {{ command.runs }} {{ command.args }}` from the repo root and prints its report. Behaviour, gates and lanes are defined in `factory.yaml` — nothing here.

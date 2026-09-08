@@ -1,0 +1,32 @@
+---
+name: {{ stage.id }}
+description: {{ stage.title }} — {{ 'standalone stage (outside the governed line, never a gate)' if kind == 'standalone' else 'governed analysis stage, pass ' ~ stage.pass_ }} of the {{ factory.factory.name }}. Run through `gov.py run-{{ 'standalone' if kind == 'standalone' else 'stage' }} {{ stage.id }}`; never by hand.
+---
+{{ marker }}
+
+# {{ stage.id }} — {{ stage.title }}
+
+| Contract | Value |
+|---|---|
+| Stage id | `{{ stage.id }}` |
+| Kind | {{ 'standalone — outside the line, on demand, never a gate for the core' if kind == 'standalone' else 'governed pipeline stage' }} |
+| Pass | {{ stage.pass_ }}{% if stage.track %} · track `{{ stage.track }}`{% endif %}{% if stage.once_per %} · once per {{ stage.once_per }}{% endif %} |
+| Questions | **{{ stage.questions }}**{% if stage.dialogue %} — resolved in-dialogue by the lane's implementers, never escalated to a file{% endif %} |
+| Lane | `{{ stage.lane }}` → {{ factory.lanes[stage.lane].implementers | join(', ') or 'tools only' }} (effort {{ factory.lanes[stage.lane].effort }}) |
+| Inputs | {{ stage.inputs | join_ids }} — read from `{{ factory.paths.module.state_dir }}/`{% if 'api-docs' in stage.inputs %} and `{{ factory.paths.module.inputs_dir }}/`{% endif %} |
+| Produces | {% for a in stage.produces %}`{{ a.file }}`{% if a.registry %} (registry){% endif %}{% if a.plan %} (plan `{{ a.plan }}`, track `{{ a.track }}`){% endif %}{% if a.optional %} (optional){% endif %}{% if not loop.last %} · {% endif %}{% endfor %} |
+| Owns IDs | {{ stage.owns_ids | join_ids }} |
+{% if stage.requirement_format %}| Requirement format | {{ stage.requirement_format }} (`factory.ids.ears`) |
+{% endif %}{% if stage.research %}| Research | {{ stage.research }} — cite primary sources |
+{% endif %}{% if stage.derives_from %}| Derives from | every produced ID cites its `{{ stage.derives_from }}` |
+{% endif %}| Then | {% set g = cfg.gate_after(stage.id) %}{% if g %}gate `{{ g.id }}` ({{ g.type }}){% elif stage.next %}`{{ stage.next }}`{% else %}— {% endif %} |
+
+## How this stage runs (orchestrator-owned — see `shared/GOVERNANCE-CORE.md` §6)
+1. `gov.py state` refreshes `{{ factory.paths.module.state_dir }}/`; the brief = `references/ENGINE.md` rendered with `profile` + `factory` + `stage` + the state files.
+2. The lane dispatches the brief{% if stage.dialogue %} as a converging dialogue ({{ factory.lanes[stage.lane].dialogue.max_rounds }} rounds max, converge on *{{ factory.lanes[stage.lane].dialogue.converge_on }}*){% endif %}.
+3. Artifacts are written to the module version folder; `gov.py analyze` runs the contracts; the stage commits (`{{ factory.naming.commit.stage }}`).
+{% if stage.questions == 'forbidden' %}4. Ambiguity: non-breaking → ADR + continue; breaking → ADR `BLOCKED` + stop (`factory.ambiguity`). A `[QUESTION]` block from this stage is refused.
+{% else %}4. Questions are allowed here and closed inside the dialogue with a recommended, researched answer; nothing is written to an external open-questions file.
+{% endif %}
+## Load order
+`profiles/{{ profile.identity.id }}.yaml` (active profile) → {% for d in shared_docs %}`shared/{{ d }}`{% if not loop.last %} → {% endif %}{% endfor %} → `references/ENGINE.md`.
