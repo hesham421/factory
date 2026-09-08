@@ -5,18 +5,20 @@ Read by  : P0.5 (every user story cites the policies it serves)
 ══════════════════════════════════════════════════════════════════
 
 CLIENT-SPECIFIC POLICIES   (only from user text or confirmed dialogue answers)
-None — standard domain rules apply. The user's brief ("simple daily notes
-with just CRUD") states no client-specific constraint beyond plain CRUD;
-no POL record is created for this module.
+لا توجد سياسات خاصة بالعميل — تُطبَّق قواعد النطاق القياسية. طلب المستخدم
+("simple daily notes with just CRUD" / "ملاحظات يومية بسيطة بعمليات CRUD
+فقط") لا يذكر أي قيد خاص يتجاوز عمليات الإنشاء/القراءة/التعديل/الحذف
+القياسية؛ لذلك لا يُكتب أي سجل `POL` لهذه الوحدة.
+None — standard domain rules apply; no `POL` record is created for this module.
 
 CUSTOM LOOKUP VALUES   (values the user named that the standard lists lack)
-None — standard values apply.
+لا توجد قيم مخصّصة — تُطبَّق القيم القياسية. / None — standard values apply.
 
 SCOPE EXCEPTIONS   (explicit exclusions or non-standard scope)
 | Excluded / Deferred | Statement | Activation trigger | Source |
 |---|---|---|---|
-| Sharing / multi-user notebooks | "just CRUD" — no sharing, permissions-per-note, or collaboration implied | a future version explicitly requesting multi-user notes | domain-profile §7.1 (Daily Notes term — "do not say" notebook system) |
-| Approval / workflow on notes | ERP approval-workflow conventions are not applied to DEMO | none planned — DEMO is a pipeline-test harness, not a real workflow-bearing module | domain-profile §5 |
+| المشاركة / دفاتر ملاحظات متعددة المستخدمين (Sharing / multi-user notebooks) | "just CRUD" — لا مشاركة ولا صلاحيات لكل ملاحظة ولا تعاون بين مستخدمين | طلب مستقبلي صريح بدعم ملاحظات متعددة المستخدمين | domain-profile §7.1 (مصطلح Daily Notes — "do not say" notebook system) |
+| الموافقات / سير العمل على الملاحظات (Approval / workflow on notes) | لا تُطبَّق اتفاقيات سير عمل الموافقات في ERP على DEMO | لا شيء مخطَّط — DEMO أداة اختبار للخط الحوكمي وليست وحدة أعمال حقيقية | domain-profile §5 |
 
 RESOLVED DECISIONS (dialogue, this module)
 | # | Question | Recommended answer | Confirmed by user | Sources |

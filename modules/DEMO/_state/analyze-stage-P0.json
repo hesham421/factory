@@ -4,18 +4,9 @@
   "scope": "stage:P0",
   "counts": {
     "CRITICAL": 0,
-    "MAJOR": 1,
+    "MAJOR": 0,
     "MINOR": 0
   },
   "clean": true,
-  "findings": [
-    {
-      "severity": "MAJOR",
-      "clause": "C3.6",
-      "check": "languages",
-      "message": "language `ar` not present (profile requires all of ['ar', 'en'])",
-      "artifact": "business-policies",
-      "line": 0
-    }
-  ]
+  "findings": []
 }
