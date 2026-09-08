@@ -1,0 +1,229 @@
+{
+  "module": "DEMO",
+  "version": 1,
+  "scope": "stage:P1",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 27,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-001` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 90
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-002` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 95
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-003` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 100
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-004` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 114
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-005` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 119
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-006` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 133
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-007` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 147
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-008` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 152
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-009` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 157
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.5",
+      "check": "traces",
+      "message": "`AC-DEMO-010` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 171
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-001` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-002` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-003` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-004` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-005` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-006` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-007` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-008` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-009` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`AC-DEMO-010` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`REQ-DEMO-001` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`REQ-DEMO-002` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`REQ-DEMO-003` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`REQ-DEMO-004` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`REQ-DEMO-005` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`RULE-DEMO-001` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`RULE-DEMO-002` defined in `srs` but absent from `registry-srs`",
+      "artifact": "srs",
+      "line": 0
+    }
+  ]
+}
