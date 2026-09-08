@@ -2,7 +2,7 @@
   "module": "DEMO",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-08T17:18:14+00:00",
+  "generated_at": "2026-09-08T17:20:56+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -21,11 +21,15 @@
     ],
     "registry-srs": [
       1
+    ],
+    "db-script": [
+      1
+    ],
+    "registry-db": [
+      1
     ]
   },
   "missing": [
-    "db-script",
-    "registry-db",
     "backend-execution-plan",
     "registry-exec-be",
     "flow-diagram",
@@ -37,5 +41,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1788887894.523715
+  "inputs_mtime": 1788888056.4700863
 }
