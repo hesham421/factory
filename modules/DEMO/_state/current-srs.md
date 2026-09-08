@@ -87,17 +87,17 @@ Rationale  : direct expression of the create-a-note need.
 Source     : prd-demo.md US-DEMO-001
 Priority   : HIGH
 
-#### AC-DEMO-001 — REQ-DEMO-001, happy path
+#### AC-DEMO-001 — [REQ-DEMO-001] happy path
 Given  : the create-note form is open and the user has entered a non-empty title and content within the allowed length
 When   : the user submits the form
 Then   : the system creates the note, sets `isActiveFl = true`, `createdBy`/`createdAt` to the current user/time, and shows it in the notes list — ar: "تم إنشاء الملاحظة" · en: "Note created"
 
-#### AC-DEMO-002 — REQ-DEMO-001, empty title (RULE-DEMO-001)
+#### AC-DEMO-002 — [REQ-DEMO-001, RULE-DEMO-001] empty title
 Given  : the create-note form is open
 When   : the user submits with an empty title
 Then   : the system rejects the save and shows the RULE-DEMO-001 message — ar: "عنوان الملاحظة مطلوب" · en: "Note title is required"
 
-#### AC-DEMO-003 — REQ-DEMO-001, content too long (RULE-DEMO-002)
+#### AC-DEMO-003 — [REQ-DEMO-001, RULE-DEMO-002] content too long
 Given  : the create-note form is open
 When   : the user submits content longer than 4000 characters
 Then   : the system rejects the save and shows the RULE-DEMO-002 message — ar: "محتوى الملاحظة يتجاوز الحد الأقصى المسموح (4000 حرف)" · en: "Note content exceeds the maximum allowed length (4000 characters)"
@@ -111,12 +111,12 @@ Rationale  : direct expression of "see a list of my notes".
 Source     : prd-demo.md US-DEMO-002
 Priority   : HIGH
 
-#### AC-DEMO-004 — REQ-DEMO-002, notes exist
+#### AC-DEMO-004 — [REQ-DEMO-002] notes exist
 Given  : the current user owns one or more active notes
 When   : the user opens the Daily Notes screen
 Then   : the system shows each note's title and last-updated date, most recently updated first
 
-#### AC-DEMO-005 — REQ-DEMO-002, no notes
+#### AC-DEMO-005 — [REQ-DEMO-002] no notes
 Given  : the current user owns no active notes
 When   : the user opens the Daily Notes screen
 Then   : the system shows an empty-state message — ar: "لا توجد ملاحظات بعد" · en: "No notes yet"
@@ -130,7 +130,7 @@ Rationale  : "open one to read its full content" from US-DEMO-002.
 Source     : prd-demo.md US-DEMO-002
 Priority   : HIGH
 
-#### AC-DEMO-006 — REQ-DEMO-003, happy path
+#### AC-DEMO-006 — [REQ-DEMO-003] happy path
 Given  : the user is on the Daily Notes list and owns an active note
 When   : the user selects that note
 Then   : the system displays its full title and content
@@ -144,17 +144,17 @@ Rationale  : direct expression of the edit need.
 Source     : prd-demo.md US-DEMO-003
 Priority   : MEDIUM
 
-#### AC-DEMO-007 — REQ-DEMO-004, happy path
+#### AC-DEMO-007 — [REQ-DEMO-004] happy path
 Given  : the user has an existing active note open for editing with a valid non-empty title and content within the allowed length
 When   : the user submits the change
 Then   : the system saves the new title/content, sets `updatedBy`/`updatedAt` to the current user/time, and shows the updated note — ar: "تم حفظ التعديلات" · en: "Changes saved"
 
-#### AC-DEMO-008 — REQ-DEMO-004, empty title (RULE-DEMO-001)
+#### AC-DEMO-008 — [REQ-DEMO-004, RULE-DEMO-001] empty title
 Given  : the user has an existing note open for editing
 When   : the user submits with an empty title
 Then   : the system rejects the save and shows the RULE-DEMO-001 message (AC-DEMO-002 wording)
 
-#### AC-DEMO-009 — REQ-DEMO-004, content too long (RULE-DEMO-002)
+#### AC-DEMO-009 — [REQ-DEMO-004, RULE-DEMO-002] content too long
 Given  : the user has an existing note open for editing
 When   : the user submits content longer than 4000 characters
 Then   : the system rejects the save and shows the RULE-DEMO-002 message (AC-DEMO-003 wording)
@@ -168,7 +168,7 @@ Rationale  : direct expression of the delete need; soft delete per `[KB:erp-doma
 Source     : prd-demo.md US-DEMO-004; `[KB:erp-domain-standards §6]`
 Priority   : MEDIUM
 
-#### AC-DEMO-010 — REQ-DEMO-005, happy path
+#### AC-DEMO-010 — [REQ-DEMO-005] happy path
 Given  : the user owns an active note
 When   : the user confirms deletion of that note
 Then   : the system sets `isActiveFl = false` on the note and the note no longer appears in the notes list — ar: "تم حذف الملاحظة" · en: "Note deleted"
