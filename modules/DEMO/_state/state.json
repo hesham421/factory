@@ -2,12 +2,19 @@
   "module": "DEMO",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-08T17:11:42+00:00",
-  "sources": {},
+  "generated_at": "2026-09-08T17:12:50+00:00",
+  "sources": {
+    "platform-summary": [
+      1
+    ],
+    "module-registry": [
+      1
+    ],
+    "business-policies": [
+      1
+    ]
+  },
   "missing": [
-    "platform-summary",
-    "module-registry",
-    "business-policies",
     "prd",
     "srs",
     "registry-srs",
@@ -24,5 +31,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1788887502.58144
+  "inputs_mtime": 1788887570.0430632
 }
