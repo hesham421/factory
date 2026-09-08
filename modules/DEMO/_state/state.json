@@ -2,7 +2,7 @@
   "module": "DEMO",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-08T17:24:22+00:00",
+  "generated_at": "2026-09-08T17:25:17+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -45,5 +45,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1788888262.5110834
+  "inputs_mtime": 1788888317.7120502
 }
