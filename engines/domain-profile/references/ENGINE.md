@@ -60,7 +60,7 @@ a brief, an existing system description.
 
 ```
 STEP 1.1 — Mode
-  domain/domain-profile.md exists?  → CONTINUATION: read it, show it back, work only
+  {{ factory.paths.domain }}/domain-profile.md exists?  → CONTINUATION: read it, show it back, work only
                                        on what is new or revised.
                                      → FRESH: everything below, field by field.
 

@@ -106,8 +106,8 @@ redesign on top of what v5 proved:
 factory.yaml                 SINGLE source of truth: stages, passes, gates, lanes, paths,
                               naming, ID grammar, marker grammar, tracks, repos, review rubric, lint rules
 profiles/                    a domain is DATA: _schema.yaml + <id>.yaml (+ <id>/knowledge/*.md)
-domain/                      domain-profile.md saved from the conversational domain-profile stage
-platform/                    P-1 output: project-registry.md (bootstrap, once per platform)
+project/                     domain-profile.md (conversational domain-profile stage) + project-registry.md
+                              (P-1 bootstrap output, once per platform)
 engines/                     the governed pipeline — one folder per stage in factory.yaml -> stages,
                               each: SKILL.md (generated) + references/ENGINE.md (Jinja2 template)
 standalone/                  stages outside the line, on demand, never a gate (per factory.yaml -> standalone)
@@ -145,7 +145,7 @@ document itself did.
 ## 4. The flow (end to end)
 
 ```
-BOOT    /bootstrap (engine P-1) — once per platform → platform/project-registry.md
+BOOT    /bootstrap (engine P-1) — once per platform → project/project-registry.md
 
 PASS 1  domain-profile → P0 → PRD approval (human) → P1 → P2 → P3.1
         → gate:pass-1 (one review-pass gate)  → split (tools) → deliver (branch → backend repo)

@@ -359,7 +359,7 @@ gov.py split --track {{ track }} --module {{ MOD }} --version {{ ver }} --dry-ru
 `decisions/{{ MOD }}/{{ factory.naming.adr_file.replace('{MOD}', MOD) }}` and
 **{{ factory.ambiguity.non_breaking.then }}**; breaking (contradicts a locked decision or a
 REQ, including an SRS↔PRD contradiction) → ADR `{{ factory.ambiguity.breaking.status }}`,
-**{{ factory.ambiguity.breaking.then }}**. Use `profile.knowledge.files` and `domain/` steering
+**{{ factory.ambiguity.breaking.then }}**. Use `profile.knowledge.files` and `{{ factory.paths.domain }}/` steering
 for the best-practice choice. No question is raised at this stage.
 
 ## 8. Boundaries and hand-off

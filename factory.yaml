@@ -21,8 +21,8 @@ factory:
 # ── Paths (relative to the repo root) ──────────────────────────────────────
 paths:
   profiles: profiles
-  domain: domain
-  platform: platform
+  domain: project
+  platform: project
   engines: engines
   standalone: standalone
   shared: shared

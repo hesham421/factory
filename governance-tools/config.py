@@ -386,7 +386,7 @@ class FactoryConfig:
     def artifact_path(self, mod: str, stage_id: str, artifact: str, version: int | None = None) -> Path:
         st = self.stage(stage_id)
         a = st.artifact(artifact)
-        if a.dir:                                 # platform-level artifact (domain/, platform/)
+        if a.dir:                                 # platform-level artifact (paths.domain, paths.platform)
             return self.dir(a.dir) / a.filename(mod)
         return self.stage_dir(mod, stage_id, version) / a.filename(mod)
 

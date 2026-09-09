@@ -66,7 +66,7 @@ continue their sequence and are never renumbered. Rules: shared/VERSIONING.md.
 {% for i in st.inputs -%}
 | `{{ i }}` | `{{ state_dir }}/{{ factory.naming.current_state_file.replace('{artifact}', i) }}.md` | {% if 'registry' in i %}ID ranges already assigned, shared entities, existing lookups, module prefix{% elif i == 'srs' %}authoritative functional truth — REQ/AC/ENT/RULE, screens, permissions, lookup keys{% else %}authoritative structural truth — tables, columns (DBF), constraints, XM register{% endif %} |
 {% endfor -%}
-| `domain/` steering + `profile.knowledge.files` | {% for f in (profile.knowledge.files if profile.knowledge is defined and profile.knowledge else []) %}`{{ f }}`{% if not loop.last %}, {% endif %}{% else %}—{% endfor %} | primary sources cited when a best-practice choice must be made (§12) |
+| `{{ factory.paths.domain }}/` steering + `profile.knowledge.files` | {% for f in (profile.knowledge.files if profile.knowledge is defined and profile.knowledge else []) %}`{{ f }}`{% if not loop.last %}, {% endif %}{% else %}—{% endfor %} | primary sources cited when a best-practice choice must be made (§12) |
 
 Business policies are not read directly: client policies are embedded in `RULE-*` inside
 the SRS. A RULE sourced from a client policy is never resolved unilaterally — a conflict is a
@@ -471,7 +471,7 @@ runs before the gate `{{ st.next }}`; CRITICAL findings keep the gate closed.
 
 `factory.yaml → ambiguity`, stated once in shared/GOVERNANCE-CORE.md:
 - **non-breaking** (does not contradict a locked decision or a REQ) → choose the best-practice
-  answer using `profile.knowledge.files` + `domain/` steering, write
+  answer using `profile.knowledge.files` + `{{ factory.paths.domain }}/` steering, write
   `decisions/{{ MOD }}/{{ factory.naming.adr_file.replace('{MOD}', MOD) }}` (Context / Decision /
   Consequences / traces) and **{{ factory.ambiguity.non_breaking.then }}**;
 - **breaking** (contradicts a locked decision or a REQ) → ADR with status

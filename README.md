@@ -13,8 +13,7 @@ The constitution that governs the repo is `shared/CONSTITUTION.md`.
 ```
 factory.yaml                 single source of truth: stages, passes, gates, lanes, paths, naming, ID grammar, marker grammar
 profiles/                    a domain is DATA — _schema.yaml + <id>.yaml (+ <id>/knowledge/*)
-domain/                      domain-profile.md saved from the conversational domain-profile stage = entry gate
-platform/                    P-1 output: project-registry.md
+project/                      domain-profile.md (entry gate, from the conversational domain-profile stage) + project-registry.md (P-1 output)
 engines/<id>/                the governed pipeline: SKILL.md (generated) + references/ENGINE.md (Jinja2 template)
 standalone/<id>/             outside the line, on demand, never a gate
 shared/                      the core doc set (tables generated in place)
@@ -104,8 +103,8 @@ Add a domain: `gov.py new-domain <id>` scaffolds `profiles/<id>.yaml` from `_sch
 
 ## Operating a module (the orchestrator owns the protocol — `gov.py`, exit 0 ok · 1 blocked · 2 awaiting the operator)
 ```
-gov.py run-stage domain-profile -m MOD      # writes the brief; run it as the conversational stage, save domain/domain-profile.md
-gov.py run-stage P-1 -m MOD [--complete]     # bootstrap once per platform → platform/project-registry.md
+gov.py run-stage domain-profile -m MOD      # writes the brief; run it as the conversational stage, save project/domain-profile.md
+gov.py run-stage P-1 -m MOD [--complete]     # bootstrap once per platform → project/project-registry.md
 gov.py run-pass 1 -m MOD [--new]             # ONE bundled brief for the whole pass (stages run in one delegate session)
 gov.py run-stage <id> -m MOD -v N --complete # after each stage's files exist: analyze → commit (stops on CRITICAL / [QUESTION] / BLOCKED ADR)
 gov.py approve prd-approval -m MOD -v N      # the human decision after P0.5 — nothing asks a question after this

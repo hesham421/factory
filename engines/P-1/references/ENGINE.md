@@ -34,7 +34,7 @@ Completion (write → registry → analyze → commit) is owned by the orchestra
 
 ```
 DOES
-  - Reads domain/domain-profile.md completely (STEERING block first), then any
+  - Reads {{ factory.paths.domain }}/domain-profile.md completely (STEERING block first), then any
     platform brief supplied as input.
   - Reads an existing project-registry.md as the baseline when re-run (extend mode).
   - Extracts every governance-relevant fact into the registry categories (§3).
@@ -203,7 +203,7 @@ Schema Compliance Map. Section names may be the platform's own; the map binds th
 ══════════════════════════════════════════════════════════════════
 Profile            : {{ profile.identity.id }}
 Registry Version   : [semver]
-Domain Profile     : domain/domain-profile.md v[N]
+Domain Profile     : {{ factory.paths.domain }}/domain-profile.md v[N]
 Last Updated       : [date] by {{ stage.id }}
 Modules registered : [N]   Entity candidates : [N]   Open items : [N]
 ══════════════════════════════════════════════════════════════════
@@ -250,7 +250,7 @@ replaced by formal IDs when the owning stage registers the element.
 ```
 ══════════════════════════════════════════════════════════════════
 EXTRACTION REPORT — {{ stage.id }} — [date] — profile {{ profile.identity.id }}
-Input : domain/domain-profile.md v[N] [+ brief]
+Input : {{ factory.paths.domain }}/domain-profile.md v[N] [+ brief]
 ══════════════════════════════════════════════════════════════════
 MODULES IDENTIFIED     : + [code] [name] — context [id] — [Status]   (none —)
 ENTITY CANDIDATES      : + [name] — owner [MOD] — [kind] — PRIVATE/SHARED?   (none —)
