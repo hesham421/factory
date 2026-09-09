@@ -210,7 +210,7 @@ def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,
         tpl = os.environ.get("GOV_RUNNER_CMD")
         if not tpl:
             raise RuntimeError("GOV_RUNNER=cmd requires GOV_RUNNER_CMD")
-        # {lane} is the factory.yaml lane id (e.g. "analysis", "review-pass") — the same
+        # {lane} is the factory.yaml lane id (e.g. "analysis", "review-per-engine") — the same
         # string a lane-name-matching delegate tool (e.g. `claude-delegate --lane <id>`)
         # keys its own model/effort/readonly config by, so no model/effort mapping needs
         # to be duplicated here. {read_only_flag} is "--read-only" when the lane sets
