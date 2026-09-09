@@ -1,0 +1,554 @@
+#!/usr/bin/env python3
+"""
+gov.py — the Governance Factory orchestrator (blueprint v6 §8)
+==============================================================
+Enforcement, not prose: every stage runs through the same protocol
+(state → brief/dispatch → write → analyze → commit → gate). Nothing here
+spells a stage id, phase key, path, branch or model — all from factory.yaml
+and the active profile (`config.CFG`).
+
+  run-stage <id> -m MOD [-v N] [--complete] [--no-commit]
+  run-pass <1|2> -m MOD [-v N | --new] [--complete] [--no-commit]
+  run-standalone <id> -m MOD [-v N] [--complete]
+  gate <1|2> -m MOD [-v N] [--complete --result FILE.json]
+  approve <gate-id> -m MOD [-v N] [--by NAME]
+  analyze -m MOD [-v N] [--scope all|stage:ID|pass:N|gate:ID]
+  state -m MOD [-v N]
+  version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
+  deliver --track T -m MOD -v N [--push] · status -m MOD
+  structure/archive/split (toolkit) · render · lint [--profile ID] · new-domain ID
+
+Exit codes: 0 ok · 1 blocked (findings / missing) · 2 awaiting the operator (manual runner)
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from config import CFG                     # noqa: E402
+import analyze as an                        # noqa: E402
+import dispatch as dp                       # noqa: E402
+import render as rd                         # noqa: E402
+import state as st                          # noqa: E402
+from toolkit import archive as tk_archive, splitter as tk_split, structure as tk_struct   # noqa: E402
+from toolkit.common import now_iso, write_json   # noqa: E402
+
+OK, BLOCKED, AWAITING = 0, 1, 2
+
+
+# ── git ─────────────────────────────────────────────────────────────────────
+
+def _git(*args: str, cwd: Path | None = None, check: bool = True, capture: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=str(cwd or CFG.root), check=check, capture_output=capture, text=True)
+
+
+def _commit(paths: list[Path], message: str, no_commit: bool = False) -> str | None:
+    if no_commit:
+        return None
+    rels = [str(p.relative_to(CFG.root)) for p in paths if p.exists()]
+    if not rels:
+        return None
+    _git("add", "-A", "--", *rels)
+    if _git("diff", "--cached", "--quiet", check=False).returncode == 0:
+        return None
+    _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory", "commit", "-q", "-m", message)
+    return _git("rev-parse", "--short", "HEAD").stdout.strip()
+
+
+def _version(mod: str, v: int | None) -> int:
+    return CFG.current_version(mod) if v is None else int(v)
+
+
+def _say(*a: object) -> None:
+    print(*a, flush=True)
+
+
+# ── stage protocol ──────────────────────────────────────────────────────────
+
+def _prepare(mod: str, version: int) -> None:
+    tk_struct.ensure_structure(mod, version)
+    st.build_state(mod, version)
+
+
+def _check_inputs(stage, mod: str, version: int) -> list[str]:
+    missing = []
+    for inp in stage.inputs:
+        name, optional = inp.rstrip("?"), inp.endswith("?")
+        if optional:
+            continue
+        if name in CFG.inputs:
+            spec = CFG.inputs[name]
+            if not (CFG.inputs_dir(mod, version) / CFG.fmt(spec["file"], mod=mod)).exists():
+                missing.append(name)
+        elif name not in ("raw-idea",) and st.state_text(mod, version, name) is None:
+            missing.append(name)
+    return missing
+
+
+def _gate_blocking(stage, mod: str, version: int) -> str | None:
+    """A human-approval gate that blocks this stage and holds no record."""
+    for g in CFG.gates:
+        if g["type"] == "human-approval" and stage.id in g.get("blocks", []):
+            if not an.approval_path(mod, version, g["id"]).exists():
+                return g["id"]
+    return None
+
+
+def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
+    """After the artifacts exist: outputs → question policy → analyze → commit."""
+    missing = [a.artifact for a in stage.produces if not a.optional and not CFG.artifact_path(mod, stage.id, a.artifact, version).exists()]
+    if missing:
+        _say(f"BLOCKED: stage {stage.id} did not produce {missing}")
+        return BLOCKED
+    q = dp.refused_questions(stage, mod, version)
+    if q:
+        _say(f"BLOCKED: stage {stage.id} raised questions but questions are forbidden here: {q[:5]} — apply the ambiguity rule (ADR) and re-run")
+        return BLOCKED
+    st.build_state(mod, version)
+    rep = an.run(mod, version, scope=f"stage:{stage.id}")
+    c = rep.counts()
+    _say(f"analyze stage:{stage.id} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor")
+    for f in rep.findings[:25]:
+        _say("  ", f)
+    if not rep.clean:
+        return BLOCKED
+    blocked = dp.blocked_adrs(mod, version)
+    if blocked:
+        _say(f"STOP: breaking ambiguity — BLOCKED ADR(s): {[p.name for p in blocked]} (surface at the next human decision point)")
+        return BLOCKED
+    paths = [CFG.version_root(mod, version), CFG.decisions_dir(mod)]
+    for a in stage.produces:
+        if a.dir:
+            paths.append(CFG.artifact_path(mod, stage.id, a.artifact))
+    sha = _commit(paths, CFG.commit_msg("stage", stage=stage.id, mod=mod, version=version, summary=stage.title), no_commit)
+    _say(f"OK: {stage.id} {'committed ' + sha if sha else 'done (nothing new to commit)'}")
+    return OK
+
+
+def run_stage(stage_id: str, mod: str, version: int | None, complete: bool, no_commit: bool) -> int:
+    stage = CFG.stage(stage_id)
+    version = _version(mod, version)
+    _prepare(mod, version)
+    if complete:
+        return _complete_stage(stage, mod, version, no_commit)
+    gate = _gate_blocking(stage, mod, version)
+    if gate:
+        _say(f"BLOCKED: stage {stage.id} waits for human approval of gate `{gate}` → gov.py approve {gate} -m {mod} -v {version}")
+        return BLOCKED
+    missing = _check_inputs(stage, mod, version)
+    if missing:
+        _say(f"BLOCKED: inputs missing for {stage.id}: {missing}")
+        return BLOCKED
+    res = dp.dispatch(stage, mod, version)
+    if res.awaiting:
+        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
+        _say(f"  lane `{res.lane}` implementers {CFG.lane(res.lane).get('implementers')} — execute the brief (delegate), write the files it lists, then:")
+        _say(f"  gov.py run-stage {stage.id} -m {mod} -v {version} --complete")
+        return AWAITING
+    _say(f"dispatched {stage.id}: {res.rounds} round(s), converged={res.converged}, wrote {len(res.written)} file(s)")
+    return _complete_stage(stage, mod, version, no_commit)
+
+
+def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool) -> int:
+    p = CFG.passes[str(pass_no)]
+    if new:
+        version = cmd_version(mod, True, quiet=True)
+    version = _version(mod, version)
+    for inp in p.get("required_inputs", []):
+        spec = CFG.inputs[inp]
+        if not (CFG.inputs_dir(mod, version) / CFG.fmt(spec["file"], mod=mod)).exists():
+            _say(f"GATE CLOSED: pass {pass_no} needs `{inp}` → gov.py fetch-inputs -m {mod} -v {version}")
+            return BLOCKED
+    _prepare(mod, version)
+    if not complete and p.get("session") == "bundled" and dp.runner_kind() == "manual":
+        # one bundled brief for the whole pass; per-stage commits happen on --complete
+        stages = [CFG.stage(s) for s in p["stages"]]
+        gate = next((g for s in stages if (g := _gate_blocking(s, mod, version))), None)
+        parts = [f"# PASS {pass_no} — module {mod.upper()} v{version} — bundled session ({len(stages)} stages, one commit per stage)", ""]
+        for s in stages:
+            parts.append(f"- `{s.id}` {s.title} — questions {s.questions}" + (f" — **blocked until human approval of `{gate}`**" if s.id == (CFG.gate(gate)['blocks'][0] if gate else None) else ""))
+        for s in stages:
+            b = dp.build_brief(s, mod, version)
+            parts += ["", "=" * 78, b.read_text(encoding="utf-8")]
+        bundle = CFG.state_dir(mod, version) / "briefs" / f"pass-{pass_no}.md"
+        bundle.write_text("\n".join(parts) + "\n", encoding="utf-8")
+        _say(f"AWAITING OPERATOR: bundled brief → {bundle.relative_to(CFG.root)}")
+        _say(f"  execute stage by stage (stop at a human-approval gate), then: gov.py run-pass {pass_no} -m {mod} -v {version} --complete")
+        return AWAITING
+    for sid in p["stages"]:
+        rc = run_stage(sid, mod, version, complete, no_commit)
+        if rc != OK:
+            return rc
+    _say(f"pass {pass_no} stages complete → gov.py gate {pass_no} -m {mod} -v {version}")
+    return OK
+
+
+# ── gates ───────────────────────────────────────────────────────────────────
+
+def _gate_for_pass(pass_no: str) -> dict:
+    last = CFG.passes[str(pass_no)]["stages"][-1]
+    g = CFG.gate_after(last)
+    if not g:
+        raise SystemExit(f"no gate after the last stage of pass {pass_no}")
+    return g
+
+
+def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Path | None, no_commit: bool) -> int:
+    version = _version(mod, version)
+    g = _gate_for_pass(pass_no)
+    _prepare(mod, version)
+    rep = an.run(mod, version, scope=f"gate:{g['id']}")
+    c = rep.counts()
+    _say(f"analyze gate:{g['id']} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor")
+    if g.get("requires_analyze") == "clean" and not rep.clean:
+        for f in rep.findings[:25]:
+            _say("  ", f)
+        _say("GATE CLOSED: analyze is not clean")
+        return BLOCKED
+    record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
+    if not complete:
+        brief = _gate_brief(g, pass_no, mod, version, rep)
+        _say(f"AWAITING REVIEW: gate brief → {brief.relative_to(CFG.root)} (lane `{g['lane']}`, read-only reviewer)")
+        _say(f"  when the review JSON exists: gov.py gate {pass_no} -m {mod} -v {version} --complete --result <file.json>")
+        return AWAITING
+    if not result or not Path(result).exists():
+        _say("BLOCKED: --complete needs --result FILE.json (the reviewer's structured output)")
+        return BLOCKED
+    data = json.loads(Path(result).read_text(encoding="utf-8"))
+    verdict, scores = data.get("verdict", "").upper(), data.get("scores", {})
+    rv = CFG.review
+    low = [k for k in rv["rubric"] if int(scores.get(k, 0)) < int(rv["pass_threshold"])]
+    if verdict == "APPROVE" and low:
+        verdict = "REVISE"
+        _say(f"verdict downgraded to REVISE: attributes below threshold {low}")
+    if verdict not in rv["verdicts"]:
+        _say(f"BLOCKED: verdict must be one of {rv['verdicts']}")
+        return BLOCKED
+    lines = [CFG.data["lint"]["generated_marker"], f"# Gate record — {g['id']} — {mod.upper()} v{version}", "",
+             f"Verdict: **{verdict}** · {now_iso()} · analyze {c}", "", "| Attribute | Score |", "|---|---|"]
+    lines += [f"| {k} | {scores.get(k, '—')} |" for k in rv["rubric"]]
+    if data.get("findings"):
+        lines += ["", "| Severity | Artifact | Clause | Finding | Fix |", "|---|---|---|---|---|"]
+        lines += [f"| {f.get('severity','')} | {f.get('artifact','')} | {f.get('clause','')} | {f.get('finding', f.get('message',''))} | {f.get('fix','')} |" for f in data["findings"]]
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_json(record.with_suffix(".json"), {"gate": g["id"], "pass": pass_no, "verdict": verdict, "scores": scores,
+                                              "findings": data.get("findings", []), "at": now_iso()})
+    _commit([CFG.version_root(mod, version)], CFG.commit_msg("gate", **{"pass": pass_no}, mod=mod, version=version, verdict=verdict), no_commit)
+    _say(f"GATE {g['id']}: {verdict}")
+    return OK if verdict == "APPROVE" else BLOCKED
+
+
+def _gate_brief(g: dict, pass_no: str, mod: str, version: int, rep: an.AnalyzeReport) -> Path:
+    import jinja2
+    tpl = CFG.dir("reviewers") / "pass-review.md"
+    env = jinja2.Environment(undefined=jinja2.ChainableUndefined, keep_trailing_newline=True)
+    stage = CFG.stage(g["after"])
+    ctx = dict(profile=CFG.profile.data, factory=CFG.data, stage=stage.raw | {"pass": stage.pass_}, mod=mod.upper(), version=version,
+               gate=g, contracts=an.select_contracts(f"gate:{g['id']}"),
+               analyze_report=(CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["analyze_report"], stage=f"gate-{g['id']}")).read_text(encoding="utf-8"),
+               artifacts=[str(p.relative_to(CFG.root)) for p in sorted(CFG.state_dir(mod, version).glob("current-*"))],
+               previous_version=version - 1 if version > 1 else None)
+    text = env.from_string(tpl.read_text(encoding="utf-8")).render(**ctx)
+    parts = [text, "", "---", "# ARTIFACTS UNDER REVIEW (generated current state)"]
+    for p in sorted(CFG.state_dir(mod, version).glob("current-*")):
+        parts += [f"\n<<<ARTIFACT: {p.name}>>>", p.read_text(encoding="utf-8"), "<<<END ARTIFACT>>>"]
+    d = CFG.decisions_dir(mod)
+    if d.exists():
+        for p in sorted(d.glob("*.md")):
+            parts += [f"\n<<<ADR: {p.name}>>>", p.read_text(encoding="utf-8"), "<<<END ADR>>>"]
+    out = CFG.state_dir(mod, version) / "briefs" / f"gate-pass-{pass_no}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    return out
+
+
+def approve(gate_id: str, mod: str, version: int | None, by: str, no_commit: bool) -> int:
+    version = _version(mod, version)
+    g = CFG.gate(gate_id)
+    if g["type"] != "human-approval":
+        _say(f"BLOCKED: `{gate_id}` is a {g['type']} gate; use gov.py gate")
+        return BLOCKED
+    p = an.approval_path(mod, version, gate_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    write_json(p, {"gate": gate_id, "module": mod.upper(), "version": version, "by": by, "at": now_iso(),
+                   "after": g["after"], "artifact_sha": _artifact_shas(mod, version, g["after"])})
+    _commit([CFG.version_root(mod, version)], CFG.commit_msg("gate", **{"pass": g["after"]}, mod=mod, version=version, verdict="APPROVED"), no_commit)
+    _say(f"approved `{gate_id}` for {mod.upper()} v{version} by {by}")
+    return OK
+
+
+def _artifact_shas(mod: str, version: int, stage_id: str) -> dict:
+    import hashlib
+    out = {}
+    for a in CFG.stage(stage_id).produces:
+        p = CFG.artifact_path(mod, stage_id, a.artifact, version)
+        if p.exists():
+            out[a.artifact] = hashlib.sha256(p.read_bytes()).hexdigest()
+    return out
+
+
+# ── versioning / repos ──────────────────────────────────────────────────────
+
+def cmd_version(mod: str, new: bool, quiet: bool = False) -> int:
+    if not new:
+        vs = CFG.module_versions(mod)
+        _say(f"{mod.upper()}: versions {vs or '(none)'} · current v{CFG.current_version(mod)} · next v{CFG.next_version(mod)}")
+        return CFG.current_version(mod)
+    v = CFG.next_version(mod)
+    tk_struct.ensure_structure(mod, v)
+    if v > 1:
+        cm = CFG.version_root(mod, v) / CFG.paths["module"]["change_manifest"]
+        if not cm.exists():
+            cm.write_text(f"# CHANGE MANIFEST — (stamp the change-set id here)\nModule       : {mod.upper()}      Version: v{v}      Baseline: v{v-1}\n"
+                          "Change type  : ADDITIVE\nSummary      : \n\n## Per artifact\n", encoding="utf-8")
+    _commit([CFG.version_root(mod, v)], CFG.commit_msg("version", mod=mod, version=v))
+    if not quiet:
+        _say(f"created {CFG.version_root(mod, v).relative_to(CFG.root)} (v{v})")
+    return v
+
+
+def cmd_tag(mod: str, version: int) -> int:
+    name = CFG.tag_name(mod, version)
+    if _git("tag", "-l", name).stdout.strip():
+        _say(f"tag {name} already exists")
+        return OK
+    _git("tag", "-a", name, "-m", f"{mod.upper()} v{version} delivered")
+    _say(f"tagged {name}")
+    return OK
+
+
+def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
+    missing = []
+    for name, spec in CFG.inputs.items():
+        repo = spec["from_repo"]
+        checkout = CFG.repo_checkout(repo)
+        src = checkout / CFG.fmt(CFG.repos[repo]["publishes"][name], mod=mod)
+        if pull and (checkout / ".git").exists():
+            _git("pull", "--ff-only", cwd=checkout, check=False)
+        if not src.exists():
+            missing.append(f"{name} ← {src}")
+            continue
+        dst = CFG.inputs_dir(mod, version) / CFG.fmt(spec["file"], mod=mod)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        _say(f"fetched {name} → {dst.relative_to(CFG.root)}")
+    if missing:
+        _say("GATE CLOSED — missing inputs:\n  " + "\n  ".join(missing))
+        return BLOCKED
+    return OK
+
+
+def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
+    repo = CFG.repos[track]
+    checkout = CFG.repo_checkout(track)
+    if not (checkout / ".git").exists():
+        _say(f"BLOCKED: consumer checkout not found for `{track}`: {checkout} (link it in factory.yaml → repos)")
+        return BLOCKED
+    branch = CFG.delivery_branch(mod, version, track)
+    dest = checkout / CFG.fmt(repo["deliver_to"], mod=mod)
+    if version > 1:
+        dest = dest / CFG.fmt(CFG.naming["version_folder"], version=version)
+    _git("checkout", "-B", branch, cwd=checkout)
+    delivered = []
+    for plan, pkg in CFG.tracks[track]["packages"].items():
+        src = CFG.packages_dir(mod, track, plan, version)
+        if src.exists() and any(f.is_file() and f.name != ".gitkeep" for f in src.rglob("*")):
+            tgt = dest / CFG.paths["module"]["packages_dir"] / pkg
+            if tgt.exists():
+                shutil.rmtree(tgt)
+            shutil.copytree(src, tgt)
+            delivered.append(pkg)
+    state_file = dest / CFG.delivery["execution_state"]["file"]
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    write_json(state_file, _execution_state(track, mod, version, delivered))
+    _git("add", "-A", "--", str(dest.relative_to(checkout)), cwd=checkout)
+    if _git("diff", "--cached", "--quiet", cwd=checkout, check=False).returncode != 0:
+        _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory", "commit", "-q", "-m",
+             f"governance: {mod.upper()} v{version} {track} packages from the analysis factory", cwd=checkout)
+    if push:
+        _git("push", "-u", "origin", branch, cwd=checkout)
+    _say(f"delivered {delivered} + {state_file.name} to {checkout.name}:{branch}")
+    return OK
+
+
+def _execution_state(track: str, mod: str, version: int, delivered: list[str]) -> dict:
+    from toolkit import markers as mk
+    phases = []
+    covered: set[str] = set()
+    for plan in CFG.tracks[track]["packages"]:
+        p = CFG.plan_path(mod, track, plan, version) if plan in CFG.profile.plans(track) else None
+        if p and p.exists():
+            res = mk.parse_structure(p.read_text(encoding="utf-8"), track, plan)
+            for ph in res.phases():
+                phases.append({"key": ph.id, "plan": plan, "atoms": [b.id for b in ph.walk() if res.grammar.is_atom(b.kind)],
+                               "traces": ph.all_traces()})
+                covered |= set(ph.all_traces())
+    analyze_json = CFG.state_dir(mod, version) / f"analyze-gate-{_gate_for_pass(CFG.tracks[track]['pass'])['id']}.json"
+    gate_json = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": CFG.tracks[track]["pass"]})
+    gate_json = gate_json.with_suffix(".json")
+    return {
+        "module": mod.upper(), "version": version, "track": track, "profile": CFG.profile_id,
+        "markers_schema_version": CFG.markers["schema_version"], "packages": delivered, "phases": phases,
+        "traceability": {"covered_ids": sorted(covered), "orphan_ids": []},
+        "analyze": json.loads(analyze_json.read_text())["counts"] if analyze_json.exists() else None,
+        "gate": json.loads(gate_json.read_text()) if gate_json.exists() else None,
+        "generated_at": now_iso(),
+    }
+
+
+def cmd_status(mod: str) -> int:
+    vs = CFG.module_versions(mod)
+    _say(f"{mod.upper()} · profile {CFG.profile_id} · versions {vs or '(none)'}")
+    for v in vs:
+        root = CFG.version_root(mod, v)
+        tag = "tagged" if _git("tag", "-l", CFG.tag_name(mod, v)).stdout.strip() else "untagged"
+        have = [s.id for s in CFG.stages if all(CFG.artifact_path(mod, s.id, a.artifact, v).exists() for a in s.produces if not a.optional and not a.dir) and any(not a.dir for a in s.produces)]
+        inputs = [n for n, spec in CFG.inputs.items() if (CFG.inputs_dir(mod, v) / CFG.fmt(spec["file"], mod=mod)).exists()]
+        gates = [p.stem for p in (CFG.state_dir(mod, v) / "approvals").glob("*.json")] if (CFG.state_dir(mod, v) / "approvals").exists() else []
+        pattern = CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": "*"}).replace(".md", ".json")
+        gates += [p.stem for p in root.glob(pattern)]
+        _say(f"  v{v}: stages {have} · inputs {inputs} · gates {gates} · {tag} · state {'fresh' if st.is_fresh(mod, v) else 'stale'}")
+    return OK
+
+
+# ── domain scaffolding ──────────────────────────────────────────────────────
+
+def cmd_new_domain(pid: str) -> int:
+    dst = CFG.profiles_dir() / f"{pid}.yaml"
+    if dst.exists():
+        _say(f"profile exists: {dst}")
+        return BLOCKED
+    schema = CFG.profile_schema()
+
+    def skel(node, indent=0):
+        out = []
+        for k, v in node.items():
+            if k.startswith("$") or k == "schema_version":
+                continue
+            name, opt = k.rstrip("?"), k.endswith("?")
+            pad = "  " * indent
+            if isinstance(v, dict):
+                out.append(f"{pad}{'# ' if opt else ''}{name}:")
+                out += skel(v, indent + 1) if not opt else [("  " * (indent + 1)) + "# " + l.strip() for l in skel(v, indent + 1)]
+            else:
+                spec = str(v)
+                placeholder = "[]" if spec.startswith("list[") else "{}" if spec.startswith("map[") else "false" if spec == "bool" else "0" if spec == "int" else "TODO"
+                out.append(f"{pad}{'# ' if opt else ''}{name}: {placeholder if not opt else ''}   # TODO {v}")
+        return out
+
+    text = ["# profile scaffold generated by gov.py new-domain — fill every TODO, then gov.py lint --profile " + pid,
+            f"schema_version: {schema.get('schema_version', CFG.data['schema_version'])}", *skel(schema)]
+    text = [l.replace(f"id: TODO", f"id: {pid}") for l in text]
+    dst.write_text("\n".join(text) + "\n", encoding="utf-8")
+    _say(f"scaffolded {dst.relative_to(CFG.root)}")
+    return OK
+
+
+# ── CLI ─────────────────────────────────────────────────────────────────────
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="gov.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    def mv(p, version=True):
+        p.add_argument("-m", "--module", required=True)
+        if version:
+            p.add_argument("-v", "--version", type=int)
+        return p
+
+    p = mv(sub.add_parser("run-stage")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("run-standalone")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("gate")); p.add_argument("pass_no"); p.add_argument("--complete", action="store_true"); p.add_argument("--result"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("approve")); p.add_argument("gate"); p.add_argument("--by", default=os.environ.get("USER", "human")); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("analyze")); p.add_argument("--scope", default="all")
+    mv(sub.add_parser("state"))
+    p = mv(sub.add_parser("version"), version=False); p.add_argument("--new", action="store_true")
+    mv(sub.add_parser("tag"))
+    p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
+    p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
+    mv(sub.add_parser("status"), version=False)
+    p = mv(sub.add_parser("structure")); p.add_argument("--dry-run", action="store_true")
+    p = mv(sub.add_parser("archive")); p.add_argument("--source", required=True); p.add_argument("--force", action="store_true"); p.add_argument("--dry-run", action="store_true")
+    p = mv(sub.add_parser("split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
+    p.add_argument("--dry-run", action="store_true"); p.add_argument("--strict", action="store_true"); p.add_argument("--fix-safe", action="store_true")
+    sub.add_parser("render")
+    p = sub.add_parser("lint"); p.add_argument("--profile")
+    p = sub.add_parser("new-domain"); p.add_argument("id")
+    a = ap.parse_args(argv)
+
+    if a.cmd in ("run-stage", "run-standalone"):
+        return run_stage(a.stage, a.module, a.version, a.complete, a.no_commit)
+    if a.cmd == "run-pass":
+        return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit)
+    if a.cmd == "gate":
+        return gate(a.pass_no, a.module, a.version, a.complete, Path(a.result) if a.result else None, a.no_commit)
+    if a.cmd == "approve":
+        return approve(a.gate, a.module, a.version, a.by, a.no_commit)
+    if a.cmd == "analyze":
+        rep = an.run(a.module, a.version, scope=a.scope)
+        c = rep.counts()
+        _say(f"analyze {a.scope} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor · {'CLEAN' if rep.clean else 'BLOCKED'}")
+        for f in rep.findings:
+            _say("  ", f)
+        return OK if rep.clean else BLOCKED
+    if a.cmd == "state":
+        rep = st.build_state(a.module, a.version)
+        _say(f"state {rep.mod} v{rep.version}: {len(rep.files)} file(s), missing {rep.missing or 'none'}")
+        return OK
+    if a.cmd == "version":
+        cmd_version(a.module, a.new); return OK
+    if a.cmd == "tag":
+        return cmd_tag(a.module, _version(a.module, a.version))
+    if a.cmd == "fetch-inputs":
+        return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
+    if a.cmd == "deliver":
+        return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
+    if a.cmd == "status":
+        return cmd_status(a.module)
+    if a.cmd == "structure":
+        created = tk_struct.ensure_structure(a.module, a.version, dry_run=a.dry_run)
+        _say(f"structure: {len(created)} folder(s) {'would be ' if a.dry_run else ''}created"); return OK
+    if a.cmd == "archive":
+        rep = tk_archive.archive(a.module, a.version, Path(a.source), force=a.force, dry_run=a.dry_run)
+        _say(rep); return OK
+    if a.cmd == "split":
+        plans = [a.plan] if a.plan else [pl for pl in CFG.tracks[a.track]["packages"] if pl in CFG.profile.plans(a.track)]
+        rc = OK
+        for pl in plans:
+            if not (CFG.plan_path(a.module, a.track, pl, a.version)).exists():
+                continue
+            rep = tk_split.split(a.module, a.track, pl, a.version, dry_run=a.dry_run, strict=a.strict, fix_safe=a.fix_safe)
+            v = rep.verification or {}
+            _say(f"split {a.track}/{pl} v{rep.version}: {len(rep.written)} file(s), {len(rep.findings)} finding(s), "
+                 f"verify {'ok' if v.get('ok') else 'FAILED'} ({v.get('checked', 0)} checked){' [dry-run]' if a.dry_run else ''}")
+            for f in rep.findings[:20]:
+                _say("  ", f)
+            if rep.blocked or rep.errors or (v and not v.get("ok", True)):
+                rc = BLOCKED
+        return rc
+    if a.cmd == "render":
+        for pth in rd.render_all():
+            _say("rendered", pth.relative_to(CFG.root))
+        return OK
+    if a.cmd == "lint":
+        import lint
+        fs = lint.run(profile_id=a.profile)
+        for f in fs:
+            _say(f)
+        _say(f"{sum(f.severity=='CRITICAL' for f in fs)} critical · {sum(f.severity=='MAJOR' for f in fs)} major · {sum(f.severity=='MINOR' for f in fs)} minor")
+        return BLOCKED if any(f.severity == "CRITICAL" for f in fs) else OK
+    if a.cmd == "new-domain":
+        return cmd_new_domain(a.id)
+    return OK
+
+
+if __name__ == "__main__":
+    sys.exit(main())

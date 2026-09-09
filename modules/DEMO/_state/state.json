@@ -1,0 +1,49 @@
+{
+  "module": "DEMO",
+  "version": 1,
+  "profile": "erp",
+  "generated_at": "2026-09-08T17:27:34+00:00",
+  "sources": {
+    "platform-summary": [
+      1
+    ],
+    "module-registry": [
+      1
+    ],
+    "business-policies": [
+      1
+    ],
+    "prd": [
+      1
+    ],
+    "srs": [
+      1
+    ],
+    "registry-srs": [
+      1
+    ],
+    "db-script": [
+      1
+    ],
+    "registry-db": [
+      1
+    ],
+    "backend-execution-plan": [
+      1
+    ],
+    "registry-exec-be": [
+      1
+    ]
+  },
+  "missing": [
+    "flow-diagram",
+    "ui-ux-spec",
+    "frontend-execution-plan",
+    "registry-exec-fe",
+    "backend-test-plan",
+    "frontend-test-plan",
+    "api-verify-script",
+    "api-verify-report"
+  ],
+  "inputs_mtime": 1788888355.142428
+}

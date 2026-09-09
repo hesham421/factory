@@ -1,0 +1,24 @@
+{{ marker }}
+# START HERE — the {{ factory.factory.name }} in one page
+
+**What it is.** An analysis factory: a raw idea goes in, reviewed and traceable analysis comes out — up to backend and frontend
+execution plans delivered to the consumer repos. It **stops at delivery** ({{ factory.factory.boundary }}). The domain is data
+(`{{ factory.paths.profiles }}/<id>.yaml`); the active one is `{{ profile.identity.id }}`.
+
+**Where the truth lives.** `factory.yaml` (factory facts) + the profile (domain facts). Every table in the docs, every
+`SKILL.md`, every command and this page are generated from them (`gov.py render`); `gov.py lint` refuses drift.
+
+**How a module moves.**
+
+{% for s in stages %}{{ loop.index }}. `{{ s.id }}` — {{ s.title }}{% if s.questions == 'allowed' %} *(questions allowed, closed in dialogue)*{% endif %}{% set g = cfg.gate_after(s.id) %}{% if g %} → **{{ g.type }} `{{ g.id }}`**{% endif %}
+
+{% endfor %}
+Then split (marker protocol) → deliver → tag. Outside the line, on demand: {% for s in standalone %}`{{ s.id }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+
+**What a human decides.** {% for g in factory.gates %}`{{ g.id }}` ({{ g.type }} after `{{ g.after }}`){% if not loop.last %}; {% endif %}{% endfor %}. Nothing else asks.
+After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`{{ factory.paths.decisions }}/<MOD>/`) and continues; a breaking one stops.
+
+**Versions.** v1 is the module's base folder; vN holds only what changed plus a change manifest; `gov.py state` folds them
+into `{{ factory.paths.module.state_dir }}/`, the only thing engines read.
+
+**Read next.** `shared/CONSTITUTION.md` → `shared/GOVERNANCE-CORE.md` → `shared/ARTIFACT-CONTRACTS.md` → `shared/MARKER-PROTOCOL.md` → `shared/VERSIONING.md` → `shared/QUALITY-RUBRIC.md`.

@@ -1,0 +1,11 @@
+{
+  "gate": "prd-approval",
+  "module": "DEMO",
+  "version": 1,
+  "by": "heshamezzat60@gmail.com",
+  "at": "2026-09-08T17:15:08+00:00",
+  "after": "P0.5",
+  "artifact_sha": {
+    "prd": "9ab9d6457b0c4e0ddc53853ab59e0a936a484e9351b8cea03c47a956de0dadac"
+  }
+}

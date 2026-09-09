@@ -1,0 +1,52 @@
+{
+  "module": "DEMO",
+  "track": "backend",
+  "plan": "exec",
+  "version": 1,
+  "profile": "erp",
+  "markers_schema_version": 2,
+  "source": "modules/DEMO/P3_1/backend-execution-plan-demo.md",
+  "split_at": "2026-09-08T17:25:55+00:00",
+  "strict": false,
+  "files": [
+    "modules/DEMO/packages/backend-execution/CORE/CORE.md",
+    "modules/DEMO/packages/backend-execution/DATA-DOM/DATA-DOM.md",
+    "modules/DEMO/packages/backend-execution/SVC-API/SVC-API.md",
+    "modules/DEMO/packages/backend-execution/DOC/DOC.md",
+    "modules/DEMO/packages/backend-execution/INT-C/INT-C.md",
+    "modules/DEMO/packages/backend-execution/INT-R/INT-R.md",
+    "modules/DEMO/packages/backend-execution/SEC-BE/SEC-BE.md",
+    "modules/DEMO/packages/backend-execution/ALIGN-BE/ALIGN-BE.md",
+    "modules/DEMO/packages/backend-execution/_SECTIONS.md"
+  ],
+  "indexes": [
+    "modules/DEMO/packages/backend-execution/index.md",
+    "modules/DEMO/packages/backend-execution/ALIGN-BE/index.md",
+    "modules/DEMO/packages/backend-execution/CORE/index.md",
+    "modules/DEMO/packages/backend-execution/DATA-DOM/index.md",
+    "modules/DEMO/packages/backend-execution/DOC/index.md",
+    "modules/DEMO/packages/backend-execution/INT-C/index.md",
+    "modules/DEMO/packages/backend-execution/INT-R/index.md",
+    "modules/DEMO/packages/backend-execution/SEC-BE/index.md",
+    "modules/DEMO/packages/backend-execution/SVC-API/index.md"
+  ],
+  "units": [
+    "PHASE:CORE",
+    "PHASE:DATA-DOM",
+    "PHASE:SVC-API",
+    "PHASE:DOC",
+    "PHASE:INT-C",
+    "PHASE:INT-R",
+    "PHASE:SEC-BE",
+    "PHASE:ALIGN-BE"
+  ],
+  "atoms": [
+    "API:API-DEMO-001",
+    "API:API-DEMO-002",
+    "API:API-DEMO-003",
+    "API:API-DEMO-004",
+    "API:API-DEMO-005"
+  ],
+  "verification": "modules/DEMO/packages/backend-execution/verification.json",
+  "verified": true
+}
