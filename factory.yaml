@@ -217,6 +217,8 @@ standalone:
     owns_ids: []
 
 # ── Inputs that come back from consumer repos ───────────────────────────────
+# `from_repo` is a `repos.<name>` key (below) — cmd_fetch_inputs() resolves it through the
+# same generic CFG.repo_checkout() every other consumer-repo path uses; no hardcode here.
 inputs:
   api-docs:
     from_repo: backend
