@@ -124,3 +124,9 @@ Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/r
 
 ## Linking consumer repos
 Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `governance/api-docs/api-docs-{mod}.md`; the factory delivers to `governance/modules/{MOD}` on branch `gov/{mod}-v{version}-{track}` and tags `{mod}-v{version}`.
+
+Each `repos.<name>` resolves through `CFG.repo_checkout()`: the env var named by `checkout_env`, falling back to `checkout_default` (a path relative to this factory's own root). That one mechanism supports two deployments with **zero code difference**, only config values:
+- **Standalone** — this factory is its own repo; `checkout_default` points at a sibling checkout (e.g. `../backend`).
+- **Embedded** — this factory lives inside `<consumer-repo>/governance/`; `checkout_default: ".."` resolves straight to that repo's own root.
+
+Nothing in `governance-tools/` assumes either shape — don't special-case one when adding a repo link.
