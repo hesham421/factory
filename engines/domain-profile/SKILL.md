@@ -12,7 +12,7 @@ description: Domain Profile — governed analysis stage, pass pre of the governa
 | Kind | governed pipeline stage |
 | Pass | pre · once per platform |
 | Questions | **allowed** — resolved in-dialogue by the lane's implementers, never escalated to a file |
-| Lane | `analysis-dialogue` → claude:opus, claude:sonnet (effort high) |
+| Lane | `analysis` → claude:opus (effort high) |
 | Inputs | `raw-idea`, `platform-brief?` — read from `_state/` |
 | Produces | `domain-profile.md` |
 | Owns IDs | — |

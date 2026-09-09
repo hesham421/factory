@@ -247,6 +247,11 @@ def dispatch(stage: Stage, mod: str, version: int) -> DispatchResult:
         return res
     max_rounds = int(lane["dialogue"]["max_rounds"]) if (stage.dialogue and lane.get("dialogue")) else 1
     previous: Path | None = None
+    # Dialogue stages (domain-profile, P0, P0.5) name the plain `analysis` lane, not a
+    # distinct "analysis-dialogue" id: the real delegate setup this dispatches to has no
+    # such lane. `impls` therefore usually has one entry, so every round below re-dispatches
+    # the same lane/implementer — the rounds differ by the brief's framing (draft → self-
+    # review, see build_brief()'s "Dialogue protocol" section), not by which model answers.
     for r in range(1, max_rounds + 1):
         impl = impls[(r - 1) % len(impls)]
         brief = res.brief if r == 1 else build_brief(stage, mod, version, round_no=r, implementer=impl, previous=previous)

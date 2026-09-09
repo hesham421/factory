@@ -12,7 +12,7 @@ description: PRD — governed analysis stage, pass 1 of the governance-factory. 
 | Kind | governed pipeline stage |
 | Pass | 1 |
 | Questions | **allowed** — resolved in-dialogue by the lane's implementers, never escalated to a file |
-| Lane | `analysis-dialogue` → claude:opus, claude:sonnet (effort high) |
+| Lane | `analysis` → claude:opus (effort high) |
 | Inputs | `platform-summary`, `module-registry`, `business-policies` — read from `_state/` |
 | Produces | `prd-{mod}.md` |
 | Owns IDs | `US` |

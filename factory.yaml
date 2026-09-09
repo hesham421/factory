@@ -77,7 +77,10 @@ gates:
 
 # ── Stages — the governed pipeline (order = run order) ─────────────────────
 # questions: allowed | forbidden   (C6 — enforced by the orchestrator)
-# dialogue : true → the lane's implementer list runs a converging dialogue
+# dialogue : true → the lane's implementer list runs a converging dialogue.
+#            Dialogue stages reuse the plain `analysis` lane (see lanes.analysis.dialogue
+#            below) instead of a separate "analysis-dialogue" lane id — the real delegate
+#            setup this factory dispatches to has no such lane, only `analysis`.
 stages:
   - id: domain-profile
     title: Domain Profile
@@ -85,7 +88,7 @@ stages:
     once_per: platform
     questions: allowed
     dialogue: true
-    lane: analysis-dialogue
+    lane: analysis
     research: web                  # absorbs the former idea-draft step
     inputs: [raw-idea, "platform-brief?"]
     produces:
@@ -108,7 +111,7 @@ stages:
     pass: 1
     questions: allowed
     dialogue: true
-    lane: analysis-dialogue
+    lane: analysis
     inputs: [domain-profile, project-registry]
     produces:
       - {artifact: platform-summary, file: "platform-summary.md"}
@@ -121,7 +124,7 @@ stages:
     pass: 1
     questions: allowed             # LAST stage where questions are allowed
     dialogue: true
-    lane: analysis-dialogue
+    lane: analysis
     inputs: [platform-summary, module-registry, business-policies]
     produces:
       - {artifact: prd, file: "prd-{mod}.md"}
@@ -318,13 +321,13 @@ lanes:
   analysis:
     implementers: ["claude:opus"]
     effort: high
-  analysis-dialogue:                 # two Claude models converge on each open point
-    implementers: ["claude:opus", "claude:sonnet"]
-    effort: high
-    dialogue:
-      max_rounds: 4
-      converge_on: mutually-acceptable   # not perfection — the bar the user set
-      output: resolved-decisions       # closed in-dialogue; no external open-questions file
+    dialogue:                          # dialogue stages (domain-profile, P0, P0.5) dispatch
+      max_rounds: 4                    # this same lane for every round instead of a distinct
+      converge_on: mutually-acceptable # "analysis-dialogue" lane id — no such lane exists in
+      output: resolved-decisions       # the real delegate setup, only `analysis`; rounds are
+                                        # framed (draft → self-review) by build_brief(), not by
+                                        # switching implementers. Not perfection — the bar the
+                                        # user set. Closed in-dialogue; no open-questions file.
   review-per-engine:
     implementers: ["claude:sonnet"]
     effort: medium

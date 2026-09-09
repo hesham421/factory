@@ -61,10 +61,10 @@ products are rendered from `factory.stages` / `factory.standalone`:
 <!-- RENDER:stages -->
 | Stage | Title | Pass | Questions | Lane | Inputs | Produces | Owns IDs | Then |
 |---|---|---|---|---|---|---|---|---|
-| `domain-profile` | Domain Profile | pre | allowed (dialogue) | `analysis-dialogue` | `raw-idea`, `platform-brief?` | `domain-profile.md` | — | P-1 |
+| `domain-profile` | Domain Profile | pre | allowed (dialogue) | `analysis` | `raw-idea`, `platform-brief?` | `domain-profile.md` | — | P-1 |
 | `P-1` | Registry & Steering Builder | bootstrap | forbidden | `analysis` | `domain-profile` | `project-registry.md` | — | P0 |
-| `P0` | Platform Inception | 1 | allowed (dialogue) | `analysis-dialogue` | `domain-profile`, `project-registry` | `platform-summary.md`, `module-registry-{mod}.md`, `business-policies-{mod}.md` | `POL` | P0.5 |
-| `P0.5` | PRD | 1 | allowed (dialogue) | `analysis-dialogue` | `platform-summary`, `module-registry`, `business-policies` | `prd-{mod}.md` | `US` | gate `prd-approval` |
+| `P0` | Platform Inception | 1 | allowed (dialogue) | `analysis` | `domain-profile`, `project-registry` | `platform-summary.md`, `module-registry-{mod}.md`, `business-policies-{mod}.md` | `POL` | P0.5 |
+| `P0.5` | PRD | 1 | allowed (dialogue) | `analysis` | `platform-summary`, `module-registry`, `business-policies` | `prd-{mod}.md` | `US` | gate `prd-approval` |
 | `P1` | SRS | 1 | forbidden | `analysis` | `prd`, `domain-profile`, `project-registry` | `srs-{mod}.md`, `registry-srs-{mod}.md` | `REQ`, `AC`, `ENT`, `RULE`, `SCR-REQ` | P2 |
 | `P2` | Database | 1 | forbidden | `analysis` | `srs`, `registry-srs` | `db-script-{mod}.md`, `registry-db-{mod}.md` | `DBF`, `XM` | P3.1 |
 | `P3.1` | Backend Execution Plan | 1 | forbidden | `analysis` | `srs`, `db-script`, `registry-srs`, `registry-db` | `backend-execution-plan-{mod}.md`, `registry-exec-be-{mod}.md` | `API`, `QR` | gate `pass-1` |
@@ -196,8 +196,7 @@ lane with no model:
 <!-- RENDER:lanes -->
 | Lane | Implementers | Effort | Mode | Dialogue |
 |---|---|---|---|---|
-| `analysis` | `claude:opus` | high | — | — |
-| `analysis-dialogue` | `claude:opus`, `claude:sonnet` | high | — | max 4 rounds, converge on *mutually-acceptable* |
+| `analysis` | `claude:opus` | high | — | max 4 rounds, converge on *mutually-acceptable* |
 | `review-per-engine` | `claude:sonnet` | medium | read-only | — |
 | `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
