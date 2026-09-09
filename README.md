@@ -76,7 +76,7 @@ All stages of a pass run in one delegate session with one commit per stage.
 |---|---|
 | Profile | `erp` — ERP Platform |
 | Languages | ar, en (all required, primary ar) |
-| Modules | `ORG`, `SEC`, `MDL`, `PRC`, `FIN`, `HR`, `INV`, `SLS`, `CTR` |
+| Modules | `ORG`, `SEC`, `MDL`, `PRC`, `FIN`, `HR`, `INV`, `SLS`, `CTR`, `DEMO` |
 | Entity kinds | master, transactional, lookup, config, security |
 | Backend plans | exec, test |
 | Frontend plans | exec, test |
