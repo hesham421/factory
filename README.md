@@ -66,7 +66,6 @@ All stages of a pass run in one delegate session with one commit per stage.
 | `review-per-engine` | `claude:sonnet` | medium | read-only | — |
 | `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
-| `tools` | tools only | — | — | — |
 <!-- /RENDER:lanes -->
 
 ## Active profile

@@ -339,8 +339,6 @@ lanes:
   merge-review-notes:
     implementers: ["claude:sonnet"]
     effort: low
-  tools:
-    implementers: []                   # split / deliver / state / analyze — no model, no cost
 
 # ── Review rubric (ISO/IEC/IEEE 29148 attributes) used by every gate ────────
 review:

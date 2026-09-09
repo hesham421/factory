@@ -10,8 +10,8 @@ Links          : ../shared/GOVERNANCE-CORE.md §7 · ../shared/CONSTITUTION.md C
 
 - Every reasoning step (a stage, a gate review, a merge of review notes) is a
   self-contained brief the orchestrator (`gov.py`) builds and dispatches on a
-  **lane**. Every mechanical step (split, deliver, state, analyze, tag) runs
-  on the lane whose `implementers` list is empty — no model, no cost.
+  **lane**. Every mechanical step (split, deliver, state, analyze, tag) is a
+  direct `gov.py` operation — deterministic, no brief, no lane, no cost.
 - A lane is `factory.lanes.<id>`: `implementers` (a **list** of
   `provider:model` entries), `effort`, and optionally `dialogue` or
   `read_only`. Each stage names its lane (`stages[*].lane`); each review gate

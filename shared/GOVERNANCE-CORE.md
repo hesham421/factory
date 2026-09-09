@@ -190,8 +190,8 @@ restates them:
 ## 7. Lanes and delegation
 
 Every reasoning step is a self-contained brief dispatched on a lane; every
-mechanical step (split, deliver, state, analyze, tag) runs on the `tools`
-lane with no model:
+mechanical step (split, deliver, state, analyze, tag) is a direct `gov.py`
+operation — deterministic, no brief, no lane, no model:
 
 <!-- RENDER:lanes -->
 | Lane | Implementers | Effort | Mode | Dialogue |
@@ -200,7 +200,6 @@ lane with no model:
 | `review-per-engine` | `claude:sonnet` | medium | read-only | — |
 | `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
-| `tools` | tools only | — | — | — |
 <!-- /RENDER:lanes -->
 
 - `implementers` is a **list**. One entry → single implementer. More than one
