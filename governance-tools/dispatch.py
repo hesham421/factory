@@ -8,20 +8,23 @@ list of implementers `provider:model`, an effort, and — for dialogue lanes —
 a converging protocol between the implementers.
 
 Runners (how a brief reaches a model) are pluggable and chosen by env:
-  GOV_RUNNER=manual   (default) write the brief, stop with exit code 2 and an
-                      ACTION block; the operator (Claude Code + delegate
-                      skills) executes it and calls the command again with
+  GOV_RUNNER=cmd      (default) run GOV_RUNNER_CMD once per round with
+                      placeholders {brief} {implementer} {provider} {model}
+                      {effort} {out} {lane} {read_only_flag}; the response may
+                      carry file blocks (see ingest()). {lane} is the
+                      factory.yaml lane id — a lane-name-matching delegate CLI
+                      (e.g. `claude-delegate --lane {lane} {read_only_flag}`)
+                      needs nothing else: its own config maps that same lane
+                      id to a Claude model/effort/readonly, so GOV_RUNNER_CMD
+                      can be one line with no per-implementer model mapping to
+                      keep in sync. Example:
+                        GOV_RUNNER_CMD='node claude-delegate/relay.mjs
+                        --lane {lane} {read_only_flag} --brief {brief}
+                        --out {out}'
+  GOV_RUNNER=manual   write the brief, stop with exit code 2 and an ACTION
+                      block; the operator (Claude Code + delegate skills)
+                      executes it and calls the command again with
                       --complete once the artifacts exist.
-  GOV_RUNNER=cmd      run GOV_RUNNER_CMD once per round with placeholders
-                      {brief} {implementer} {provider} {model} {effort} {out}
-                      {lane} {read_only_flag}; the response may carry file
-                      blocks (see ingest()). {lane} is the factory.yaml lane
-                      id — a lane-name-matching delegate CLI (e.g.
-                      `claude-delegate --lane {lane} {read_only_flag}`) needs
-                      nothing else: its own config maps that same lane id to
-                      a Claude model/effort/readonly, so GOV_RUNNER_CMD can be
-                      one line with no per-implementer model mapping to keep
-                      in sync.
   GOV_RUNNER=fake     tests: a python callable registered via set_fake().
 """
 from __future__ import annotations
@@ -191,7 +194,7 @@ def set_fake(fn: Callable[[Path, Implementer, str, int], str] | None) -> None:
 
 
 def runner_kind() -> str:
-    return os.environ.get("GOV_RUNNER", "manual")
+    return os.environ.get("GOV_RUNNER", "cmd")
 
 
 def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,

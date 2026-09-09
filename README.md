@@ -116,7 +116,7 @@ gov.py run-pass 2 … · gate 2 … · split/deliver --track frontend … · gov
 gov.py run-standalone test-gen|api-verify -m MOD -v N   # outside the line, on demand
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
 ```
-Runners: `GOV_RUNNER=manual` (default — Claude Code + delegate skills execute each brief), `GOV_RUNNER=cmd` with `GOV_RUNNER_CMD="… {brief} {model} {effort} {out}"` (dialogue lanes alternate implementers until `<!-- CONVERGED -->`).
+Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/relay.mjs --lane {lane} {read_only_flag} --brief {brief} --out {out}'` — a lane-name-matching delegate CLI needs nothing else, since its own config maps `{lane}` to a model/effort/readonly (dialogue lanes alternate implementers until `<!-- CONVERGED -->`); `GOV_RUNNER=manual` (Claude Code + delegate skills execute each brief by hand).
 
 ## Quality gates in code
 - `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.
