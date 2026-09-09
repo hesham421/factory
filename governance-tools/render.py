@@ -74,9 +74,10 @@ def block_standalone(cfg): return _t([_stage_row(s, cfg)[:8] for s in cfg.standa
 def block_gates(cfg):
     rows = []
     for g in cfg.gates:
-        rows.append([f"`{g['id']}`", f"after `{g['after']}`", g["type"], f"`{g.get('lane','—')}`",
+        lanes = g.get("lanes") or ([g["lane"]] if g.get("lane") else [])
+        rows.append([f"`{g['id']}`", f"after `{g['after']}`", g["type"], ", ".join(f"`{l}`" for l in lanes) or "—",
                      g.get("requires_analyze", "—"), f"`{g.get('on_revise','—')}`"])
-    return _t(rows, ["Gate", "When", "Type", "Lane", "Requires analyze", "On REVISE"])
+    return _t(rows, ["Gate", "When", "Type", "Lanes", "Requires analyze", "On REVISE"])
 
 
 def block_lanes(cfg):

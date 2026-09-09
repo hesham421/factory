@@ -15,7 +15,7 @@ Links          : ../shared/GOVERNANCE-CORE.md §7 · ../shared/CONSTITUTION.md C
 - A lane is `factory.lanes.<id>`: `implementers` (a **list** of
   `provider:model` entries), `effort`, and optionally `dialogue` or
   `read_only`. Each stage names its lane (`stages[*].lane`); each review gate
-  names its lane and its revise lane (`gates[*].lane`, `gates[*].on_revise`).
+  names its lanes and its revise lane (`gates[*].lanes`, `gates[*].on_revise`).
 - **Default: Claude only.** Every implementer entry shipped in `factory.yaml`
   is a Claude model; no other provider or tool is required. Adding or swapping
   a provider is an edit to `factory.lanes`, nothing else — no engine, reviewer

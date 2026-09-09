@@ -65,13 +65,13 @@ gates:
   - id: pass-1
     after: P3.1
     type: review                   # one human review per pass (scorecard + analyze report)
-    lane: review-pass
+    lanes: [review-per-engine, review-holistic]   # both review the same brief; merged below
     requires_analyze: clean        # no CRITICAL findings
     on_revise: merge-review-notes  # lane used to apply findings; re-gate once, then escalate
   - id: pass-2
     after: P3.2
     type: review
-    lane: review-pass
+    lanes: [review-per-engine, review-holistic]
     requires_analyze: clean
     on_revise: merge-review-notes
 
@@ -325,7 +325,11 @@ lanes:
       max_rounds: 4
       converge_on: mutually-acceptable   # not perfection — the bar the user set
       output: resolved-decisions       # closed in-dialogue; no external open-questions file
-  review-pass:
+  review-per-engine:
+    implementers: ["claude:sonnet"]
+    effort: medium
+    read_only: true                    # reviewer never edits or commits
+  review-holistic:
     implementers: ["claude:sonnet"]
     effort: medium
     read_only: true                    # reviewer never edits or commits

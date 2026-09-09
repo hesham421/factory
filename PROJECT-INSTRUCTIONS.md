@@ -81,8 +81,8 @@ ask, rather than deciding unilaterally in this session.
 
 10. **Respect the factory's own laws** (do not weaken them to make a task
     easier): the factory stops at delivery (never implements, never audits
-    an implementation, never runs tests inside the line); one review-pass
-    gate per pass, opened only when the analyze report is clean; module-
+    an implementation, never runs tests inside the line); one review gate
+    per pass, opened only when the analyze report is clean; module-
     qualified names + markers; IFA versioning with a frozen prior version and
     a Change Manifest; dependency preservation (XM/UXD) with breaking changes
     escalated via a `BLOCKED` ADR; git as the only transport and ledger.
@@ -94,9 +94,10 @@ ask, rather than deciding unilaterally in this session.
 - Model/effort is chosen **per lane** (`factory.yaml → lanes`), not
   hardcoded in prompts. Explicit `--model`/`--effort` flags on a command
   override the lane for a single run only — they never edit `factory.yaml`.
-- Review gates run on the **read-only** lane `review-pass`: the reviewer
-  proposes findings; **the orchestrator lands the commit**. Never let a
-  review edit or commit.
+- Review gates run on the **read-only** lanes `review-per-engine` and
+  `review-holistic`: the reviewers propose findings, merged by the
+  `merge-review-notes` lane; **the orchestrator lands the commit**. Never
+  let a review edit or commit.
 - Default is Claude-only across every lane (`delegate-skills/README.md`).
   Adding or swapping a provider for a lane is an edit to `factory.yaml →
   lanes`, nothing else — it never touches an engine, a reviewer, or a

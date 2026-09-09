@@ -51,11 +51,11 @@ All stages of a pass run in one delegate session with one commit per stage.
 
 ### Human decision points
 <!-- RENDER:gates -->
-| Gate | When | Type | Lane | Requires analyze | On REVISE |
+| Gate | When | Type | Lanes | Requires analyze | On REVISE |
 |---|---|---|---|---|---|
-| `prd-approval` | after `P0.5` | human-approval | `—` | — | `—` |
-| `pass-1` | after `P3.1` | review | `review-pass` | clean | `merge-review-notes` |
-| `pass-2` | after `P3.2` | review | `review-pass` | clean | `merge-review-notes` |
+| `prd-approval` | after `P0.5` | human-approval | — | — | `—` |
+| `pass-1` | after `P3.1` | review | `review-per-engine`, `review-holistic` | clean | `merge-review-notes` |
+| `pass-2` | after `P3.2` | review | `review-per-engine`, `review-holistic` | clean | `merge-review-notes` |
 <!-- /RENDER:gates -->
 
 ### Lanes (model/effort per reasoning step)
@@ -64,7 +64,8 @@ All stages of a pass run in one delegate session with one commit per stage.
 |---|---|---|---|---|
 | `analysis` | `claude:opus` | high | — | — |
 | `analysis-dialogue` | `claude:opus`, `claude:sonnet` | high | — | max 4 rounds, converge on *mutually-acceptable* |
-| `review-pass` | `claude:sonnet` | medium | read-only | — |
+| `review-per-engine` | `claude:sonnet` | medium | read-only | — |
+| `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
 | `tools` | tools only | — | — | — |
 <!-- /RENDER:lanes -->

@@ -16,7 +16,7 @@
 ```
 Doc            : reviewers/pass-review.md (rendered)
 Role           : self-contained brief for the READ-ONLY reviewer of one pass
-Loaded by      : the {{ gate.lane }} lane, dispatched by gov.py gate
+Loaded by      : the {{ gate.lanes | join(' + ') }} lanes, dispatched by gov.py gate
 Generated parts: everything below the metadata block is rendered per gate
 Links          : shared/QUALITY-RUBRIC.md · shared/ARTIFACT-CONTRACTS.md · shared/GOVERNANCE-CORE.md · shared/XM-PROTOCOL.md · shared/VERSIONING.md
 ```

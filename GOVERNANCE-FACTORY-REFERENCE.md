@@ -76,11 +76,12 @@ redesign on top of what v5 proved:
    of prose baked into engine text. Every engine is now a Jinja2 template
    (`engines/<id>/references/ENGINE.md`) rendered with `{{ profile.* }}`
    slots, so adding a domain never touches engine text.
-9. **v6 merged the two-gate review shape into one review-pass gate**: rather
-   than a per-engine review plus a separate holistic review, each pass
-   (backend = pass 1, frontend = pass 2) has exactly **one** review gate
-   (`factory.yaml → gates`, lane `review-pass`), scored against the same
-   29148 rubric (`shared/QUALITY-RUBRIC.md`).
+9. **v6 merged the two review gates into one human decision point per pass**:
+   each pass (backend = pass 1, frontend = pass 2) has exactly **one** review
+   gate (`factory.yaml → gates`), whose brief is reviewed through two
+   delegate lanes — `review-per-engine` and `review-holistic` — merged by
+   the `merge-review-notes` lane before scoring against the same 29148
+   rubric (`shared/QUALITY-RUBRIC.md`).
 10. **v6 collapsed the frontend UX-design and execution-plan stages into a
     single stage `P3.2`.** It also dropped the former hard dependency on a
     published "UI shell" artifact — `P3.2`'s only required upstream input
@@ -92,8 +93,9 @@ redesign on top of what v5 proved:
     milestone M5). Registry extraction is now inline in each stage (every
     stage emits its own `registry-<stage>-<mod>.md` as one of its `produces`).
 12. **Reviews via lanes:** analysis runs on a strong-model lane
-    (`factory.yaml → lanes.analysis`); reviews run on a **read-only** lane
-    (`lanes.review-pass`) — a reviewer proposes, the orchestrator commits.
+    (`factory.yaml → lanes.analysis`); reviews run on **read-only** lanes
+    (`lanes.review-per-engine`, `lanes.review-holistic`) — a reviewer
+    proposes, the orchestrator commits.
 13. **Everything superseded by v6 is archived** under `_archive-v5/` (the v5
     snapshot) and `history/` (the v6 migration record), both exempt from
     lint and left untouched by day-to-day work.
@@ -148,13 +150,13 @@ document itself did.
 BOOT    /bootstrap (engine P-1) — once per platform → project/project-registry.md
 
 PASS 1  domain-profile → P0 → PRD approval (human) → P1 → P2 → P3.1
-        → gate:pass-1 (one review-pass gate)  → split (tools) → deliver (branch → backend repo)
+        → gate:pass-1 (review-per-engine + review-holistic → merge-review-notes)  → split (tools) → deliver (branch → backend repo)
 
   ── outside the factory (in the consumer repos) ──
   backend repo  : implement the plan → publish  governance/api-docs/api-docs-<mod>.md
 
 PASS 2  gov.py fetch-inputs (HARD GATE: needs api-docs published) → P3.2
-        → gate:pass-2 (one review-pass gate) → split (tools) → deliver (branch → frontend repo)
+        → gate:pass-2 (review-per-engine + review-holistic → merge-review-notes) → split (tools) → deliver (branch → frontend repo)
         → tag <mod>-vN   (freezes the version)
 ```
 

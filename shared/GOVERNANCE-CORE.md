@@ -198,7 +198,8 @@ lane with no model:
 |---|---|---|---|---|
 | `analysis` | `claude:opus` | high | — | — |
 | `analysis-dialogue` | `claude:opus`, `claude:sonnet` | high | — | max 4 rounds, converge on *mutually-acceptable* |
-| `review-pass` | `claude:sonnet` | medium | read-only | — |
+| `review-per-engine` | `claude:sonnet` | medium | read-only | — |
+| `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
 | `tools` | tools only | — | — | — |
 <!-- /RENDER:lanes -->
