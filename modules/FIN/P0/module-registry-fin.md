@@ -65,4 +65,13 @@ RESOLVED DECISIONS (dialogue, this module)
 | # | Point | Recommended | Confirmed by user | Sources |
 |---|---|---|---|---|
 | 1 | FIN's dependency posture — platform-shared (ORG/SEC/MDL) vs. fully isolated | Fully isolated: `DEPENDENCIES: NONE`, `ROOT: YES`, own lookups, own RBAC | Recommended and adopted for this draft — confirm or reject at `prd-approval` gate | FIN vision document §0, §2.1, §8.1, §10 |
+
+POLICIES (full record in `business-policies-fin.md`)
+POL-FIN-001 dimensions as data · POL-FIN-002 event-type rules as data ·
+POL-FIN-003 dedicated isolated reference data · POL-FIN-004 direct posting after
+automatic validation · POL-FIN-005 period-close human approval gate ·
+POL-FIN-006 segregation of duties at period close · POL-FIN-007 posted entries
+locked, correction by reversal only · POL-FIN-008 independent accounting-only RBAC ·
+POL-FIN-009 balances derived from posted entries only · POL-FIN-010 automatic
+year-end carryforward.
 ══════════════════════════════════════════════════════════════════
