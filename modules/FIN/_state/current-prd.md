@@ -28,7 +28,7 @@ STORIES DRAFTED
   + US-FIN-014 — Automatic year-end carryforward — Traces: POL-FIN-010 — Source: plan §7.4
   + US-FIN-015 — Ledger, trial balance and financial statements — Traces: POL-FIN-009 — Source: plan §9.1, §9.2
   + US-FIN-016 — Dimension-based reporting — Traces: POL-FIN-001, POL-FIN-009 — Source: plan §9.2
-  + US-FIN-017 — Drill-down audit trail — Traces: — (scope only) — Source: plan §9.3
+  + US-FIN-017 — Drill-down audit trail — Traces: POL-FIN-009 — Source: plan §9.3
 STORIES SKIPPED (no traceable source)
   — "Account balance maintenance screen" — considered, rejected: POL-FIN-009 explicitly forbids a manually accumulated balance column; balances are read-only/derived, so no such story exists.
 QUESTIONS RAISED → RESOLVED IN DIALOGUE
@@ -188,7 +188,7 @@ US-FIN-017
   Story          : As an Auditor (مدقق), I need to go from a financial-statement line down to the trial balance, the account ledger, the original entry and its source-event reference, so that every reported number can be traced back to its origin.
   Priority       : MEDIUM
   Success metric : —
-  Traces         : — (scope only — plan §9.3, module-registry entity list)
+  Traces         : POL-FIN-009 — every drilled-down figure ultimately rests on a POSTED entry (module-registry entity list, plan §9.3)
   Source         : plan §9.3
   Status         : DRAFT
 
@@ -211,7 +211,7 @@ US-FIN-017
 | US-FIN-014 | POL-FIN-010 | plan §7.4 |
 | US-FIN-015 | POL-FIN-009 | plan §9.1, §9.2 |
 | US-FIN-016 | POL-FIN-001, POL-FIN-009 | plan §9.2 |
-| US-FIN-017 | — (scope only) | plan §9.3 |
+| US-FIN-017 | POL-FIN-009 | plan §9.3 |
 
 Every policy (POL-FIN-001 … POL-FIN-010) appears in at least one row above.
 

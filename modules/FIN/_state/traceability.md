@@ -11,7 +11,7 @@
 | `POL-FIN-006` | business-policies | — | US-FIN-010 |
 | `POL-FIN-007` | business-policies | — | US-FIN-011 |
 | `POL-FIN-008` | business-policies | — | US-FIN-012 |
-| `POL-FIN-009` | business-policies | — | US-FIN-015, US-FIN-016 |
+| `POL-FIN-009` | business-policies | — | US-FIN-015, US-FIN-016, US-FIN-017 |
 | `POL-FIN-010` | business-policies | — | US-FIN-013, US-FIN-014 |
 | `US-FIN-001` | prd | POL-FIN-001, POL-FIN-003 | — |
 | `US-FIN-002` | prd | POL-FIN-001 | — |
@@ -29,4 +29,4 @@
 | `US-FIN-014` | prd | POL-FIN-010 | — |
 | `US-FIN-015` | prd | POL-FIN-009 | — |
 | `US-FIN-016` | prd | POL-FIN-001, POL-FIN-009 | — |
-| `US-FIN-017` | prd | — | — |
+| `US-FIN-017` | prd | POL-FIN-009 | — |
