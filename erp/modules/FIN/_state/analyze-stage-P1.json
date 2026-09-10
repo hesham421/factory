@@ -1,0 +1,61 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:P1",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 6,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-MDL-001` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-MDL-002` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-SEC-001` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-SEC-004` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-SEC-005` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-SEC-006` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    }
+  ]
+}
