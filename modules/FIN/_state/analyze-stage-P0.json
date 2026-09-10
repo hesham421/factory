@@ -1,0 +1,93 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:P0",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 10,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-001` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-002` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-003` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-004` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-005` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-006` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-007` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-008` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-009` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C3.7",
+      "check": "registry-agree",
+      "message": "`POL-FIN-010` defined in `business-policies` but absent from `module-registry`",
+      "artifact": "business-policies",
+      "line": 0
+    }
+  ]
+}

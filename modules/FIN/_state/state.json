@@ -1,0 +1,35 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "profile": "erp",
+  "generated_at": "2026-09-10T10:18:59+00:00",
+  "sources": {
+    "platform-summary": [
+      1
+    ],
+    "module-registry": [
+      1
+    ],
+    "business-policies": [
+      1
+    ]
+  },
+  "missing": [
+    "prd",
+    "srs",
+    "registry-srs",
+    "db-script",
+    "registry-db",
+    "backend-execution-plan",
+    "registry-exec-be",
+    "flow-diagram",
+    "ui-ux-spec",
+    "frontend-execution-plan",
+    "registry-exec-fe",
+    "backend-test-plan",
+    "frontend-test-plan",
+    "api-verify-script",
+    "api-verify-report"
+  ],
+  "inputs_mtime": 1789035539.8430772
+}
