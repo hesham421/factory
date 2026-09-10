@@ -271,7 +271,9 @@ def test_toy_profile_runs_the_whole_line(orch_root, tmp_path, monkeypatch):
 
 
 def test_new_domain_scaffold_then_lint_reports_todos(orch_root):
-    assert gov.cmd_new_domain("shop") == OK
+    # new-domain now resets stale content and continues straight into the first stage —
+    # see test_new_domain.py for the reset/confirmation/instance-value coverage.
+    assert gov.cmd_new_domain("shop", yes=True) == AWAITING
     p = CFG.profiles_dir() / "shop.yaml"
     text = p.read_text()
     assert "id: shop" in text and "TODO" in text

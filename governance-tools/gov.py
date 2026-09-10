@@ -16,7 +16,8 @@ and the active profile (`config.CFG`).
   state -m MOD [-v N]
   version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
   deliver --track T -m MOD -v N [--push] · status -m MOD
-  structure/archive/split (toolkit) · render · lint [--profile ID] · new-domain ID
+  structure/archive/split (toolkit) · render · lint [--profile ID]
+  new-domain ID [--yes|--force] [--module CODE]   # resets stale project content, then starts ID
 
 Exit codes: 0 ok · 1 blocked (findings / missing) · 2 awaiting the operator (manual runner)
 """
@@ -25,9 +26,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -418,13 +421,177 @@ def cmd_status(mod: str) -> int:
     return OK
 
 
-# ── domain scaffolding ──────────────────────────────────────────────────────
+# ── domain scaffolding / reset ───────────────────────────────────────────────
+# `new-domain ID` resets stale project content (prior profiles/modules/decisions/
+# generated project docs) then scaffolds profiles/ID.yaml and drops straight into
+# the first stage of the pipeline — see PROMPT-ADD-RESET-AND-START-TO-NEW-DOMAIN.
 
-def cmd_new_domain(pid: str) -> int:
+@dataclass
+class ResetPlan:
+    profile_files: list[Path]
+    profile_dirs: list[Path]
+    module_dirs: list[Path]
+    decision_entries: list[Path]
+    project_files: list[Path]
+
+
+def _protected_roots() -> list[Path]:
+    return [CFG.dir("tools"), CFG.root / "_archive-v5", CFG.root / "history"]
+
+
+def _under_any(path: Path, roots: list[Path]) -> bool:
+    return any(root == path or root in path.parents for root in roots)
+
+
+def _profile_files() -> list[Path]:
+    d = CFG.profiles_dir()
+    return sorted(p for p in d.glob("*.yaml") if p.name != "_schema.yaml") if d.exists() else []
+
+
+def _profile_dirs() -> list[Path]:
+    """Companion dirs of a profile (e.g. profiles/<id>/knowledge/ — schema §knowledge.files)."""
+    d = CFG.profiles_dir()
+    return sorted(p for p in d.iterdir() if p.is_dir()) if d.exists() else []
+
+
+def _module_dirs() -> list[Path]:
+    root = CFG.modules_root()
+    return sorted(p for p in root.iterdir() if p.is_dir()) if root.exists() else []
+
+
+def _decision_entries() -> list[Path]:
+    root = CFG.dir("decisions")
+    return sorted(root.iterdir()) if root.exists() else []
+
+
+def _project_generated_files() -> list[Path]:
+    """Every stage artifact with a bare `dir` (platform-level, e.g. domain-profile.md,
+    project-registry.md) — read from the stage table, never a literal filename list."""
+    seen: set[Path] = set()
+    for s in CFG.all_stages():
+        for a in s.produces:
+            if a.dir:
+                p = CFG.dir(a.dir) / a.filename("")
+                if p.exists():
+                    seen.add(p)
+    return sorted(seen)
+
+
+def _build_reset_plan() -> ResetPlan:
+    plan = ResetPlan(_profile_files(), _profile_dirs(), _module_dirs(), _decision_entries(), _project_generated_files())
+    protected = _protected_roots()
+    for p in (*plan.profile_files, *plan.profile_dirs, *plan.module_dirs, *plan.decision_entries, *plan.project_files):
+        if _under_any(p, protected):
+            raise RuntimeError(f"refusing to reset: {p} is inside a protected path")
+    return plan
+
+
+def _reset_summary(plan: ResetPlan) -> str:
+    proj_dirs = sorted({CFG.paths[a.dir] for s in CFG.all_stages() for a in s.produces if a.dir})
+    proj_label = "/".join(proj_dirs) + "/" if proj_dirs else "(none)/"
+    names = ", ".join(p.name for p in plan.project_files) if plan.project_files else "none"
+    bar = "═" * 56
+    return "\n".join([
+        bar,
+        "RESET — this will permanently delete:",
+        f"  profiles/*.yaml                 ({len(plan.profile_files)} files)",
+        f"  profiles/*/ (companion dirs)     ({len(plan.profile_dirs)} dirs)",
+        f"  modules/*                       ({len(plan.module_dirs)} module folders)",
+        f"  decisions/*                     ({len(plan.decision_entries)} entries)",
+        f"  {proj_label} generated content ({names})",
+        "Kept: governance-tools/, templates/, factory.yaml's own structure,",
+        "      _archive-v5/, history/, tests",
+        bar,
+    ])
+
+
+def _do_reset(plan: ResetPlan) -> None:
+    for p in plan.profile_files:
+        p.unlink(missing_ok=True)
+    for d in plan.profile_dirs:
+        shutil.rmtree(d, ignore_errors=True)
+    for d in plan.module_dirs:
+        shutil.rmtree(d, ignore_errors=True)
+    for e in plan.decision_entries:
+        if e.is_dir():
+            shutil.rmtree(e, ignore_errors=True)
+        else:
+            e.unlink(missing_ok=True)
+    for f in plan.project_files:
+        f.unlink(missing_ok=True)
+
+
+def _git_dirty() -> bool:
+    r = _git("status", "--short", check=False)
+    if r.returncode != 0:      # not a git repo (or git unavailable) — be conservative
+        return True
+    return bool(r.stdout.strip())
+
+
+# -- factory.yaml instance-value reset (surgical text patch: factory.yaml is
+#    hand-maintained prose with heavy comments; a yaml.safe_load/dump round-trip
+#    would silently destroy all of it, so this only rewrites the value tokens) --
+
+def _yaml_scalar(value: str) -> str:
+    return value if re.fullmatch(r"[A-Za-z0-9_-]+", value) else json.dumps(value)
+
+
+def _block_span(text: str, key: str, key_indent: str, child_indent: str) -> tuple[int, int]:
+    """(start, end) of the indented body directly under a `{key_indent}{key}:` line."""
+    m = re.search(rf"(?m)^{re.escape(key_indent)}{re.escape(key)}:[ \t]*\n", text)
+    if not m:
+        raise ValueError(f"{key!r} block not found")
+    start = end = m.end()
+    for lm in re.finditer(r"(?m)^(.*)\n", text[start:]):
+        line = lm.group(1)
+        if line.strip() == "" or line.startswith(child_indent):
+            end = start + lm.end()
+        else:
+            break
+    return start, end
+
+
+def _repo_block_span(repos_block: str, repo_name: str) -> tuple[int, int]:
+    return _block_span(repos_block, repo_name, "  ", "    ")
+
+
+def _replace_scalar(block: str, key: str, new_value: str) -> str:
+    pattern = re.compile(rf'(?m)^(\s*{re.escape(key)}:\s*)("[^"]*"|\S+)')
+    new_block, n = pattern.subn(lambda m: m.group(1) + new_value, block, count=1)
+    if n == 0:
+        raise ValueError(f"key {key!r} not found")
+    return new_block
+
+
+def _reset_factory_yaml_instance_values(pid: str) -> None:
+    """Clear repos.<name>.url/checkout_default to placeholders and point
+    factory.active_profile at the new domain — everything else untouched."""
+    path = CFG.root / "factory.yaml"
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(r"(?m)^(  active_profile:\s*)\S+", rf"\g<1>{_yaml_scalar(pid)}", text, count=1)
+    repos_start, repos_end = _block_span(text, "repos", "", "  ")
+    repos_block = text[repos_start:repos_end]
+    for name in CFG.data["repos"]:
+        start, end = _repo_block_span(repos_block, name)
+        block = repos_block[start:end]
+        block = _replace_scalar(block, "url", '""')
+        block = _replace_scalar(block, "checkout_default", f'"../{name}"')
+        repos_block = repos_block[:start] + block + repos_block[end:]
+    text = text[:repos_start] + repos_block + text[repos_end:]
+    path.write_text(text, encoding="utf-8")
+
+
+def _sanitize_mod(pid: str) -> str:
+    m = re.sub(r"[^A-Za-z0-9]", "", pid).upper()
+    if not m or not m[0].isalpha():
+        m = "M" + m
+    return m
+
+
+def _scaffold_profile(pid: str) -> Path:
     dst = CFG.profiles_dir() / f"{pid}.yaml"
     if dst.exists():
-        _say(f"profile exists: {dst}")
-        return BLOCKED
+        raise FileExistsError(f"profile exists: {dst}")
     schema = CFG.profile_schema()
 
     def skel(node, indent=0):
@@ -445,10 +612,34 @@ def cmd_new_domain(pid: str) -> int:
 
     text = ["# profile scaffold generated by gov.py new-domain — fill every TODO, then gov.py lint --profile " + pid,
             f"schema_version: {schema.get('schema_version', CFG.data['schema_version'])}", *skel(schema)]
-    text = [l.replace(f"id: TODO", f"id: {pid}") for l in text]
+    text = [l.replace("id: TODO", f"id: {pid}") for l in text]
     dst.write_text("\n".join(text) + "\n", encoding="utf-8")
-    _say(f"scaffolded {dst.relative_to(CFG.root)}")
-    return OK
+    return dst
+
+
+def cmd_new_domain(pid: str, *, yes: bool = False, module: str | None = None) -> int:
+    if _git_dirty():
+        _say("BLOCKED: uncommitted changes present — commit or stash first (new-domain permanently deletes prior project content).")
+        return BLOCKED
+    plan = _build_reset_plan()
+    _say(_reset_summary(plan))
+    if not yes:
+        try:
+            ans = input("Proceed? [y/N] ")
+        except EOFError:
+            ans = ""
+        if ans.strip().lower() != "y":
+            _say("Aborted: no changes made.")
+            return BLOCKED
+    _do_reset(plan)
+    _reset_factory_yaml_instance_values(pid)
+    dst = _scaffold_profile(pid)
+    CFG.reload()
+    _say(f"scaffolded {dst.relative_to(CFG.root)} · factory.yaml active_profile → {pid}")
+    mod = module or _sanitize_mod(pid)
+    stage = CFG.stages[0]                 # the pipeline's first stage, run-order (factory.yaml stages:)
+    _say(f"continuing into `{stage.id}` for module {mod} …")
+    return run_stage(stage.id, mod, None, False, False)
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────
@@ -482,6 +673,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("render")
     p = sub.add_parser("lint"); p.add_argument("--profile")
     p = sub.add_parser("new-domain"); p.add_argument("id")
+    p.add_argument("--yes", "--force", dest="yes", action="store_true", help="skip the confirmation prompt (the uncommitted-changes check still applies)")
+    p.add_argument("--module", "-m", default=None, help="initial module code for the domain-profile stage (default: derived from ID)")
     a = ap.parse_args(argv)
 
     if a.cmd in ("run-stage", "run-standalone"):
@@ -546,7 +739,7 @@ def main(argv: list[str] | None = None) -> int:
         _say(f"{sum(f.severity=='CRITICAL' for f in fs)} critical · {sum(f.severity=='MAJOR' for f in fs)} major · {sum(f.severity=='MINOR' for f in fs)} minor")
         return BLOCKED if any(f.severity == "CRITICAL" for f in fs) else OK
     if a.cmd == "new-domain":
-        return cmd_new_domain(a.id)
+        return cmd_new_domain(a.id, yes=a.yes, module=a.module)
     return OK
 
 
