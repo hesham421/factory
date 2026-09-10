@@ -108,8 +108,16 @@ redesign on top of what v5 proved:
 factory.yaml                 SINGLE source of truth: stages, passes, gates, lanes, paths,
                               naming, ID grammar, marker grammar, tracks, repos, review rubric, lint rules
 profiles/                    a domain is DATA: _schema.yaml + <id>.yaml (+ <id>/knowledge/*.md)
-project/                     domain-profile.md (conversational domain-profile stage) + project-registry.md
-                              (P-1 bootstrap output, once per platform)
+<id>/                        ALL project-specific generated content, in one folder named after the
+                              active profile's own identity (factory.yaml -> paths, `{profile_id}`
+                              resolved by config.py at runtime — e.g. `erp/` while profiles/erp.yaml
+                              is active; a different profile gets its own differently-named folder):
+                                <id>/domain-profile.md      conversational domain-profile stage
+                                <id>/project-registry.md    P-1 bootstrap output, once per platform
+                                <id>/decisions/<MOD>/       ADR stream
+                                <id>/modules/<MOD>/[vN/]    v1 = base folder, vN = delta only;
+                                                            _state/ generated current state;
+                                                            _inputs/ fetched inputs; packages/ split output
 engines/                     the governed pipeline — one folder per stage in factory.yaml -> stages,
                               each: SKILL.md (generated) + references/ENGINE.md (Jinja2 template)
 standalone/                  stages outside the line, on demand, never a gate (per factory.yaml -> standalone)
@@ -117,9 +125,6 @@ shared/                      the domain-neutral core doc set (CONSTITUTION, GOVE
                               ARTIFACT-CONTRACTS, MARKER-PROTOCOL, XM-PROTOCOL, REGISTRY-SCHEMA,
                               VERSIONING, QUALITY-RUBRIC + generated START-HERE)
 reviewers/pass-review.md     the single gate review template (one gate type, used by every pass)
-decisions/<MOD>/             ADR stream
-modules/<MOD>/[vN/]          v1 = base folder, vN = delta only; _state/ generated current state;
-                              _inputs/ fetched inputs; packages/ split output
 .claude/commands/            thin command wrappers — fully generated from factory.yaml -> commands
                               by `gov.py render` (nothing here is hand-written or hand-added)
 governance-tools/            config.py (loader) · gov.py (orchestrator CLI) · render.py · lint.py ·
@@ -147,7 +152,7 @@ document itself did.
 ## 4. The flow (end to end)
 
 ```
-BOOT    /bootstrap (engine P-1) — once per platform → project/project-registry.md
+BOOT    /bootstrap (engine P-1) — once per platform → <id>/project-registry.md
 
 PASS 1  domain-profile → P0 → PRD approval (human) → P1 → P2 → P3.1
         → gate:pass-1 (review-per-engine + review-holistic → merge-review-notes)  → split (tools) → deliver (branch → backend repo)
@@ -196,10 +201,10 @@ and that the orchestrator — never the implementer — lands every commit).
 
 | Concern | Mechanism |
 |---|---|
-| Versions | folders `modules/<MOD>/` (v1) and `modules/<MOD>/vN/` (N≥2) + tag `<mod>-vN` |
+| Versions | folders `<id>/modules/<MOD>/` (v1) and `<id>/modules/<MOD>/vN/` (N≥2) + tag `<mod>-vN` |
 | Ledger | the **git commit** per stage (`factory.yaml → naming.commit.stage`) |
 | Delivery | `gov.py deliver --track <backend\|frontend>` copies a track's packages + `execution-state.json` into the consumer repo checkout and commits on the branch named by `factory.yaml → naming.delivery_branch` |
-| Pass-2 inputs | `gov.py fetch-inputs` pulls `api-docs` from the linked backend repo into `modules/<MOD>[/vN]/_inputs/`; a hard gate blocks `P3.2` until it exists |
+| Pass-2 inputs | `gov.py fetch-inputs` pulls `api-docs` from the linked backend repo into `<id>/modules/<MOD>[/vN]/_inputs/`; a hard gate blocks `P3.2` until it exists |
 | Linking repos | `factory.yaml → repos` (url + checkout env/default + `deliver_to` + `publishes`) — edit directly or via `/link-repos` |
 
 The one published input the backend repo must honour (declared once, in

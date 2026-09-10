@@ -21,7 +21,7 @@ execution plans delivered to the consumer repos. It **stops at delivery** (analy
 Then split (marker protocol) → deliver → tag. Outside the line, on demand: `test-gen`, `api-verify`.
 
 **What a human decides.** `prd-approval` (human-approval after `P0.5`); `pass-1` (review after `P3.1`); `pass-2` (review after `P3.2`). Nothing else asks.
-After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`decisions/<MOD>/`) and continues; a breaking one stops.
+After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`erp/decisions/<MOD>/`) and continues; a breaking one stops.
 
 **Versions.** v1 is the module's base folder; vN holds only what changed plus a change manifest; `gov.py state` folds them
 into `_state/`, the only thing engines read.

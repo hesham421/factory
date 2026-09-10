@@ -472,7 +472,7 @@ runs before the gate `{{ st.next }}`; CRITICAL findings keep the gate closed.
 `factory.yaml → ambiguity`, stated once in shared/GOVERNANCE-CORE.md:
 - **non-breaking** (does not contradict a locked decision or a REQ) → choose the best-practice
   answer using `profile.knowledge.files` + `{{ factory.paths.domain }}/` steering, write
-  `decisions/{{ MOD }}/{{ factory.naming.adr_file.replace('{MOD}', MOD) }}` (Context / Decision /
+  `{{ factory.paths.decisions }}/{{ MOD }}/{{ factory.naming.adr_file.replace('{MOD}', MOD) }}` (Context / Decision /
   Consequences / traces) and **{{ factory.ambiguity.non_breaking.then }}**;
 - **breaking** (contradicts a locked decision or a REQ) → ADR with status
   `{{ factory.ambiguity.breaking.status }}`, then **{{ factory.ambiguity.breaking.then }}**; the

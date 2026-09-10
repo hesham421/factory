@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-modules/*/**/receipts/
+**/modules/*/**/receipts/    # modules/ nests under the active profile's own folder (factory.yaml paths.modules)
 *.orig
