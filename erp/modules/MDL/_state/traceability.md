@@ -3,9 +3,14 @@
 
 | ID | Defined in | Traces to | Referenced by |
 |---|---|---|---|
-| `POL-MDL-001` | business-policies | — | — |
-| `POL-MDL-002` | business-policies | — | — |
-| `POL-MDL-003` | business-policies | — | — |
-| `POL-MDL-004` | business-policies | — | — |
-| `POL-MDL-005` | business-policies | — | — |
-| `POL-MDL-006` | business-policies | — | — |
+| `POL-MDL-001` | business-policies | — | US-MDL-003 |
+| `POL-MDL-002` | business-policies | — | US-MDL-001, US-MDL-004, US-MDL-005 |
+| `POL-MDL-003` | business-policies | — | US-MDL-001, US-MDL-004 |
+| `POL-MDL-004` | business-policies | — | US-MDL-002 |
+| `POL-MDL-005` | business-policies | — | US-MDL-002 |
+| `POL-MDL-006` | business-policies | — | US-MDL-002 |
+| `US-MDL-001` | prd | POL-MDL-002, POL-MDL-003 | — |
+| `US-MDL-002` | prd | POL-MDL-004, POL-MDL-005, POL-MDL-006 | — |
+| `US-MDL-003` | prd | POL-MDL-001 | — |
+| `US-MDL-004` | prd | POL-MDL-002, POL-MDL-003 | — |
+| `US-MDL-005` | prd | POL-MDL-002 | — |

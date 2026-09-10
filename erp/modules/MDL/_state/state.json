@@ -2,7 +2,7 @@
   "module": "MDL",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-10T16:07:55+00:00",
+  "generated_at": "2026-09-10T16:08:20+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -12,10 +12,12 @@
     ],
     "business-policies": [
       1
+    ],
+    "prd": [
+      1
     ]
   },
   "missing": [
-    "prd",
     "srs",
     "registry-srs",
     "db-script",
@@ -31,5 +33,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789056475.3306305
+  "inputs_mtime": 1789056500.4410424
 }
