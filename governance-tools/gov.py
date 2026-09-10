@@ -498,10 +498,10 @@ def _reset_summary(plan: ResetPlan) -> str:
     return "\n".join([
         bar,
         "RESET — this will permanently delete:",
-        f"  profiles/*.yaml                 ({len(plan.profile_files)} files)",
-        f"  profiles/*/ (companion dirs)     ({len(plan.profile_dirs)} dirs)",
-        f"  modules/*                       ({len(plan.module_dirs)} module folders)",
-        f"  decisions/*                     ({len(plan.decision_entries)} entries)",
+        f"  {CFG.paths['profiles']}/*.yaml                 ({len(plan.profile_files)} files)",
+        f"  {CFG.paths['profiles']}/*/ (companion dirs)     ({len(plan.profile_dirs)} dirs)",
+        f"  {CFG.paths['modules']}/*                       ({len(plan.module_dirs)} module folders)",
+        f"  {CFG.paths['decisions']}/*                     ({len(plan.decision_entries)} entries)",
         f"  {proj_label} generated content ({names})",
         "Kept: governance-tools/, templates/, factory.yaml's own structure,",
         "      _archive-v5/, history/, tests",
@@ -523,6 +523,15 @@ def _do_reset(plan: ResetPlan) -> None:
             e.unlink(missing_ok=True)
     for f in plan.project_files:
         f.unlink(missing_ok=True)
+    # domain/platform/modules/decisions all nest under one folder named after the
+    # (still-active, pre-reload) profile's own identity — once its contents are gone,
+    # remove the now-empty folder too, so reset never leaves a stale <old-id>/ behind.
+    project_root = CFG.dir("domain")
+    if project_root.exists() and project_root != CFG.root:
+        try:
+            project_root.rmdir()
+        except OSError:
+            pass  # not empty (unexpected extra content) — leave it for the user to inspect
 
 
 def _git_dirty() -> bool:
