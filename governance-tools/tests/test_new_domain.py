@@ -106,6 +106,46 @@ def test_new_domain_resets_exact_scope_and_starts_first_stage(orch_root, mod, mo
     assert brief.exists() and "# ENGINE" in brief.read_text(encoding="utf-8")
 
 
+def test_new_domain_regenerates_stale_profile_derived_docs(orch_root, mod):
+    """README.md, engines/*/SKILL.md, standalone/*/SKILL.md and shared/START-HERE.md
+    are whole files rendered from `factory.yaml` + the active profile (render.py) —
+    SKILL.md in particular is what a skill loader reads as the stage's definition.
+    A prior `gov.py render` bakes the OLD profile's id/display into these files;
+    the reset must re-render them for the new profile, or every one of them keeps
+    quoting the domain that was just supposedly wiped out — whatever that domain's
+    name happens to be, not just any one hardcoded id.
+    """
+    import render
+
+    _populate(orch_root, mod)
+    CFG.reload()
+    old_id = CFG.profile_id
+    old_display = CFG.profile.data["identity"]["display"]
+    render.render_all(CFG)   # simulate: these docs were already generated for the prior domain, as in any real repo
+
+    targets = [orch_root / "README.md", CFG.dir("shared") / "START-HERE.md",
+               *(CFG.dir("engines") / s.id / "SKILL.md" for s in CFG.stages),
+               *(CFG.dir("standalone") / s.id / "SKILL.md" for s in CFG.standalone)]
+    assert targets and all(p.exists() for p in targets)
+    old_marker = f"profiles/{old_id}.yaml"
+    assert any(old_marker in p.read_text(encoding="utf-8") for p in targets)   # sanity: reproduces pre-fix
+
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=orch_root)
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "populated + rendered old domain", cwd=orch_root)
+
+    rc = gov.cmd_new_domain("notes", yes=True, module="NOTES")
+    assert rc == AWAITING
+
+    for p in targets:
+        assert p.exists()
+        text = p.read_text(encoding="utf-8")
+        assert old_marker not in text
+        assert old_display not in text
+
+    assert any("notes" in p.read_text(encoding="utf-8") for p in targets)   # confirms these were re-rendered, not just untouched-and-lucky
+    assert render.check_fresh(CFG) == []   # what `gov.py lint`'s C1-stale-render check enforces
+
+
 def test_sanitize_mod_derives_a_valid_module_code():
     assert gov._sanitize_mod("acme-shop") == "ACMESHOP"
     assert gov._sanitize_mod("notes") == "NOTES"

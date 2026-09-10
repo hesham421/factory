@@ -423,8 +423,12 @@ def cmd_status(mod: str) -> int:
 
 # ── domain scaffolding / reset ───────────────────────────────────────────────
 # `new-domain ID` resets stale project content (prior profiles/modules/decisions/
-# generated project docs) then scaffolds profiles/ID.yaml and drops straight into
-# the first stage of the pipeline — see PROMPT-ADD-RESET-AND-START-TO-NEW-DOMAIN.
+# generated project docs), scaffolds profiles/ID.yaml, re-renders every doc
+# derived from the (now new) active profile — README.md, engines/*/SKILL.md,
+# standalone/*/SKILL.md, shared/START-HERE.md, any hand-written doc with a
+# RENDER block — so none of them keep echoing the prior domain, then drops
+# straight into the first stage of the pipeline — see
+# PROMPT-ADD-RESET-AND-START-TO-NEW-DOMAIN.
 
 @dataclass
 class ResetPlan:
@@ -636,6 +640,8 @@ def cmd_new_domain(pid: str, *, yes: bool = False, module: str | None = None) ->
     dst = _scaffold_profile(pid)
     CFG.reload()
     _say(f"scaffolded {dst.relative_to(CFG.root)} · factory.yaml active_profile → {pid}")
+    rendered = rd.render_all()   # README.md, engines/*/SKILL.md, standalone/*/SKILL.md, shared/START-HERE.md
+    _say(f"re-rendered {len(rendered)} profile-derived doc(s) — no stale reference to the prior domain")
     mod = module or _sanitize_mod(pid)
     stage = CFG.stages[0]                 # the pipeline's first stage, run-order (factory.yaml stages:)
     _say(f"continuing into `{stage.id}` for module {mod} …")
