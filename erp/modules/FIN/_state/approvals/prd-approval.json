@@ -1,0 +1,11 @@
+{
+  "gate": "prd-approval",
+  "module": "FIN",
+  "version": 1,
+  "by": "ahmed.alsabonabi@gmail.com",
+  "at": "2026-09-10T16:22:34+00:00",
+  "after": "P0.5",
+  "artifact_sha": {
+    "prd": "4e4c599d0fa97ceade98746ff53a1ad2909c5a71518241003987060bce6bc818"
+  }
+}
