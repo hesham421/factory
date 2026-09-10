@@ -3,14 +3,48 @@
 
 | ID | Defined in | Traces to | Referenced by |
 |---|---|---|---|
+| `AC-MDL-001` | srs | REQ-MDL-001 | — |
+| `AC-MDL-002` | srs | REQ-MDL-002 | — |
+| `AC-MDL-003` | srs | REQ-MDL-003 | — |
+| `AC-MDL-004` | srs | REQ-MDL-004 | — |
+| `AC-MDL-005` | srs | REQ-MDL-005 | — |
+| `AC-MDL-006` | srs | REQ-MDL-006 | — |
+| `AC-MDL-007` | srs | REQ-MDL-007 | — |
+| `AC-MDL-008` | srs | REQ-MDL-008 | — |
+| `AC-MDL-009` | srs | REQ-MDL-009 | — |
+| `AC-MDL-010` | srs | REQ-MDL-010 | — |
+| `AC-MDL-011` | srs | REQ-MDL-011 | — |
+| `AC-MDL-012` | srs | REQ-MDL-012 | — |
+| `AC-MDL-013` | srs | REQ-MDL-013 | — |
+| `ENT-MDL-001` | srs | — | — |
+| `ENT-MDL-002` | srs | — | — |
 | `POL-MDL-001` | business-policies | — | US-MDL-003 |
 | `POL-MDL-002` | business-policies | — | US-MDL-001, US-MDL-004, US-MDL-005 |
 | `POL-MDL-003` | business-policies | — | US-MDL-001, US-MDL-004 |
 | `POL-MDL-004` | business-policies | — | US-MDL-002 |
 | `POL-MDL-005` | business-policies | — | US-MDL-002 |
 | `POL-MDL-006` | business-policies | — | US-MDL-002 |
-| `US-MDL-001` | prd | POL-MDL-002, POL-MDL-003 | — |
-| `US-MDL-002` | prd | POL-MDL-004, POL-MDL-005, POL-MDL-006 | — |
-| `US-MDL-003` | prd | POL-MDL-001 | — |
-| `US-MDL-004` | prd | POL-MDL-002, POL-MDL-003 | — |
-| `US-MDL-005` | prd | POL-MDL-002 | — |
+| `REQ-MDL-001` | srs | US-MDL-001, US-MDL-004 | AC-MDL-001, SCR-REQ-MDL-001 |
+| `REQ-MDL-002` | srs | US-MDL-001, US-MDL-004 | AC-MDL-002, RULE-MDL-001, SCR-REQ-MDL-001 |
+| `REQ-MDL-003` | srs | US-MDL-001 | AC-MDL-003, RULE-MDL-003, SCR-REQ-MDL-001 |
+| `REQ-MDL-004` | srs | US-MDL-001 | AC-MDL-004, RULE-MDL-004, SCR-REQ-MDL-001 |
+| `REQ-MDL-005` | srs | US-MDL-002 | AC-MDL-005, SCR-REQ-MDL-001 |
+| `REQ-MDL-006` | srs | US-MDL-002 | AC-MDL-006, SCR-REQ-MDL-001 |
+| `REQ-MDL-007` | srs | US-MDL-002 | AC-MDL-007, RULE-MDL-002, SCR-REQ-MDL-001 |
+| `REQ-MDL-008` | srs | US-MDL-002 | AC-MDL-008, SCR-REQ-MDL-001 |
+| `REQ-MDL-009` | srs | US-MDL-002 | AC-MDL-009, SCR-REQ-MDL-001 |
+| `REQ-MDL-010` | srs | US-MDL-002 | AC-MDL-010, SCR-REQ-MDL-001 |
+| `REQ-MDL-011` | srs | US-MDL-003 | AC-MDL-011, RULE-MDL-004 |
+| `REQ-MDL-012` | srs | US-MDL-003 | AC-MDL-012 |
+| `REQ-MDL-013` | srs | US-MDL-005 | AC-MDL-013, SCR-REQ-MDL-002 |
+| `RULE-MDL-001` | srs | REQ-MDL-002 | — |
+| `RULE-MDL-002` | srs | REQ-MDL-007 | — |
+| `RULE-MDL-003` | srs | REQ-MDL-003 | — |
+| `RULE-MDL-004` | srs | REQ-MDL-004, REQ-MDL-011 | — |
+| `SCR-REQ-MDL-001` | srs | REQ-MDL-001, REQ-MDL-002, REQ-MDL-003, REQ-MDL-004, REQ-MDL-005, REQ-MDL-006, REQ-MDL-007, REQ-MDL-008, REQ-MDL-009, REQ-MDL-010 | — |
+| `SCR-REQ-MDL-002` | srs | REQ-MDL-013 | — |
+| `US-MDL-001` | prd | POL-MDL-002, POL-MDL-003 | REQ-MDL-001, REQ-MDL-002, REQ-MDL-003, REQ-MDL-004 |
+| `US-MDL-002` | prd | POL-MDL-004, POL-MDL-005, POL-MDL-006 | REQ-MDL-005, REQ-MDL-006, REQ-MDL-007, REQ-MDL-008, REQ-MDL-009, REQ-MDL-010 |
+| `US-MDL-003` | prd | POL-MDL-001 | REQ-MDL-011, REQ-MDL-012 |
+| `US-MDL-004` | prd | POL-MDL-002, POL-MDL-003 | REQ-MDL-001, REQ-MDL-002 |
+| `US-MDL-005` | prd | POL-MDL-002 | REQ-MDL-013 |
