@@ -32,7 +32,7 @@
   "status": {
     "archived": false,
     "split": {
-      "backend/exec": false,
+      "backend/exec": true,
       "backend/test": false,
       "frontend/exec": false,
       "frontend/test": false
