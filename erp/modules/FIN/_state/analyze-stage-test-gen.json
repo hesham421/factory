@@ -1,0 +1,12 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:test-gen",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": []
+}
