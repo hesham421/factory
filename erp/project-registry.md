@@ -1,10 +1,10 @@
 # PROJECT REGISTRY — منصة تخطيط موارد المؤسسات (ERP Platform)
 ══════════════════════════════════════════════════════════════════
 Profile            : erp
-Registry Version   : 1.2.0
+Registry Version   : 1.3.0
 Domain Profile     : erp/domain-profile.md v1
-Last Updated       : 2026-09-10 by P3.1 (MDL v1 pass-1 completion)
-Modules registered : 9   Entity candidates : 15 (13 SEC + 2 MDL)   Open items : 0
+Last Updated       : 2026-09-10 by P3.1 (FIN v1 pass-1 completion — batch complete)
+Modules registered : 9   Entity candidates : 29 (13 SEC + 2 MDL + 14 FIN)   Open items : 0
 ══════════════════════════════════════════════════════════════════
 
 ## SCHEMA COMPLIANCE MAP
@@ -35,6 +35,7 @@ Uncovered: none
 | 1.0.0 | 2026-09-10 | Initial bootstrap from erp/domain-profile.md v1 (BOOTSTRAP event, see CHANGE/EVENT HISTORY) |
 | 1.1.0 | 2026-09-10 | SEC v1 registered a new module (pass-1 complete, gate APPROVE) — minor bump per RULE-2 |
 | 1.2.0 | 2026-09-10 | MDL v1 registered a new module (pass-1 complete, gate APPROVE) — minor bump per RULE-2 |
+| 1.3.0 | 2026-09-10 | FIN v1 registered a new module (pass-1 complete, gate APPROVE) — minor bump per RULE-2; this batch (SEC→MDL→FIN) is now complete |
 
 ## CONVENTIONS & STEERING
 (copied verbatim from `erp/domain-profile.md` §7 — the authoritative source; this section
@@ -86,7 +87,7 @@ Entity kinds: master, transactional, lookup, config, security.
 |---|---|---|---|---|---|---|---|
 | 1 | SEC | Security | organization | Foundation | Core | pass-1 COMPLETE (v1, gate APPROVE) | domain-profile §4 row 1 |
 | 2 | MDL | Master Data Lookup | organization | Foundation | Core | pass-1 COMPLETE (v1, gate APPROVE) | domain-profile §4 row 2 |
-| 3 | FIN | Finance (General Ledger) | finance | Business — Tier 1 | Core | CANDIDATE — this batch, third | domain-profile §4 row 3 |
+| 3 | FIN | Finance (General Ledger) | finance | Business — Tier 1 | Core | pass-1 COMPLETE (v1, gate APPROVE) | domain-profile §4 row 3 |
 | 4 | ORG | Organization | organization | Foundation | — | RESERVED — not this batch | domain-profile §4 row 4; profile |
 | 5 | PRC | Procurement | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 5; profile |
 | 6 | HR | Human Resources | people | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 6; profile |
@@ -112,7 +113,22 @@ Entity kinds: master, transactional, lookup, config, security.
 | ENT-SEC-013 | SignupRequest | SEC | security | PRIVATE | REGISTERED |
 | ENT-MDL-001 | LookupType | MDL | master | SHARED (owner) | REGISTERED |
 | ENT-MDL-002 | LookupValue | MDL | lookup | SHARED (owner) | REGISTERED |
-(Source: erp/modules/SEC/P1/registry-srs-sec.md, erp/modules/MDL/P1/registry-srs-mdl.md)
+| ENT-FIN-001 | Account | FIN | master | PRIVATE | REGISTERED |
+| ENT-FIN-002 | Dimension | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-003 | DimensionValue | FIN | lookup | PRIVATE | REGISTERED |
+| ENT-FIN-004 | JournalEntry | FIN | transactional | PRIVATE | REGISTERED |
+| ENT-FIN-005 | JournalLine | FIN | transactional | PRIVATE | REGISTERED |
+| ENT-FIN-006 | JournalLineDimension | FIN | transactional | PRIVATE | REGISTERED |
+| ENT-FIN-007 | FiscalYear | FIN | master | PRIVATE | REGISTERED |
+| ENT-FIN-008 | FiscalPeriod | FIN | master | PRIVATE | REGISTERED |
+| ENT-FIN-009 | EventTypeRule | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-010 | RuleLine | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-011 | RecurringTemplate | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-012 | RecurringTemplateLine | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-013 | AllocationRule | FIN | config | PRIVATE | REGISTERED |
+| ENT-FIN-014 | AllocationTarget | FIN | config | PRIVATE | REGISTERED |
+(Source: erp/modules/SEC/P1/registry-srs-sec.md, erp/modules/MDL/P1/registry-srs-mdl.md,
+erp/modules/FIN/P1/registry-srs-fin.md)
 
 ## SHARED ENTITY DECLARATIONS
 | Entity | Owner ENT id | Owner module | Consumers so far |
@@ -129,13 +145,17 @@ Entity kinds: master, transactional, lookup, config, security.
 |---|---|---|---|---|---|
 | SEC | v1 | 13 (SEC_USER … SEC_SIGNUP_REQUEST) | DBF-SEC-001 … DBF-SEC-104 | API-SEC-001 … API-SEC-027 (QR-SEC-001…038) | none (ROOT) |
 | MDL | v1 | 2 (MDL_LOOKUP_TYPE, MDL_LOOKUP_VALUE) | DBF-MDL-001 … DBF-MDL-021 | API-MDL-001 … API-MDL-011 (QR-MDL-001…015) | XM-MDL-001 (SOFT-READ → SEC, ACTIVE) |
+| FIN | v1 | 14 (FIN_ACCOUNT … FIN_ALLOCATION_TARGET) | DBF-FIN-001 … DBF-FIN-146 | API-FIN-001 … API-FIN-032 (QR-FIN-001…044) | XM-FIN-001 (SOFT-READ → MDL, ACTIVE) |
 
 ## CROSS-MODULE DEPENDENCY INDEX
 | Candidate ref | Kind | From module | To module | Consumes | Status | Evidence |
 |---|---|---|---|---|---|---|
-| XM-CAND-001 | HARD-FK | FIN | SEC | identity + module/screen/action grants + SoD (entry-creator ≠ period-close approver) | CANDIDATE — target SEC v1 now GATED (pass-1 APPROVE); ready for FIN's own P2 to assign the formal XM-FIN-* id | domain-profile §6 row "FIN \| SEC \| HARD-FK" |
-| XM-CAND-002 | HARD-FK | FIN | MDL | payment methods, accounting event types, account types, period states, journal types | CANDIDATE — target MDL v1 now GATED (pass-1 APPROVE); ready for FIN's own P2 to assign the formal XM-FIN-* id | domain-profile §6 row "FIN \| MDL \| HARD-FK" |
+| XM-CAND-001 | — | FIN | SEC | RESOLVED — identity/authorization + SoD are enforced via the platform-standard interceptor (narrated in FIN's P3.1 Phase 1/Phase 7), not a formal XM row; see ADR-FIN-001 | RESOLVED — not an XM (no physical cross-module FK) | domain-profile §6 row "FIN \| SEC \| HARD-FK" (superseded) |
+| XM-CAND-002 | — | FIN | MDL | RESOLVED — see XM-FIN-001 below; the platform-summary/module-registry candidate assumed HARD-FK, P2 correctly reclassified to SOFT-READ (ADR-FIN-001) | RESOLVED | domain-profile §6 row "FIN \| MDL \| HARD-FK" (superseded) |
 | XM-MDL-001 | SOFT-READ | MDL | SEC | ModuleRegistry (ENT-SEC-004) — validates a lookup type's owner module code | ACTIVE (assigned, not a candidate) | erp/modules/MDL/P2/db-script-mdl.md §2 |
+| XM-FIN-001 | SOFT-READ | FIN | MDL | LookupValue — validates every FIN lookup-backed column's code (13 keys) | ACTIVE (assigned, not a candidate) | erp/modules/FIN/P2/db-script-fin.md §2; erp/decisions/FIN/ADR-FIN-001.md |
+FIN's SEC dependency (identity/authorization, self-registration) is not an XM row — see
+ADR-FIN-001: no physical cross-module FK exists anywhere in this pipeline.
 | XM-CAND-003 | SOFT/EVENT | FIN | Notifications (NOTIF, out of this batch) | period-close-awaiting notice, statement export — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
 | XM-CAND-004 | SOFT/EVENT | FIN | File Service (FILESVC, out of this batch) | statement/export file — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
 | XM-CAND-005 | SOFT | SEC | Notifications (NOTIF, out of this batch) | password-reset message — optional only | CANDIDATE | domain-profile §6; security-module-plan-en.md §8 |
@@ -155,6 +175,7 @@ pre-registered as candidates above — this is not a closed list.
 | 6 | Notifications/File Service integration is optional-only, used solely on explicit plan need | ACCEPTED | domain-profile §8 row 6 |
 | 7 | ADR-SEC-001 — SEC's owned lookups (USER_STATUS, SIGNUP_STATUS, AUDIT_EVENT_TYPE) stay CHECK-constrained in v1, not in a shared MDL lookup table, since SEC precedes MDL in this batch | ACCEPTED (non-breaking) | erp/decisions/SEC/ADR-SEC-001.md |
 | 8 | ADR-SEC-002 — Error-catalog infrastructure rows (not-found, duplicate, invalid-transition, forbidden, invalid-sort, server) are cited as PLATFORM-STD under one umbrella ADR rather than a dedicated SRS RULE each | ACCEPTED (non-breaking) | erp/decisions/SEC/ADR-SEC-002.md |
+| 9 | ADR-FIN-001 — FIN's SEC dependencies (identity/authorization, self-registration) are not modeled as XM rows; only XM-FIN-001 (SOFT-READ → MDL, lookup validation) is assigned, since no physical cross-module FK exists anywhere in this pipeline | ACCEPTED (non-breaking) | erp/decisions/FIN/ADR-FIN-001.md |
 
 ## OPEN QUESTION INDEX
 none — `domain-profile.md` §10 records no open item.
@@ -164,7 +185,7 @@ none — `domain-profile.md` §10 records no open item.
 |---|---|---|---|---|---|
 | SEC | v1 | P3.1 (pass-1 complete) | APPROVE (pass-1, 2026-09-10) | backend: split done, deliver BLOCKED (no repo linked) | — |
 | MDL | v1 | P3.1 (pass-1 complete) | APPROVE (pass-1, 2026-09-10) | backend: split done, deliver BLOCKED (no repo linked) | — |
-| FIN | v1 | NOT STARTED | — | — | — |
+| FIN | v1 | P3.1 (pass-1 complete) | APPROVE (pass-1, 2026-09-10) | backend: split done, deliver BLOCKED (no repo linked) | — |
 | ORG | — | NOT STARTED | — | — | — |
 | PRC | — | NOT STARTED | — | — | — |
 | HR | — | NOT STARTED | — | — | — |
@@ -191,4 +212,12 @@ none — `domain-profile.md` §10 records no open item.
 | 2026-09-10 | P3.1 | MDL | v1 | P3.1 completed: MDL — 11 API, 15 QR, ALIGN PASSED, 0 new ADR |
 | 2026-09-10 | gate:pass-1 | MDL | v1 | GATE pass-1: APPROVE (scores unambiguous 3, verifiable 3, complete 3, consistent 3, singular 3, feasible 3, traceable 3) |
 | 2026-09-10 | split | MDL | v1 | backend/exec split: 11 files, verify ok (21 checked) |
+| 2026-09-10 | P0 | FIN | v1 | P0 completed: FIN (platform-summary, module-registry-fin, business-policies-fin — 20 POL, incl. all 14 §12 must-honor points) |
+| 2026-09-10 | P0.5 | FIN | v1 | P0.5 completed: FIN — 19 stories; prd-approval APPROVED by ahmed.alsabonabi@gmail.com |
+| 2026-09-10 | P1 | FIN | v1 | P1 completed: FIN — 14 entities, 46 requirements, 46 AC, 16 rules, 12 screen requirements, 0 ADR |
+| 2026-09-10 | P2 | FIN | v1 | P2 completed: FIN — 14 tables, 146 DBF, 1 XM (XM-FIN-001, SOFT-READ → MDL); ADR-FIN-001 (ACCEPTED) |
+| 2026-09-10 | P3.1 | FIN | v1 | P3.1 completed: FIN — 32 API, 44 QR, ALIGN PASSED (14-point §12 coverage confirmed), 0 new ADR |
+| 2026-09-10 | gate:pass-1 | FIN | v1 | GATE pass-1: APPROVE (scores unambiguous 3, verifiable 3, complete 3, consistent 3, singular 3, feasible 3, traceable 2) |
+| 2026-09-10 | split | FIN | v1 | backend/exec split: 15 files, verify ok (45 checked) |
+| 2026-09-10 | BATCH | (platform) | — | GENERATION-INSTRUCTIONS.md batch complete: SEC v1 → MDL v1 → FIN v1, all pass-1 APPROVE, in mandated dependency order |
 ══════════════════════════════════════════════════════════════════
