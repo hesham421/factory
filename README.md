@@ -120,7 +120,7 @@ Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/r
 ## Quality gates in code
 - `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.
 - `gov.py lint` — the constitution: profile schema, no removed concepts, no domain literals outside profiles, no stage/phase/prefix literals in code, generated files fresh.
-- `python3 -m pytest governance-tools/tests -q` — the toolkit and orchestrator tests (ERP profile + a non-ERP toy profile).
+- `python3 -m pytest governance-tools/tests -q` — the toolkit and orchestrator tests (the checked-in `erp` profile + a synthetic toy profile, proving domain-agnosticism).
 
 ## Linking consumer repos
 Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `governance/api-docs/api-docs-{mod}.md`; the factory delivers to `governance/modules/{MOD}` on branch `gov/{mod}-v{version}-{track}` and tags `{mod}-v{version}`.
