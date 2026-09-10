@@ -2,7 +2,7 @@
   "module": "SEC",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-10T16:04:13+00:00",
+  "generated_at": "2026-09-10T20:54:52+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -33,6 +33,15 @@
     ],
     "registry-exec-be": [
       1
+    ],
+    "backend-test-plan": [
+      1
+    ],
+    "frontend-test-plan": [
+      1
+    ],
+    "test-execution-manifest": [
+      1
     ]
   },
   "missing": [
@@ -40,10 +49,8 @@
     "ui-ux-spec",
     "frontend-execution-plan",
     "registry-exec-fe",
-    "backend-test-plan",
-    "frontend-test-plan",
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789056253.6189938
+  "inputs_mtime": 1789073692.0575747
 }
