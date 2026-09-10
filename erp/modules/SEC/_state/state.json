@@ -1,0 +1,29 @@
+{
+  "module": "SEC",
+  "version": 1,
+  "profile": "erp",
+  "generated_at": "2026-09-10T15:30:04+00:00",
+  "sources": {},
+  "missing": [
+    "project-registry",
+    "platform-summary",
+    "module-registry",
+    "business-policies",
+    "prd",
+    "srs",
+    "registry-srs",
+    "db-script",
+    "registry-db",
+    "backend-execution-plan",
+    "registry-exec-be",
+    "flow-diagram",
+    "ui-ux-spec",
+    "frontend-execution-plan",
+    "registry-exec-fe",
+    "backend-test-plan",
+    "frontend-test-plan",
+    "api-verify-script",
+    "api-verify-report"
+  ],
+  "inputs_mtime": 1789054204.6128652
+}
