@@ -1284,6 +1284,46 @@ CORE interceptor at runtime → SEC-403-FORBIDDEN).
 
 **Coverage — XM → status → blocks → workaround**: not applicable (0 XM).
 
+## QR id definitions (cross-reference index — full detail in Query Reference Catalog above)
+**QR-SEC-001** — FIND_ONE user by username [ENT-SEC-001, API-SEC-001]
+**QR-SEC-002** — SAVE signup request [ENT-SEC-013, API-SEC-002]
+**QR-SEC-003** — SAVE password reset token [ENT-SEC-012, API-SEC-003]
+**QR-SEC-004** — UPDATE user password + mark token used [ENT-SEC-001, ENT-SEC-012, API-SEC-004]
+**QR-SEC-005** — FIND_BY_CRITERIA search users [ENT-SEC-001, API-SEC-005]
+**QR-SEC-006** — SAVE create user [ENT-SEC-001, API-SEC-006]
+**QR-SEC-007** — UPDATE user profile fields [ENT-SEC-001, API-SEC-007]
+**QR-SEC-008** — SAVE assign roles to user [ENT-SEC-003, API-SEC-008]
+**QR-SEC-009** — UPDATE deactivate user + terminate sessions [ENT-SEC-001, ENT-SEC-010, API-SEC-009]
+**QR-SEC-010** — UPDATE reactivate user [ENT-SEC-001, API-SEC-010]
+**QR-SEC-011** — UPDATE approve/reject signup [ENT-SEC-013, ENT-SEC-001, API-SEC-011]
+**QR-SEC-012** — FIND_BY_CRITERIA search roles [ENT-SEC-002, API-SEC-012]
+**QR-SEC-013** — SAVE create role [ENT-SEC-002, API-SEC-013]
+**QR-SEC-014** — SAVE grant module [ENT-SEC-007, API-SEC-014]
+**QR-SEC-015** — DELETE revoke module grant [ENT-SEC-007, API-SEC-015]
+**QR-SEC-016** — SAVE grant screen [ENT-SEC-008, API-SEC-016]
+**QR-SEC-017** — SAVE grant action [ENT-SEC-009, API-SEC-017]
+**QR-SEC-018** — SAVE register module [ENT-SEC-004, API-SEC-018]
+**QR-SEC-019** — SAVE register screen [ENT-SEC-005, API-SEC-019]
+**QR-SEC-020** — SAVE register action [ENT-SEC-006, API-SEC-020]
+**QR-SEC-021** — FIND_BY_CRITERIA browse registry tree [ENT-SEC-004, ENT-SEC-005, ENT-SEC-006, API-SEC-021]
+**QR-SEC-022** — AGGREGATE dashboard figures [ENT-SEC-001, ENT-SEC-010, ENT-SEC-011, ENT-SEC-002, API-SEC-022]
+**QR-SEC-023** — FIND_BY_CRITERIA search audit log [ENT-SEC-011, API-SEC-023]
+**QR-SEC-024** — FIND_BY_CRITERIA audit log export [ENT-SEC-011, API-SEC-024]
+**QR-SEC-025** — FIND_BY_CRITERIA non-terminated sessions [ENT-SEC-010, API-SEC-025]
+**QR-SEC-026** — UPDATE terminate session [ENT-SEC-010, API-SEC-026]
+**QR-SEC-027** — FIND_BY_CRITERIA effective menu tree [ENT-SEC-004, ENT-SEC-005, ENT-SEC-007, ENT-SEC-008, API-SEC-027]
+**QR-SEC-028** — EXISTS role holds module grant (RULE-SEC-001) [ENT-SEC-007, API-SEC-016]
+**QR-SEC-029** — EXISTS role holds screen grant (RULE-SEC-002) [ENT-SEC-008, API-SEC-017]
+**QR-SEC-030** — EXISTS role holds VIEW on screen (RULE-SEC-007) [ENT-SEC-009, API-SEC-017]
+**QR-SEC-031** — EXISTS conflicting action already held (RULE-SEC-005) [ENT-SEC-009, API-SEC-008, API-SEC-017]
+**QR-SEC-032** — FIND_ALL dependent screen/action grants for cascade (RULE-SEC-003) [ENT-SEC-008, ENT-SEC-009, API-SEC-015]
+**QR-SEC-033** — EXISTS uniqueness username/email [ENT-SEC-001, API-SEC-006]
+**QR-SEC-034** — EXISTS uniqueness role code [ENT-SEC-002, API-SEC-013]
+**QR-SEC-035** — EXISTS uniqueness module code [ENT-SEC-004, API-SEC-018]
+**QR-SEC-036** — EXISTS module registered + uniqueness page code (RULE-SEC-004) [ENT-SEC-004, ENT-SEC-005, API-SEC-019]
+**QR-SEC-037** — EXISTS screen exists + uniqueness permission code [ENT-SEC-005, ENT-SEC-006, API-SEC-020]
+**QR-SEC-038** — EXISTS reset token unexpired and unused (RULE-SEC-006) [ENT-SEC-012, API-SEC-004]
+
 ## Registry content
 See `registry-exec-be-sec.md`.
 ══════════════════════════════════════════════════════════════════
