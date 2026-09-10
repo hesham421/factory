@@ -70,6 +70,7 @@ tracks:
       test:
         phases:
           - {key: TEST-PLAN-BE, split_threshold: {kind: TC, count: 12, op: ">", grouping: "RULE-SCENARIOS / API-SCENARIOS"}, sub_labels: [RULE-SCENARIOS, API-SCENARIOS]}
+          - {key: INT-XM,       display: INT-XM,     integration: true, split_threshold: {kind: TC, count: 8, op: ">", grouping: "per target module"}}
   frontend:
     plans:
       exec:
@@ -83,6 +84,7 @@ tracks:
       test:
         phases:
           - {key: TEST-PLAN-FE, split_threshold: {kind: TC, count: 8, op: ">", grouping: "UI-FLOWS / INT-FLOW"}, sub_labels: [UI-FLOWS, INT-FLOW]}
+          - {key: INT-UXD,      display: INT-UXD,    integration: true, split_threshold: {kind: TC, count: 8, op: ">", grouping: "per source module"}}
 
 stack:
   db:

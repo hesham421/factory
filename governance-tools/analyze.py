@@ -296,12 +296,18 @@ def _c_traces(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                 if rid not in defs:
                     out.append(Finding(sev, "", "traces", f"`{rid}` cited in `{frm}` is not defined in `{c['defined_in']}`", frm))
         return out
-    # from = an ID kind
+    # from = an ID kind — mode "all" (default): every listed kind needs its own ≥min;
+    # mode "any": ≥min in at least one listed kind (e.g. a TC may trace to AC, XM or UXD)
+    mode = c.get("mode", "all")
     for r in ctx.records_of(frm):
-        for kind in c.get("to", []):
-            n = sum(1 for x in r.traces if idmodel.split_id(x) and idmodel.split_id(x)[0] == kind)
-            if n < mn:
-                out.append(Finding(sev, "", "traces", f"`{r.id}` traces to {n} `{kind}` id(s), needs ≥{mn}", "", r.line))
+        counts = {kind: sum(1 for x in r.traces if idmodel.split_id(x) and idmodel.split_id(x)[0] == kind) for kind in c.get("to", [])}
+        if mode == "any":
+            if counts and not any(n >= mn for n in counts.values()):
+                out.append(Finding(sev, "", "traces", f"`{r.id}` traces to none of {list(counts)} (needs ≥{mn} in at least one)", "", r.line))
+        else:
+            for kind, n in counts.items():
+                if n < mn:
+                    out.append(Finding(sev, "", "traces", f"`{r.id}` traces to {n} `{kind}` id(s), needs ≥{mn}", "", r.line))
     return out
 
 

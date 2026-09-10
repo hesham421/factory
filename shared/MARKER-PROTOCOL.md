@@ -87,6 +87,7 @@ Backend, test plan:
 | Key | Display | Folder | Split when | SUB labels |
 |---|---|---|---|---|
 | `TEST-PLAN-BE` | TEST-PLAN-BE | `TEST-PLAN-BE` | TC > 12 (RULE-SCENARIOS / API-SCENARIOS) | `RULE-SCENARIOS`, `API-SCENARIOS` |
+| `INT-XM` | INT-XM _(integration — populated for `--modules`/`--scope project`)_ | `INT-XM` | TC > 8 (per target module) | — |
 <!-- /RENDER:phases:backend:test -->
 
 Frontend, execution plan:
@@ -106,6 +107,7 @@ Frontend, test plan:
 | Key | Display | Folder | Split when | SUB labels |
 |---|---|---|---|---|
 | `TEST-PLAN-FE` | TEST-PLAN-FE | `TEST-PLAN-FE` | TC > 8 (UI-FLOWS / INT-FLOW) | `UI-FLOWS`, `INT-FLOW` |
+| `INT-UXD` | INT-UXD _(integration — populated for `--modules`/`--scope project`)_ | `INT-UXD` | TC > 8 (per source module) | — |
 <!-- /RENDER:phases:frontend:test -->
 
 ## 5. Rules (from `markers.rules`, non-negotiable)

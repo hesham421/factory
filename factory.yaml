@@ -200,15 +200,19 @@ passes:
 standalone:
   - id: test-gen
     title: Test Generation
-    lane: analysis
+    lane: test-gen
     questions: forbidden
-    inputs: [srs, "backend-execution-plan?", "frontend-execution-plan?", registry-srs]
+    scoped: true                   # supports `run-standalone --module|--modules|--scope project`
+                                    # (gov.py routes on this flag, never on a stage-id literal — C2)
+    inputs: [srs, "backend-execution-plan?", "frontend-execution-plan?", registry-srs, "registry-db?", "registry-exec-fe?"]
     produces:
       - {artifact: backend-test-plan, file: "backend-test-plan-{mod}.md", plan: test, track: backend}
       - {artifact: frontend-test-plan, file: "frontend-test-plan-{mod}.md", plan: test, track: frontend}
       - {artifact: test-execution-manifest, file: "test-execution-manifest-{mod}.md", optional: true}
+      - {artifact: system-test-index, file: "system-test-index-{profile}.md", dir: platform, optional: true}
     owns_ids: [TC]
-    derives_from: AC               # every TC cites the AC it was derived from
+    derives_from: AC               # every TC cites the AC it was derived from; integration scope also
+                                    # derives TC from XM (backend) and UXD (frontend) — ids.atoms.TC.traces_to
   - id: api-verify
     title: API Verification (post-implementation)
     lane: analysis
@@ -245,7 +249,7 @@ ids:
     UXD:  {owner: P3.2,      title: ux decision,           traces_to: [REQ, AC]}
     SCR:  {owner: P3.2,      title: screen,                traces_to: [REQ, UXD]}
     SCR-REQ: {owner: P1,     title: screen requirement,    traces_to: [REQ]}
-    TC:   {owner: test-gen,  title: test case,             traces_to: [AC]}
+    TC:   {owner: test-gen,  title: test case,             traces_to: [AC, XM, UXD]}
     ADR:  {owner: any,       title: analysis decision record}
     CS:   {owner: versioning,title: change set}
   ears:
@@ -344,6 +348,10 @@ lanes:
   merge-review-notes:
     implementers: ["claude:sonnet"]
     effort: low
+  test-gen:
+    implementers: ["claude:opus"]
+    effort: high                       # a dedicated lane so its model can be swapped independently
+                                        # of `analysis` — same shape, own identity (factory.yaml lanes)
 
 # ── Review rubric (ISO/IEC/IEEE 29148 attributes) used by every gate ────────
 review:
@@ -376,7 +384,7 @@ commands:
   - {id: new-domain,    runs: "new-domain",             args: "ID"}
   - {id: render,        runs: "render",                 args: ""}
   - {id: lint,          runs: "lint",                   args: "[--profile ID]"}
-  - {id: test-gen,      runs: "run-standalone test-gen",  args: "MOD --version N"}
+  - {id: test-gen,      runs: "run-standalone test-gen",  args: "--module MOD (or --modules A,B,... or --scope project) [--version N]"}
   - {id: api-verify,    runs: "run-standalone api-verify", args: "MOD --version N"}
 
 # ── Lint — Constitution enforcement (C1–C5) ─────────────────────────────────

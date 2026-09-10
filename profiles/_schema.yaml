@@ -53,6 +53,8 @@ $types:
     split_threshold?: "{kind: (API|XM|TC|SCR), count: int, op: (>=|>), grouping?: str}"
     sub_labels?: "list[str]"                # expected SUB labels when split (test plans: bare; others: phase-qualified)
     sub_bearing?: "bool"                    # frontend: per-screen SUB blocks expected
+    integration?: "bool"                    # test plans: populated only when the run's scope spans
+                                             # more than one module (a cross-module TC phase)
 
 stack:                                      # REQUIRED — every technology fact lives here
   db:

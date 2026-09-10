@@ -2,7 +2,7 @@
 # /test-gen — `gov.py run-standalone test-gen`
 
 ```
-/test-gen MOD --version N
+/test-gen --module MOD (or --modules A,B,... or --scope project) [--version N]
 ```
 
-Thin wrapper: runs `python3 governance-tools/gov.py run-standalone test-gen MOD --version N` from the repo root and prints its report. Behaviour, gates and lanes are defined in `factory.yaml` — nothing here.
+Thin wrapper: runs `python3 governance-tools/gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) [--version N]` from the repo root and prints its report. Behaviour, gates and lanes are defined in `factory.yaml` — nothing here.

@@ -19,6 +19,7 @@ description: API Verification (post-implementation) — standalone stage (outsid
 | Then | —  |
 
 ## How this stage runs (orchestrator-owned — see `shared/GOVERNANCE-CORE.md` §6)
+0. Runtime model: chosen by the delegate lane whose id matches this stage's own lane (`analysis` → `factory.yaml → lanes.analysis`) — swapping the model is a `factory.yaml` data edit, nothing here.
 1. `gov.py state` refreshes `_state/`; the brief = `references/ENGINE.md` rendered with `profile` + `factory` + `stage` + the state files.
 2. The lane dispatches the brief.
 3. Artifacts are written to the module version folder; `gov.py analyze` runs the contracts; the stage commits (`{stage}: [{MOD}] v{version} — {summary}`).

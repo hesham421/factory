@@ -171,6 +171,67 @@ def test_full_dry_run_both_passes_split_deliver_tag(orch_root, mod, tmp_path, mo
     assert rep.clean, [str(f) for f in rep.findings]
 
 
+def test_test_gen_has_its_own_lane(orch_root):
+    """factory.yaml → standalone.test-gen.lane must equal a lane of the same name (C3) —
+    so the model can be swapped independently of `analysis`, without touching the stage."""
+    stage = CFG.stage("test-gen")
+    assert stage.lane == "test-gen"
+    assert "test-gen" in CFG.lanes
+    assert CFG.lane(stage.lane).get("implementers")
+    assert stage.scoped   # supports --module / --modules / --scope project
+
+
+def test_test_gen_module_flag_matches_run_stage(orch_root, mod, tmp_path, monkeypatch):
+    """`run-standalone test-gen --module MOD` (single module) resolves to the exact
+    same path as `run-stage test-gen -m MOD` — byte-for-byte in shape."""
+    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
+    assert gov.run_standalone("test-gen", mod, None, "module", 1, complete=False, no_commit=True) == AWAITING
+    brief = CFG.state_dir(mod, 1) / "briefs" / "test-gen.md"
+    assert brief.exists()   # the plain single-module brief path (build_brief()), not build_brief_scoped()
+    fx.write_stage("test-gen", mod)
+    assert gov.run_standalone("test-gen", mod, None, "module", 1, complete=True, no_commit=True) == OK
+
+
+def test_test_gen_scoped_modules_and_project(orch_root, tmp_path, monkeypatch):
+    """`--modules A,B` dispatches one combined brief and writes each module's own test
+    plans; `--scope project` rolls every module with a committed version into one
+    platform-level system-test-index — neither one is a gate, neither mints a new ID."""
+    mod1, mod2 = list(CFG.profile.vocabulary["module_prefixes"])[:2]
+    for m in (mod1, mod2):
+        _run_pass1(orch_root, m, tmp_path, monkeypatch)
+
+    # scope: modules — one combined brief, two modules' worth of outputs
+    assert gov.run_standalone("test-gen", None, f"{mod1},{mod2}", "module", None, complete=False, no_commit=False) == AWAITING
+    brief = CFG.state_dir(mod1, 1) / "briefs" / f"test-gen-{mod1}-{mod2}.md"
+    text = brief.read_text(encoding="utf-8")
+    assert "scope `modules`" in text and mod1 in text and mod2 in text
+    for m in (mod1, mod2):
+        fx.write_stage("test-gen", m)
+    assert gov.run_standalone("test-gen", None, f"{mod1},{mod2}", "module", None, complete=True, no_commit=False) == OK
+    for m in (mod1, mod2):
+        rep = an.run(m, 1, scope=f"stage:test-gen")
+        assert rep.clean, [str(f) for f in rep.findings]
+
+    # scope: project — rolls up every module with a committed version
+    assert gov.run_standalone("test-gen", None, None, "project", None, complete=False, no_commit=False) == AWAITING
+    pbrief = CFG.state_dir(mod1, 1) / "briefs" / "test-gen-project.md"
+    ptext = pbrief.read_text(encoding="utf-8")
+    assert "scope `project`" in ptext and mod1 in ptext and mod2 in ptext
+    sti = CFG.artifact_path(mod1, "test-gen", "system-test-index", 1)
+    fx.write(sti, f"# System test index — {CFG.profile_id}\nAC/XM/UXD rollup across {mod1}, {mod2}.\n")
+    assert gov.run_standalone("test-gen", None, None, "project", None, complete=True, no_commit=False) == OK
+    assert sti.exists() and CFG.profile_id in sti.read_text(encoding="utf-8")
+
+
+def test_test_gen_scope_flags_are_exclusive_to_test_gen(orch_root, mod):
+    """`--modules`/`--scope project` are rejected for a standalone stage that does not
+    declare `scoped: true` (api-verify) — the gate is the config flag, not a stage-id
+    literal in code."""
+    assert not CFG.stage("api-verify").scoped
+    assert gov.run_standalone("api-verify", None, f"{mod},{mod}2", "module", 1, complete=False, no_commit=True) == BLOCKED
+    assert gov.run_standalone("api-verify", None, None, "project", 1, complete=False, no_commit=True) == BLOCKED
+
+
 def test_analyze_catches_contract_violations(orch_root, mod):
     for s in ("domain-profile", "P-1", "P0", "P0.5"):
         fx.write_stage(s, mod)

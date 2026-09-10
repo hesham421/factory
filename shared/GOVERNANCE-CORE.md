@@ -94,7 +94,7 @@ Pattern `{prefix}-{MOD}-{seq}`, sequence width 3.
 | `UXD` | ux decision | `P3.2` | `REQ`, `AC` | — |
 | `SCR` | screen | `P3.2` | `REQ`, `UXD` | — |
 | `SCR-REQ` | screen requirement | `P1` | `REQ` | — |
-| `TC` | test case | `test-gen` | `AC` | — |
+| `TC` | test case | `test-gen` | `AC`, `XM`, `UXD` | — |
 | `ADR` | analysis decision record | `any` | — | — |
 | `CS` | change set | `versioning` | — | — |
 <!-- /RENDER:ids -->
@@ -200,6 +200,7 @@ operation — deterministic, no brief, no lane, no model:
 | `review-per-engine` | `claude:sonnet` | medium | read-only | — |
 | `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
+| `test-gen` | `claude:opus` | high | — | — |
 <!-- /RENDER:lanes -->
 
 - `implementers` is a **list**. One entry → single implementer. More than one

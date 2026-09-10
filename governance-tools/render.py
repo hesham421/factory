@@ -126,7 +126,8 @@ def block_phases(cfg, track: str, plan: str):
     rows = []
     for p in prof.phases(track, plan):
         thr = p.split_threshold
-        rows.append([f"`{p.key}`", p.display, f"`{p.folder}`",
+        display = p.display + (" _(integration — populated for `--modules`/`--scope project`)_" if p.integration else "")
+        rows.append([f"`{p.key}`", display, f"`{p.folder}`",
                      "never" if p.never_split else (f"{thr['kind']} {thr['op']} {thr['count']}" + (f" ({thr.get('grouping')})" if thr and thr.get("grouping") else "")) if thr else ("per screen" if p.sub_bearing else "—"),
                      _ids_list(p.sub_labels)])
     return _t(rows, ["Key", "Display", "Folder", "Split when", "SUB labels"])

@@ -45,7 +45,7 @@ All stages of a pass run in one delegate session with one commit per stage.
 <!-- RENDER:standalone -->
 | Stage | Title | Pass | Questions | Lane | Inputs | Produces | Owns IDs |
 |---|---|---|---|---|---|---|---|
-| `test-gen` | Test Generation | standalone | forbidden | `analysis` | `srs`, `backend-execution-plan?`, `frontend-execution-plan?`, `registry-srs` | `backend-test-plan-{mod}.md`, `frontend-test-plan-{mod}.md`, `test-execution-manifest-{mod}.md` | `TC` |
+| `test-gen` | Test Generation | standalone | forbidden | `test-gen` | `srs`, `backend-execution-plan?`, `frontend-execution-plan?`, `registry-srs`, `registry-db?`, `registry-exec-fe?` | `backend-test-plan-{mod}.md`, `frontend-test-plan-{mod}.md`, `test-execution-manifest-{mod}.md`, `system-test-index-{profile}.md` | `TC` |
 | `api-verify` | API Verification (post-implementation) | standalone | forbidden | `analysis` | `api-docs`, `test-execution-manifest?` | `api-verify-{mod}.py`, `api-verify-report-{mod}.md` | — |
 <!-- /RENDER:standalone -->
 
@@ -66,6 +66,7 @@ All stages of a pass run in one delegate session with one commit per stage.
 | `review-per-engine` | `claude:sonnet` | medium | read-only | — |
 | `review-holistic` | `claude:sonnet` | medium | read-only | — |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
+| `test-gen` | `claude:opus` | high | — | — |
 <!-- /RENDER:lanes -->
 
 ## Active profile
@@ -96,7 +97,7 @@ Add a domain: `gov.py new-domain <id>` scaffolds `profiles/<id>.yaml` from `_sch
 | `/new-domain ID` | `gov.py new-domain` |
 | `/render ` | `gov.py render` |
 | `/lint [--profile ID]` | `gov.py lint` |
-| `/test-gen MOD --version N` | `gov.py run-standalone test-gen` |
+| `/test-gen --module MOD (or --modules A,B,... or --scope project) [--version N]` | `gov.py run-standalone test-gen` |
 | `/api-verify MOD --version N` | `gov.py run-standalone api-verify` |
 <!-- /RENDER:commands -->
 
@@ -112,7 +113,8 @@ gov.py split --track backend -m MOD -v N     # marker protocol → packages (+ S
 gov.py deliver --track backend -m MOD -v N   # branch + execution-state.json in the consumer repo
 gov.py fetch-inputs -m MOD -v N              # pass-2 hard gate: api-docs back from the backend repo
 gov.py run-pass 2 … · gate 2 … · split/deliver --track frontend … · gov.py tag -m MOD -v N
-gov.py run-standalone test-gen|api-verify -m MOD -v N   # outside the line, on demand
+gov.py run-standalone api-verify -m MOD -v N             # outside the line, on demand
+gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) -v N   # test-gen's own scopes
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
 ```
 Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/relay.mjs --lane {lane} {read_only_flag} --brief {brief} --out {out}'` — a lane-name-matching delegate CLI needs nothing else, since its own config maps `{lane}` to a model/effort/readonly (dialogue lanes alternate implementers until `<!-- CONVERGED -->`); `GOV_RUNNER=manual` (Claude Code + delegate skills execute each brief by hand).

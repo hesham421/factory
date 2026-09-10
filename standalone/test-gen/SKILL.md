@@ -12,14 +12,15 @@ description: Test Generation — standalone stage (outside the governed line, ne
 | Kind | standalone — outside the line, on demand, never a gate for the core |
 | Pass | standalone |
 | Questions | **forbidden** |
-| Lane | `analysis` → claude:opus (effort high) |
-| Inputs | `srs`, `backend-execution-plan?`, `frontend-execution-plan?`, `registry-srs` — read from `_state/` |
-| Produces | `backend-test-plan-{mod}.md` (plan `test`, track `backend`) · `frontend-test-plan-{mod}.md` (plan `test`, track `frontend`) · `test-execution-manifest-{mod}.md` (optional) |
+| Lane | `test-gen` → claude:opus (effort high) |
+| Inputs | `srs`, `backend-execution-plan?`, `frontend-execution-plan?`, `registry-srs`, `registry-db?`, `registry-exec-fe?` — read from `_state/` |
+| Produces | `backend-test-plan-{mod}.md` (plan `test`, track `backend`) · `frontend-test-plan-{mod}.md` (plan `test`, track `frontend`) · `test-execution-manifest-{mod}.md` (optional) · `system-test-index-{profile}.md` (optional) |
 | Owns IDs | `TC` |
 | Derives from | every produced ID cites its `AC` |
 | Then | —  |
 
 ## How this stage runs (orchestrator-owned — see `shared/GOVERNANCE-CORE.md` §6)
+0. Runtime model: chosen by the delegate lane whose id matches this stage's own lane (`test-gen` → `factory.yaml → lanes.test-gen`) — swapping the model is a `factory.yaml` data edit, nothing here.
 1. `gov.py state` refreshes `_state/`; the brief = `references/ENGINE.md` rendered with `profile` + `factory` + `stage` + the state files.
 2. The lane dispatches the brief.
 3. Artifacts are written to the module version folder; `gov.py analyze` runs the contracts; the stage commits (`{stage}: [{MOD}] v{version} — {summary}`).

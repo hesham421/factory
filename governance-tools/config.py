@@ -63,7 +63,8 @@ class Artifact:
     optional: bool = False
 
     def filename(self, mod: str) -> str:
-        return self.file.replace("{mod}", mod.lower()).replace("{MOD}", mod.upper())
+        out = self.file.replace("{mod}", mod.lower()).replace("{MOD}", mod.upper())
+        return out.replace("{profile}", CFG.profile_id)
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ class Stage:
     research: str | None = None
     requirement_format: str | None = None
     derives_from: str | None = None
+    scoped: bool = False            # supports `run-standalone --module|--modules|--scope project`
     raw: dict = field(default_factory=dict, compare=False)
 
     @property
@@ -109,6 +111,7 @@ class Phase:
     split_threshold: dict | None = None
     sub_labels: tuple[str, ...] = ()
     sub_bearing: bool = False
+    integration: bool = False
 
 
 class Profile:
@@ -176,6 +179,7 @@ class Profile:
                 split_threshold=r.get("split_threshold"),
                 sub_labels=tuple(r.get("sub_labels", ()) or ()),
                 sub_bearing=bool(r.get("sub_bearing", False)),
+                integration=bool(r.get("integration", False)),
             ))
         return out
 
@@ -289,7 +293,7 @@ class FactoryConfig:
             track=raw.get("track"), once_per=raw.get("once_per"),
             next=raw.get("next"), research=raw.get("research"),
             requirement_format=raw.get("requirement_format"),
-            derives_from=raw.get("derives_from"), raw=raw,
+            derives_from=raw.get("derives_from"), scoped=bool(raw.get("scoped", False)), raw=raw,
         )
 
     @cached_property

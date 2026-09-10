@@ -127,9 +127,9 @@ contracts:
     title: acceptance criteria → test generation (standalone)
     owner: P1
     consumer: test-gen
-    artifacts: [srs, registry-srs, backend-execution-plan, frontend-execution-plan]
+    artifacts: [srs, registry-srs, backend-execution-plan, frontend-execution-plan, registry-db, registry-exec-fe]
     clauses:
-      - {id: C10.1, check: traces,   args: {from: TC, to: [AC], min: 1},                                              severity: CRITICAL}
+      - {id: C10.1, check: traces,   args: {from: TC, to: [AC, XM, UXD], min: 1, mode: any},                          severity: CRITICAL}
       - {id: C10.2, check: orphans,  args: {kind: AC, referenced_by: [TC], min: 1},                                   severity: MAJOR}
       - {id: C10.3, check: markers,  args: {artifact: backend-test-plan, track: backend, plan: test},                 severity: CRITICAL}
       - {id: C10.4, check: markers,  args: {artifact: frontend-test-plan, track: frontend, plan: test},               severity: CRITICAL}
@@ -177,7 +177,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 9 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 3 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 11 |
-| `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan` | 6 |
+| `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
 <!-- /RENDER:contracts-index -->
@@ -296,11 +296,11 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 
 | | |
 |---|---|
-| Owner | `P1` (`AC`), with the execution plans as optional context |
-| Consumer | `test-gen` (`factory.standalone`, `derives_from: AC`) |
-| What crosses | every `AC` (Given / When / Then), its `REQ`, the exec plans' `API`/`SCR` blocks for placement; `profile.stack.testing` decides framework neutrality |
-| What does not cross | implementation detail, framework code, gate status — test plans never gate the core |
-| Clauses | C10.1 every `TC` → `AC` · C10.2 every `AC` has ≥1 `TC` · C10.3/C10.4 test plans' markers valid for `plan: test` per track · C10.5 only `TC` defined · C10.6 `test-execution-manifest` exists when `profile.stack.testing.manifest` |
+| Owner | `P1` (`AC`), `P2` (`XM`, via `registry-db`/`backend-execution-plan`), `P3.2` (`UXD`, via `registry-exec-fe`/`frontend-execution-plan`) |
+| Consumer | `test-gen` (`factory.standalone`, `derives_from: AC`; integration scope also derives from `XM`/`UXD` — `ids.atoms.TC.traces_to`) |
+| What crosses | every `AC` (Given / When / Then), its `REQ`, the exec plans' `API`/`SCR` blocks for placement; at `--modules`/`--scope project`: the `XM` blocks of each selected module's `backend-execution-plan` (+ `registry-db`) and the `UXD` references of each selected module's `frontend-execution-plan` (+ `registry-exec-fe`) — only atoms that actually link two *selected* modules are eligible; `profile.stack.testing` decides framework neutrality |
+| What does not cross | implementation detail, framework code, gate status — test plans never gate the core; a fabricated integration flow with no backing `XM`/`UXD` |
+| Clauses | C10.1 every `TC` → `AC`/`XM`/`UXD` (≥1) · C10.2 every `AC` has ≥1 `TC` · C10.3/C10.4 test plans' markers valid for `plan: test` per track · C10.5 only `TC` defined · C10.6 `test-execution-manifest` exists when `profile.stack.testing.manifest` |
 | Violation | C10.1/C10.3/C10.4/C10.5 CRITICAL for the standalone run only; C10.2 MAJOR; C10.6 MINOR |
 
 ## C11 — real API docs (+ manifest) → API verification (standalone)
@@ -336,7 +336,7 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | `languages` | when `profile.languages.require_all`, every language of `profile.languages.all` is present in the artifact's headings and ID labels | `stage` \| `artifact` |
 | `ids-owned` | the artifacts define IDs only of the atoms in `stages[stage].owns_ids` (`defines: []` = none); any other prefix defined = violation | `stage` \| `artifact`+`defines` |
 | `ids-continue` | for every atom, the sequence has no gap and, for version > 1, starts after the previous version's highest ID | `stage` \| `scope: version` |
-| `traces` | every ID of kind `from` (or every marker block of the listed `blocks` in the artifact `from`) carries `traces` to ≥`min` IDs of each kind in `to`; with `defined_in`, every cited ID of kind `to` must be defined in that artifact | `from`, `to?`, `blocks?`, `min?`, `defined_in?` |
+| `traces` | every ID of kind `from` (or every marker block of the listed `blocks` in the artifact `from`) carries `traces` to ≥`min` IDs of **each** kind in `to` (`mode: all`, the default); with `mode: any`, ≥`min` in **at least one** listed kind suffices (e.g. a `TC` may trace to `AC`, `XM` or `UXD`); with `defined_in`, every cited ID of kind `to` must be defined in that artifact | `from`, `to?`, `blocks?`, `min?`, `mode?`, `defined_in?` |
 | `orphans` | every ID of `kind` is referenced by ≥`min` IDs/blocks of the kinds or artifacts in `referenced_by` | `kind`, `referenced_by`, `min` |
 | `ears` | every ID of `kind` has a statement matching one of `patterns` | `kind`, `patterns` |
 | `registry-agree` | the set of IDs of `kinds` defined in `artifact` equals the set registered in `registry` (`direction` restricts to one inclusion); with `categories: all`, every category of [REGISTRY-SCHEMA.md](REGISTRY-SCHEMA.md) is mapped in the registry's compliance map | `artifact`, `registry`, `kinds` \| `categories`, `direction?` |

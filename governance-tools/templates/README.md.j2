@@ -66,7 +66,8 @@ gov.py split --track backend -m MOD -v N     # marker protocol → packages (+ S
 gov.py deliver --track backend -m MOD -v N   # branch + execution-state.json in the consumer repo
 gov.py fetch-inputs -m MOD -v N              # pass-2 hard gate: api-docs back from the backend repo
 gov.py run-pass 2 … · gate 2 … · split/deliver --track frontend … · gov.py tag -m MOD -v N
-gov.py run-standalone test-gen|api-verify -m MOD -v N   # outside the line, on demand
+gov.py run-standalone api-verify -m MOD -v N             # outside the line, on demand
+gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) -v N   # test-gen's own scopes
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
 ```
 Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/relay.mjs --lane {lane} {read_only_flag} --brief {brief} --out {out}'` — a lane-name-matching delegate CLI needs nothing else, since its own config maps `{lane}` to a model/effort/readonly (dialogue lanes alternate implementers until `<!-- CONVERGED -->`); `GOV_RUNNER=manual` (Claude Code + delegate skills execute each brief by hand).

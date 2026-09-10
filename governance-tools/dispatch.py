@@ -185,6 +185,81 @@ def build_brief(stage: Stage, mod: str, version: int, *, round_no: int = 1, impl
     return path
 
 
+# ── multi-module / project briefs (additive — single-module build_brief() is
+#    untouched, so a plain `--module MOD` run stays byte-identical) ───────────
+
+def build_brief_scoped(stage: Stage, mods: list[str], versions: dict[str, int], scope: str) -> Path:
+    """One combined brief for a `--modules A,B,...` or `--scope project` test-gen
+    run: the ENGINE.md body is rendered ONCE with `scope`/`mods` context, inputs
+    are bundled per selected module, and every module's own output files are
+    listed (plus the platform-level `system-test-index` at `scope: project`)."""
+    lane = CFG.lane(stage.lane)
+    outputs = []
+    for m in mods:
+        for a in stage.produces:
+            if a.artifact == "system-test-index":
+                continue
+            p = CFG.artifact_path(m, stage.id, a.artifact, versions[m])
+            outputs.append(f"- `{p.relative_to(CFG.root)}`{' (optional)' if a.optional else ''}")
+    if scope == "project":
+        p = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
+        outputs.append(f"- `{p.relative_to(CFG.root)}` (platform-level, optional)")
+    head = [
+        f"# BRIEF — stage `{stage.id}` ({stage.title}) · scope `{scope}` · modules {', '.join(mods)} · profile `{CFG.profile_id}`",
+        "",
+        f"Lane `{stage.lane}` · implementers {lane.get('implementers')} · effort {lane.get('effort')}",
+        "",
+        "## Rules that bind this run",
+        f"- Questions: **{stage.questions}**. A `[QUESTION]` block is refused. Ambiguity → ADR per affected module in "
+        f"`{CFG.paths['decisions']}/<MOD>/` (`{CFG.naming['adr_file']}`): non-breaking → continue; breaking → status BLOCKED and stop.",
+        f"- Owns IDs: {', '.join(stage.owns_ids)} — ID grammar `{CFG.ids['pattern']}` (seq width {CFG.ids['seq_width']}); never re-number, never restart a "
+        f"sequence; an integration TC is owned by the DECLARING module (XM) or the DISPLAYING module (UXD), never the target/owner module.",
+        f"- Read only what this brief contains (generated current state, EACH module below); never open version folders yourself.",
+        f"- Write exactly these files (complete files):",
+        *outputs,
+        "- Respond with one `<<<FILE: <repo-relative path>>>> … <<<END FILE>>>` block per file when running through a command runner; "
+        "when running as the operator, write the files directly.",
+    ]
+    body = render_engine(stage, mods[0], versions[mods[0]], scope=scope, mods=mods)
+    parts = ["\n".join(head), "", "---", "# ENGINE", body]
+    for m in mods:
+        parts += ["", "---", f"# INPUTS — module {m} (generated current state)"]
+        for label, text in _state_bundle(stage, m, versions[m]):
+            parts += [f"\n<<<INPUT: {label} ({m})>>>", text, "<<<END INPUT>>>"]
+    kn = _knowledge(stage)
+    if kn:
+        parts += ["", "---", "# KNOWLEDGE (profile primary sources — cite as [KB:<file> §n])"]
+        for label, text in kn:
+            parts += [f"\n<<<KB: {label}>>>", text, "<<<END KB>>>"]
+    bdir = CFG.state_dir(mods[0], versions[mods[0]]) / "briefs"
+    bdir.mkdir(parents=True, exist_ok=True)
+    tag = "project" if scope == "project" else "-".join(mods)
+    path = bdir / f"{stage.id}-{tag}.md"
+    path.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    return path
+
+
+def dispatch_scoped(stage: Stage, mods: list[str], versions: dict[str, int], scope: str) -> DispatchResult:
+    """Dispatch a scoped (multi-module / project) test-gen brief. Manual runner
+    only for now — a `cmd`/`fake` runner may be wired the same way build_brief()
+    already is, once a delegate needs it; the orchestrator's contract (AWAITING
+    until the brief is executed) is identical either way."""
+    lane = CFG.lane(stage.lane)
+    brief = build_brief_scoped(stage, mods, versions, scope)
+    res = DispatchResult(stage.id, stage.lane, brief)
+    if runner_kind() == "manual" or not lane.get("implementers"):
+        res.awaiting = True
+        return res
+    impl = Implementer.parse(lane["implementers"][0])
+    resp = run_round(brief, impl, lane.get("effort", "high"), 1, lane_id=stage.lane, read_only=bool(lane.get("read_only")))
+    res.rounds = 1
+    if resp is not None:
+        res.responses.append(resp)
+        res.converged = True
+        res.written = ingest(resp)
+    return res
+
+
 # ── runners ─────────────────────────────────────────────────────────────────
 
 _FAKE: Callable[[Path, Implementer, str, int], str] | None = None

@@ -9,7 +9,8 @@ and the active profile (`config.CFG`).
 
   run-stage <id> -m MOD [-v N] [--complete] [--no-commit]
   run-pass <1|2> -m MOD [-v N | --new] [--complete] [--no-commit]
-  run-standalone <id> -m MOD [-v N] [--complete]
+  run-standalone <id> -m MOD [-v N] [--complete]                       # e.g. api-verify
+  run-standalone test-gen --module MOD | --modules A,B,... | --scope project [-v N] [--complete]
   gate <1|2> -m MOD [-v N] [--complete --result FILE.json]
   approve <gate-id> -m MOD [-v N] [--by NAME]
   analyze -m MOD [-v N] [--scope all|stage:ID|pass:N|gate:ID]
@@ -37,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import CFG                     # noqa: E402
 import analyze as an                        # noqa: E402
 import dispatch as dp                       # noqa: E402
+import idmodel                              # noqa: E402
 import render as rd                         # noqa: E402
 import state as st                          # noqa: E402
 from toolkit import archive as tk_archive, splitter as tk_split, structure as tk_struct   # noqa: E402
@@ -156,6 +158,107 @@ def run_stage(stage_id: str, mod: str, version: int | None, complete: bool, no_c
         return AWAITING
     _say(f"dispatched {stage.id}: {res.rounds} round(s), converged={res.converged}, wrote {len(res.written)} file(s)")
     return _complete_stage(stage, mod, version, no_commit)
+
+
+# ── standalone: multi-module / project scope (`stage.scoped` stages only —
+#    additive, gated on the config flag, never on a stage-id literal, C2) ────
+# `--module MOD` (the single-module case) always resolves to run_stage() above,
+# byte-identical to before this scope model existed. `--modules A,B,...` and
+# `--scope project` are new, additive paths that reuse _prepare()/_complete_stage()
+# per module rather than rewriting the single-module protocol.
+
+def _all_modules_with_versions() -> list[str]:
+    root = CFG.modules_root()
+    if not root.exists():
+        return []
+    return sorted(p.name for p in root.iterdir() if p.is_dir() and CFG.module_versions(p.name))
+
+
+def run_scoped_modules(stage_id: str, mods: list[str], version: int | None, complete: bool, no_commit: bool) -> int:
+    stage = CFG.stage(stage_id)
+    versions = {m: _version(m, version) for m in mods}
+    for m in mods:
+        _prepare(m, versions[m])
+    if complete:
+        rc = OK
+        for m in mods:
+            r = _complete_stage(stage, m, versions[m], no_commit)
+            rc = r if r != OK else rc
+        return rc
+    missing = {m: miss for m in mods if (miss := _check_inputs(stage, m, versions[m]))}
+    if missing:
+        _say(f"BLOCKED: inputs missing for {stage.id}: {missing}")
+        return BLOCKED
+    res = dp.dispatch_scoped(stage, mods, versions, "modules")
+    if res.awaiting:
+        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
+        _say(f"  lane `{stage.lane}` implementers {CFG.lane(stage.lane).get('implementers')} — execute the brief (delegate), write the files it lists, then:")
+        _say(f"  gov.py run-standalone {stage.id} --modules {','.join(mods)} --complete")
+        return AWAITING
+    _say(f"dispatched {stage.id} (modules {', '.join(mods)}): wrote {len(res.written)} file(s)")
+    rc = OK
+    for m in mods:
+        r = _complete_stage(stage, m, versions[m], no_commit)
+        rc = r if r != OK else rc
+    return rc
+
+
+def _complete_test_gen_project(stage, mods: list[str], versions: dict[str, int], no_commit: bool) -> int:
+    sti_path = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
+    if not sti_path.exists() or not sti_path.read_text(encoding="utf-8").strip():
+        _say(f"BLOCKED: {stage.id} (project scope) did not produce {sti_path.relative_to(CFG.root)}")
+        return BLOCKED
+    qlines = idmodel.questions(sti_path.read_text(encoding="utf-8"))
+    if qlines:
+        _say(f"BLOCKED: {stage.id} raised questions but questions are forbidden here: {qlines[:5]} — apply the ambiguity rule (ADR) and re-run")
+        return BLOCKED
+    sha = _commit([sti_path], f"{stage.id}: [ALL] project — system test index ({CFG.profile_id})", no_commit)
+    _say(f"OK: {stage.id} project {'committed ' + sha if sha else 'done (nothing new to commit)'}")
+    return OK
+
+
+def run_scoped_project(stage_id: str, version: int | None, complete: bool, no_commit: bool) -> int:
+    stage = CFG.stage(stage_id)
+    mods = _all_modules_with_versions()
+    if not mods:
+        _say("BLOCKED: --scope project needs at least one module with a committed version")
+        return BLOCKED
+    versions = {m: _version(m, version) for m in mods}
+    for m in mods:
+        _prepare(m, versions[m])
+    if complete:
+        return _complete_test_gen_project(stage, mods, versions, no_commit)
+    res = dp.dispatch_scoped(stage, mods, versions, "project")
+    sti_path = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
+    if res.awaiting:
+        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
+        _say(f"  lane `{stage.lane}` implementers {CFG.lane(stage.lane).get('implementers')} — execute the brief, write {sti_path.relative_to(CFG.root)}, then:")
+        _say(f"  gov.py run-standalone {stage.id} --scope project --complete")
+        return AWAITING
+    _say(f"dispatched {stage.id} (project, {len(mods)} module(s)): wrote {len(res.written)} file(s)")
+    return _complete_test_gen_project(stage, mods, versions, no_commit)
+
+
+def run_standalone(stage_id: str, module: str | None, modules_csv: str | None, scope: str,
+                    version: int | None, complete: bool, no_commit: bool) -> int:
+    stage = CFG.stage(stage_id)
+    if not stage.standalone:
+        raise SystemExit(f"'{stage_id}' is not a standalone stage")
+    if scope == "project":
+        if not stage.scoped:
+            _say(f"BLOCKED: --scope project is not supported by `{stage_id}` (factory.yaml → standalone.{stage_id}.scoped)")
+            return BLOCKED
+        return run_scoped_project(stage_id, version, complete, no_commit)
+    mods = [m.strip().upper() for m in modules_csv.split(",") if m.strip()] if modules_csv else ([module.upper()] if module else [])
+    if not mods:
+        _say(f"BLOCKED: run-standalone {stage_id} needs -m/--module, --modules, or --scope project")
+        return BLOCKED
+    if len(mods) == 1:
+        return run_stage(stage_id, mods[0], version, complete, no_commit)   # byte-identical single-module path
+    if not stage.scoped:
+        _say(f"BLOCKED: --modules (more than one) is not supported by `{stage_id}` (factory.yaml → standalone.{stage_id}.scoped)")
+        return BLOCKED
+    return run_scoped_modules(stage_id, mods, version, complete, no_commit)
 
 
 def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool) -> int:
@@ -670,7 +773,10 @@ def main(argv: list[str] | None = None) -> int:
         return p
 
     p = mv(sub.add_parser("run-stage")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
-    p = mv(sub.add_parser("run-standalone")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = sub.add_parser("run-standalone")   # -m/--modules/--scope: see run_standalone() — richer than mv() for test-gen's scopes
+    p.add_argument("stage"); p.add_argument("-m", "--module"); p.add_argument("--modules")
+    p.add_argument("--scope", choices=["module", "project"], default="module")
+    p.add_argument("-v", "--version", type=int); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("gate")); p.add_argument("pass_no"); p.add_argument("--complete", action="store_true"); p.add_argument("--result"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("approve")); p.add_argument("gate"); p.add_argument("--by", default=os.environ.get("USER", "human")); p.add_argument("--no-commit", action="store_true")
@@ -692,8 +798,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--module", "-m", default=None, help="initial module code for the domain-profile stage (default: derived from ID)")
     a = ap.parse_args(argv)
 
-    if a.cmd in ("run-stage", "run-standalone"):
+    if a.cmd == "run-stage":
         return run_stage(a.stage, a.module, a.version, a.complete, a.no_commit)
+    if a.cmd == "run-standalone":
+        return run_standalone(a.stage, a.module, a.modules, a.scope, a.version, a.complete, a.no_commit)
     if a.cmd == "run-pass":
         return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit)
     if a.cmd == "gate":
