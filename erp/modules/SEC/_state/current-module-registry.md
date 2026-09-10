@@ -63,4 +63,8 @@ AUTO: Session and AuditLogEntry kept PRIVATE, not SHARED
 RESOLVED DECISIONS (dialogue, this module)
 | # | Point | Recommended | Confirmed by user | Sources |
 None — security-module-plan-en.md fully settles this module's P0 scope; no point required dialogue.
+
+POLICIES OWNED (full text in business-policies-sec.md)
+POL-SEC-001, POL-SEC-002, POL-SEC-003, POL-SEC-004, POL-SEC-005, POL-SEC-006,
+POL-SEC-007, POL-SEC-008, POL-SEC-009, POL-SEC-010, POL-SEC-011
 ══════════════════════════════════════════════════════════════════
