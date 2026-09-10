@@ -27,7 +27,6 @@ vocabulary:
     INV: Inventory
     SLS: Sales
     CTR: Contracts
-    DEMO: Demo / Pipeline Test
   keyword_map:                      # used by P0 to detect modules in free text (any language)
     PRC: [مشتريات, procurement, vendors, suppliers]
     HR:  [موظفين, HR, رواتب, payroll, employees]
@@ -36,7 +35,6 @@ vocabulary:
     SLS: [مبيعات, sales, customers]
     CTR: [عقود, contracts, agreements]
     ORG: [هيكل تنظيمي, org, branches, departments]
-    DEMO: [demo, test module, ملاحظات, notes, daily notes]
   entity_kinds: [master, transactional, lookup, config, security]
   glossary:
     Module: A bounded functional area with its own registry, entities and screens, identified by a module code.
@@ -49,7 +47,6 @@ vocabulary:
     - {id: finance,      owns: [FIN]}
     - {id: people,       owns: [HR]}
     - {id: commercial,   owns: [SLS, CTR]}
-    - {id: platform-testing, owns: [DEMO]}
 
 tracks:
   backend:
