@@ -2,12 +2,19 @@
   "module": "SEC",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-10T15:30:51+00:00",
-  "sources": {},
+  "generated_at": "2026-09-10T15:33:28+00:00",
+  "sources": {
+    "platform-summary": [
+      1
+    ],
+    "module-registry": [
+      1
+    ],
+    "business-policies": [
+      1
+    ]
+  },
   "missing": [
-    "platform-summary",
-    "module-registry",
-    "business-policies",
     "prd",
     "srs",
     "registry-srs",
@@ -24,5 +31,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789054251.5457735
+  "inputs_mtime": 1789054408.0168736
 }

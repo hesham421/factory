@@ -411,11 +411,353 @@ RUNTIME REDIRECT — when the user asks for requirements / screens / rules / fie
 # INPUTS (generated current state)
 
 <<<INPUT: domain-profile>>>
-(MISSING — the orchestrator refuses to run this stage until it exists)
+# DOMAIN PROFILE — منصة تخطيط موارد المؤسسات (ERP Platform)
+══════════════════════════════════════════════════════════════════
+Profile         : erp (ERP Platform)
+Version         : 1
+Last Updated    : 2026-09-10
+Status          : FRESH
+Research        : 3 sources cited (block 9)
+══════════════════════════════════════════════════════════════════
+
+## 1. SCOPE
+
+**داخل النطاق (In bounds):** بناء منصة ERP متعددة الوحدات (multi-module) بعمارة قائمة على
+البيانات لا الشيفرة ("everything that can change = defined data, not code")، تُبنى بلغة
+Spring (خلفية) و React (واجهة) وقاعدة بيانات **PostgreSQL** كهدف بناء جديد. النظام القديم
+Oracle/ADF يبقى فقط كمصدر أحداث علوي (upstream event source) ولا يُبنى عليه أي وحدة جديدة.
+
+دفعة العمل الحالية (هذه الجلسة) تُغطّي ثلاث وحدات أساسية مشتركة ومؤسِّسة:
+1. **وحدة الأمان (SEC)** — مصادقة + تحكم هرمي بالصلاحيات (Module → Screen → Action).
+2. **وحدة البيانات المرجعية (MDL/Lookup)** — مركز موحّد لكل قوائم القيم المُرمَّزة.
+3. **وحدة الحسابات العامة (FIN/GL)** — دفتر أستاذ عام قابل للتوصيل (pluggable) بأي نظام مضيف.
+
+باقي وحدات المنصة (ORG, PRC, HR, INV, SLS, CTR) معروفة الرمز والسياق ضمن `profiles/erp.yaml`
+لكنها **خارج نطاق هذه الدفعة** — تُفصَّل لاحقًا بنفس الأسلوب.
+
+**خارج النطاق صراحة (Out of bounds, stated by the user):**
+- أي منطق عمل خاص بمجال مضيف (host business world) داخل وحدة الحسابات.
+- تعدد العملات، تعدد الدفاتر/الكيانات، الحسابات الإحصائية، التقويم متعدد الأنماط،
+  والمرفقات (attachments) — مستبعدة صراحة من GL في هذه الدفعة.
+- محرك سير العمل (workflow engine) — ممنوع بحكم `profiles/erp.yaml → conventions.workflow_engine: forbidden`.
+- طبقة النقل (AQ/RabbitMQ) ومستهلك الأحداث (Event consumer) والوحدة التجارية (Business Module)
+  — خارج نطاق وثيقة FIN، توثَّق في مكان آخر.
+
+## 2. PURPOSE
+
+المنصّة تحل مشكلة تكرار وتضارب القدرات المشتركة (الهوية، الصلاحيات، البيانات المرجعية)
+عبر كل وحدة أعمال جديدة: بدل أن تبني كل وحدة نظام دخول وصلاحيات وقوائم قيم خاصًا بها
+(ما يُنتج ازدواجية وتضاربًا حتميًا)، تُبنى هذه القدرات **مرة واحدة، بشكل عام (generic) بالكامل**،
+وتُستهلك بيانيًا من أي وحدة عمل — بدءًا بالحسابات العامة كأول وحدة عمل تستهلكها.
+لكل واحدة من الوحدات الثلاث سبب وجود مستقل:
+- **SEC** يحل مشكلة تشتّت الهوية والصلاحيات: نظام أمان واحد للمنصة بأكملها.
+- **MDL** يحل مشكلة انحراف القيم المرجعية (reference-data drift) بين الوحدات.
+- **FIN** يحل مشكلة الاعتماد على أرصدة مخزَّنة وغير موثوقة في الأنظمة القديمة، عبر دفتر
+  أستاذ يُشتق كل رصيد فيه من القيود المُرحَّلة فقط، لا من عمود رصيد مُجمَّع يفقد التزامنه.
+
+## 3. RESPONSIBILITIES
+
+| الوحدة | تملك | لا تملك |
+|---|---|---|
+| SEC | تسجيل الدخول/التسجيل/استرجاع كلمة المرور، المستخدمون، الأدوار، التفويض الهرمي (Module→Screen→Action)، القائمة الديناميكية، لوحة تحكم الأمان، سجل التدقيق | أي منطق عمل خاص بوحدة أخرى |
+| MDL | نوع اللوكب (Lookup Type) + قيمه (Lookup Value)، شاشة عامة واحدة Master-Detail لكل القوائم، تسجيل الملكية (namespacing) لكل وحدة | معنى القوائم الخاص بمجال وحدة أخرى — الملكية الدلالية تبقى للوحدة المسجِّلة |
+| FIN | شجرة الحسابات والأبعاد، محرك القواعد (event_type → قيد)، دورة حياة القيد، دورة حياة الفترة المحاسبية، التقارير المالية المُشتقة | أي مستخدمين/أدوار/تسجيل دخول خاصة بها، أي جدول lookup خاص بها، أي معرفة بالعالم التجاري المضيف |
+
+## 4. MAIN COMPONENTS
+
+| # | Component | Module code | Bounded context | Category (user-defined) | Core / extension | Notes |
+|---|-----------|-------------|-----------------|--------------------------|------------------|-------|
+| 1 | الأمان / Security | SEC | organization | Foundation | Core | KB §1 Tier 0 — يجب أن يوجد قبل أي وحدة أعمال؛ لا وحدة تملك أمانها الخاص |
+| 2 | البيانات المرجعية / Master Data Lookup | MDL | organization | Foundation | Core | KB §1 Tier 0 — مركز واحد لكل القوائم المُرمَّزة عبر المنصة |
+| 3 | الحسابات العامة / Finance (General Ledger) | FIN | finance | Business — Tier 1 | Core | KB §1 Tier 1 — أول وحدة عمل تستهلك SEC وMDL؛ قابلة للتوصيل بأي مضيف |
+| 4 | الهيكل التنظيمي / Organization | ORG | organization | Foundation | (غير مفصّلة هذه الدفعة) | من `profiles/erp.yaml → vocabulary.module_prefixes` — PROPOSED سابقًا في الملف الشخصي، خارج نطاق هذه الجلسة |
+| 5 | المشتريات / Procurement | PRC | supply | Business — Tier 1 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 6 | الموارد البشرية / Human Resources | HR | people | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 7 | المخزون / Inventory | INV | supply | Business — Tier 1 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 8 | المبيعات / Sales | SLS | commercial | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 9 | العقود / Contracts | CTR | commercial | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+
+الصفوف 1–3 مصدرها خطط الوحدات الثلاث المرفقة لهذه الجلسة (security-module-plan-en.md،
+lookup-module-plan-en.md، general-accounting-system-plan-en.md)؛ الصفوف 4–9 مصدرها
+`profiles/erp.yaml → vocabulary.module_prefixes` المُثبَّت مسبقًا من قِبل المستخدم — تُدرَج هنا
+للاكتمال المرجعي فقط ولا تُفصَّل في هذه الدفعة.
+
+## 5. GOVERNING RULES
+
+| # | القاعدة | المصدر |
+|---|---|---|
+| G1 | كل ما يمكن أن يتغير = بيانات مُعرَّفة، لا شيفرة (no hardcode / no duplication / no contradiction) | الخطط الثلاث §Governing rule؛ [KB:erp-domain-standards §2-3] |
+| G2 | نظام أمان واحد للمنصة بأكملها؛ لا وحدة تملك مستخدمين/أدوار/دخولاً خاصًا بها | security-module-plan-en.md §2 |
+| G3 | بوابة الوحدة (module gate) تُفحص أولاً، قبل أي فحص شاشة/إجراء؛ عدم امتلاك الوحدة = غياب تام من القائمة ومن الوصول المباشر بالرابط | security-module-plan-en.md §4.2 |
+| G4 | مركز واحد وموثوق للبيانات المرجعية؛ لا وحدة تحتفظ بجداول lookup خاصة بها | lookup-module-plan-en.md §2؛ بحث: نمط "MDM hub" — راجع قسم 9 |
+| G5 | التخزين والشاشة مركزيان، لكن المعنى الدلالي للقائمة يبقى ملكًا للوحدة المسجِّلة (namespacing بالمالك) | lookup-module-plan-en.md §2, §3 |
+| G6 | الحسابات لا تعرف شيئًا عن العالم التجاري المضيف؛ لا اسم حساب داخل حمولة الحدث (event payload) | general-accounting-system-plan-en.md §3, §15 |
+| G7 | تساوي المدين والدائن ثابت مطلق (debit = credit invariant) لكل قيد يصل POSTED | general-accounting-system-plan-en.md §12.1 |
+| G8 | لا موافقة على مستوى القيد الفردي؛ نقطة التحكم البشري الوحيدة هي إغلاق الفترة، وفصل المهام بين منشئ القيد ومعتمد الإغلاق يُنفَّذ عبر SEC | general-accounting-system-plan-en.md §8.2, §10.3 |
+| G9 | الأرصدة تُشتق دائمًا من القيود المُرحَّلة (POSTED) فقط، ولا يوجد عمود رصيد مُخزَّن يُعتمَد عليه | general-accounting-system-plan-en.md §11, §12.9 |
+| G10 | الهدف الأول لقاعدة البيانات هو PostgreSQL؛ Oracle/ADF القديم مصدر أحداث فقط | الخطط الثلاث §1؛ توجيه GENERATION-INSTRUCTIONS.md |
+| G11 | اللغتان العربية والإنجليزية إلزاميتان في كل قطعة مُسمّاة (وحدة/كيان/حقل/شاشة) | `profiles/erp.yaml → languages` |
+| G12 | لا محرك سير عمل (workflow engine) في هذه المنصة | `profiles/erp.yaml → conventions.workflow_engine: forbidden` |
+
+## 6. RELATIONSHIPS WITH OTHER DOMAINS
+
+| This component | Depends on | Kind | Direction | Stated by |
+|---|---|---|---|---|
+| كل وحدة عمل (بما فيها FIN لاحقًا كل وحدة أخرى) | SEC | HARD (تسجيل الوحدة/الشاشات/الإجراءات كبيانات + بوابة الوحدة) | consumer → SEC | security-module-plan-en.md §7 |
+| كل وحدة عمل (بما فيها FIN) | MDL | HARD (تسجيل أنواع lookup كبيانات + قراءة القيم) | consumer → MDL | lookup-module-plan-en.md §4 |
+| FIN | SEC | HARD-FK (هوية + صلاحيات الشاشات/الإجراءات + SoD) | FIN → SEC | general-accounting-system-plan-en.md §2 |
+| FIN | MDL | HARD-FK (طرق الدفع، أنواع أحداث المحاسبة، أنواع الحسابات، حالات الفترة، أنواع اليومية) | FIN → MDL | general-accounting-system-plan-en.md §5.2 |
+| FIN | Notifications (جاهزة، خارج هذه الجلسة) | SOFT/EVENT — اختياري فقط | FIN → NOTIF | general-accounting-system-plan-en.md §2.3؛ `new project/integration-notifications-fileservice.md` |
+| FIN | File Service (جاهزة، خارج هذه الجلسة) | SOFT/EVENT — اختياري فقط | FIN → FILESVC | general-accounting-system-plan-en.md §2.3؛ `new project/integration-notifications-fileservice.md` |
+| SEC | Notifications (جاهزة) | SOFT — اختياري (مثال: بريد إعادة تعيين كلمة المرور) | SEC → NOTIF | security-module-plan-en.md §8 |
+| FIN | نظام مضيف (host business system) | EVENT فقط، عبر حدث محاسبي قياسي (canonical event)؛ لا قراءة ولا كتابة مباشرة لجداول المضيف | host → FIN (event only) | general-accounting-system-plan-en.md §3 |
+
+## 7. STEERING  (read verbatim by every later stage)
+
+### 7.1 Ubiquitous language
+
+| Term (ar/en) | Definition | Do not say | Module code |
+|---|---|---|---|
+| بوابة الوحدة / Module gate | الفحص الأول والحاسم لامتلاك الدور للوحدة قبل أي فحص شاشة/إجراء؛ غيابها = غياب تام | "صلاحية الوحدة" بمعنى فضفاض | SEC |
+| منح الشاشة / Screen grant | صلاحية وصول لشاشة محددة داخل وحدة ممنوحة فعلاً | "صلاحية القائمة" | SEC |
+| منح الإجراء / Action grant | صلاحية VIEW/CREATE/UPDATE/DELETE أو إجراء مخصّص على شاشة ممنوحة | "دور" (Role يبقى مصطلحًا مستقلاً) | SEC |
+| الشاشة المركّبة / Composite Screen | بحث + إدخال (أو رئيسي + تفصيلي، أو معالج) تُعامَل كشاشة واحدة بمعرّف SCR واحد | "صفحة" منفردة لكل جزء | (عام) |
+| نوع اللوكب / Lookup Type | الـ"master" لقائمة قيم مُرمَّزة، يملكه اسميًا موديول مُسجِّل | "جدول Enum" | MDL |
+| قيمة اللوكب / Lookup Value | الـ"detail" — قيمة مُرمَّزة ضمن نوع لوكب: كود، تسميتان، ترتيب، حالة نشاط | "قيمة ثابتة" في الشيفرة | MDL |
+| الحدث المحاسبي القياسي / Canonical accounting event | مدخل الحسابات الوحيد؛ حدث جاهز الشكل قادم من مستهلك الأحداث خارج النطاق | "معاملة تجارية" (يحمل دلالة عالم المضيف) | FIN |
+| شجرة الحسابات / Chart of Accounts | بنية هرمية للحسابات؛ الأوراق فقط تقبل ترحيلاً مباشرًا | "دليل حسابات" بلا بنية هرمية | FIN |
+| البُعد / Dimension | مقطع بيانات (segment) يُعرَّف كبيانات ليُشكّل مع الحساب الأساسي تركيبة الترحيل | "تصنيف تحليلي" غامض | FIN |
+| الترحيل / Posting | إدخال قيد بحالة POSTED مؤثرًا في الأرصدة وغير قابل للتعديل | "اعتماد" (الاعتماد مصطلح مختلف يخص إغلاق الفترة) | FIN |
+| قيد اليومية / Journal Entry | وحدة الإدخال المحاسبي الأساسية (رأس + سطور متوازنة مدين/دائن) | "سند" فقط دون تحديد | FIN |
+| الفترة المحاسبية / Accounting Period | نافذة زمنية بحالة (Open / Soft Close / Hard Close / Year-End Close) تتحكم بقبول الترحيل | "شهر مالي" | FIN |
+| قيد العكس / Reversing Entry | تصحيح عبر قيد جديد مرتبط ثنائي الاتجاه بالأصل، مطابق سطرًا بسطر بعكس الاتجاه | "حذف القيد" (ممنوع) | FIN |
+| ميزان المراجعة / Trial Balance | تقرير متوازن دائمًا، مُشتق من القيود المُرحَّلة فقط | "كشف حساب" | FIN |
+
+### 7.2 Bounded contexts
+
+| Context | Owns module codes | Boundary statement |
+|---|---|---|
+| organization | ORG, SEC, MDL | القدرات المؤسِّسة (Tier 0) التي يعتمد عليها أي سياق آخر: الهيكل التنظيمي، الأمان، البيانات المرجعية |
+| supply | PRC, INV | تدفقات التوريد والمخزون (خارج نطاق هذه الدفعة) |
+| finance | FIN | الحسابات العامة ودفتر الأستاذ؛ تستهلك organization ولا تُنتج له شيئًا |
+| people | HR | الموارد البشرية (خارج نطاق هذه الدفعة) |
+| commercial | SLS, CTR | المبيعات والعقود (خارج نطاق هذه الدفعة) |
+
+(منقولة حرفيًا من `profile.vocabulary.bounded_contexts`)
+
+### 7.3 Module prefixes proposal
+
+| Code | Display | Status |
+|---|---|---|
+| ORG | Organization | IN PROFILE |
+| SEC | Security | IN PROFILE — هذه الدفعة |
+| MDL | Master Data Lookup | IN PROFILE — هذه الدفعة |
+| PRC | Procurement | IN PROFILE |
+| FIN | Finance | IN PROFILE — هذه الدفعة |
+| HR | Human Resources | IN PROFILE |
+| INV | Inventory | IN PROFILE |
+| SLS | Sales | IN PROFILE |
+| CTR | Contracts | IN PROFILE |
+
+كل الرموز موجودة مسبقًا في `profiles/erp.yaml → vocabulary.module_prefixes`؛ لا رمز جديد اقترحته
+هذه الجلسة.
+
+### 7.4 Identifier rules
+
+المعرّفات اللاحقة تُبنى بالصيغة `{prefix}-{MOD}-{seq}` بعرض تسلسل 3 خانات
+(`factory.ids.pattern`, `factory.ids.seq_width`). أنواع الكيانات: master, transactional,
+lookup, config, security (`profile.vocabulary.entity_kinds`).
+
+### 7.5 Knowledge sources to cite
+
+- `profiles/erp/knowledge/erp-domain-standards.md`
+- `new project/security-module-plan-en.md` — المصدر التأسيسي لوحدة SEC
+- `new project/lookup-module-plan-en.md` — المصدر التأسيسي لوحدة MDL
+- `new project/general-accounting-system-plan-en.md` — المصدر التأسيسي لوحدة FIN، بما فيه القسم
+  12 "details the analysis agent MUST honor" المُلزِم لكل تحليل لاحق
+- `new project/integration-notifications-fileservice.md` — يُستخدم فقط عند حاجة فعلية مذكورة
+  صراحة في إحدى الخطط الثلاث (لا يُعاد تصميمه)
+- plus the research sources in block 9
+
+## 8. RESOLVED DECISIONS
+
+| # | Point | Decision | Recommended by dialogue? | Confirmed by user | Sources |
+|---|---|---|---|---|---|
+| 1 | هدف قاعدة البيانات | PostgreSQL هو الهدف الوحيد لهذا البناء؛ Oracle/ADF يبقى مصدر أحداث فقط | لا — منصوص صراحة | نعم — منصوص في الخطط الثلاث وفي أمر التنفيذ | الخطط الثلاث §1؛ GENERATION-INSTRUCTIONS.md |
+| 2 | نموذج الأمان | RBAC هرمي بثلاث مستويات (Module→Screen→Action) بديلاً عن أي أمان محلي بالوحدات | لا — منصوص صراحة | نعم | security-module-plan-en.md §4 |
+| 3 | نموذج البيانات المرجعية | مركز lookup عام Master-Detail واحد لكل المنصة، بدل جداول lookup محلية | لا — منصوص صراحة | نعم | lookup-module-plan-en.md §2-3 |
+| 4 | نموذج اعتماد قيود المحاسبة | لا اعتماد على مستوى القيد الفردي؛ الاعتماد الوحيد عند إغلاق الفترة فقط | لا — منصوص صراحة، ويتوافق مع ممارسات GL الحديثة القائمة على الأحداث (انظر قسم 9، R1) | نعم | general-accounting-system-plan-en.md §8 |
+| 5 | نطاق هذه الدفعة | SEC ثم MDL ثم FIN فقط، بهذا الترتيب الصارم؛ باقي الوحدات خارج النطاق الآن | لا — منصوص صراحة | نعم | GENERATION-INSTRUCTIONS.md §3 |
+| 6 | استخدام Notifications/File Service | تكامل اختياري بحت، فقط عند حاجة صريحة يذكرها أحد الخطط الثلاث؛ لا إعادة تصميم لهما | لا — منصوص صراحة | نعم | الخطط الثلاث §8/§5/§2.3؛ GENERATION-INSTRUCTIONS.md §4.6 |
+
+## 9. RESEARCH LOG
+
+| # | Point | What established systems do | Source(s) (title, URL/path, date) | Used in |
+|---|---|---|---|---|
+| R1 | RBAC هرمي بمستوى module→screen→action | الأنظمة الناضجة تفصل "ما الذي يمكن فعله" (action) عن "أين" (scope/module)، وتستخدم الهرمية لتقليل تكرار الأدوار؛ التفويض الهرمي يُستخدم بحيث تتحكم صلاحية بوحدة كاملة وأخرى بإجراء داخلها | [How to Design an RBAC System — NocoBase](https://www.nocobase.com/en/blog/how-to-design-rbac-role-based-access-control-system), accessed 2026-09-10; [Access Control Design for Scalable RBAC Systems](https://www.loginradius.com/blog/identity/design-effective-rbac-system), accessed 2026-09-10 | G3، §7.1 "بوابة الوحدة" |
+| R2 | مركز بيانات مرجعية موحّد (MDM hub) | النمط الشائع هو مركز واحد (hub) يخزن البيانات المرجعية/الأساسية ويُنشرها للأنظمة الأخرى؛ النطاقات (domains) تتوافق مع بيانات مرجعية مُدارة مركزيًا بدل نسخ محلية متضاربة | [Why the Data Hub is the Future of Data Management — Semarchy](https://www.semarchy.com/blog/backtobasics-mdm-hub-patterns/), accessed 2026-09-10 | G4/G5، وحدة MDL بأكملها |
+| R3 | محاسبة قائمة على الأحداث (event-driven GL) | الأنظمة الحديثة تدمج دفتر الأستاذ مع معمارية قائمة على الأحداث: مصدر يُصدر معاملات، خدمة تحقق/تطبيع، ثم خدمة ترحيل تطبّق قاعدة القيد المزدوج وتُلحق القيود في مخزن إلحاقي فقط (append-only)؛ من التحديات الشائعة الأحداث المكرَّرة التي تُسبب ترحيلاً مزدوجًا | [General Ledger Postings: A Comprehensive Guide — Dualentry](https://www.dualentry.com/blog/general-ledger-postings), accessed 2026-09-10 | G7/G9، §12.12 "idempotency at the boundary" في خطة FIN |
+
+## 10. OPEN ITEMS
+
+لا يوجد — النطاق محدَّد بالكامل من الخطط الثلاث المرفقة وتوجيهات GENERATION-INSTRUCTIONS.md؛
+لا نقطة غموض تتطلب حوارًا إضافيًا مع المستخدم في هذه المرحلة.
+══════════════════════════════════════════════════════════════════
+
 <<<END INPUT>>>
 
 <<<INPUT: project-registry>>>
-(MISSING — the orchestrator refuses to run this stage until it exists)
+# PROJECT REGISTRY — منصة تخطيط موارد المؤسسات (ERP Platform)
+══════════════════════════════════════════════════════════════════
+Profile            : erp
+Registry Version   : 1.0.0
+Domain Profile     : erp/domain-profile.md v1
+Last Updated       : 2026-09-10 by P-1
+Modules registered : 9   Entity candidates : 0   Open items : 0
+══════════════════════════════════════════════════════════════════
+
+## SCHEMA COMPLIANCE MAP
+| Section of this registry | Category (shared/REGISTRY-SCHEMA.md) |
+|---|---|
+| IDENTITY & VERSIONING | CAT-1 identity & conventions |
+| CONVENTIONS & STEERING | CAT-1 identity & conventions |
+| MODULE / COMPONENT INDEX | CAT-2 module index |
+| ENTITY OWNERSHIP | CAT-3 entity ownership |
+| SHARED ENTITY DECLARATIONS | CAT-4 shared declarations |
+| STRUCTURAL / IMPLEMENTATION REGISTRY | CAT-5 structural registry |
+| CROSS-MODULE DEPENDENCY INDEX | CAT-6 dependency indexes |
+| DECISION INDEX | CAT-7 decision index |
+| PIPELINE / PROGRESS STATUS | CAT-8 pipeline status |
+| CHANGE / EVENT HISTORY | CAT-9 event history |
+Uncovered: none
+
+## IDENTITY & VERSIONING
+| Field | Value |
+|---|---|
+| Profile | erp — ERP Platform |
+| Registry version | 1.0.0 |
+| Domain profile source | erp/domain-profile.md v1 |
+
+### Version history
+| Version | Date | Change |
+|---|---|---|
+| 1.0.0 | 2026-09-10 | Initial bootstrap from erp/domain-profile.md v1 (BOOTSTRAP event, see CHANGE/EVENT HISTORY) |
+
+## CONVENTIONS & STEERING
+(copied verbatim from `erp/domain-profile.md` §7 — the authoritative source; this section
+mirrors it for engines that read only the registry)
+
+### Ubiquitous language
+See `erp/domain-profile.md` §7.1 for the full bilingual (ar/en) term table — copied verbatim,
+not restated here to avoid drift; cite as `[domain-profile §7.1]`.
+
+### Bounded contexts
+| Context | Owns module codes | Boundary statement |
+|---|---|---|
+| organization | ORG, SEC, MDL | Foundational capabilities (Tier 0) every other context depends on |
+| supply | PRC, INV | Supply and inventory flows (out of scope this batch) |
+| finance | FIN | General ledger; consumes organization, produces nothing back to it |
+| people | HR | Human resources (out of scope this batch) |
+| commercial | SLS, CTR | Sales and contracts (out of scope this batch) |
+
+### Module prefixes
+| Code | Display | Status |
+|---|---|---|
+| ORG | Organization | IN PROFILE |
+| SEC | Security | IN PROFILE |
+| MDL | Master Data Lookup | IN PROFILE |
+| PRC | Procurement | IN PROFILE |
+| FIN | Finance | IN PROFILE |
+| HR | Human Resources | IN PROFILE |
+| INV | Inventory | IN PROFILE |
+| SLS | Sales | IN PROFILE |
+| CTR | Contracts | IN PROFILE |
+
+### Identifier rules
+`{prefix}-{MOD}-{seq}` — seq width 3 (`factory.ids.pattern`, `factory.ids.seq_width`).
+Entity kinds: master, transactional, lookup, config, security.
+
+### ENFORCEMENT NOTES
+- **E1** Every later artifact uses the terms of `domain-profile.md §7.1` verbatim; a synonym
+  listed under "do not say" is a consistency finding at the pass gate (`gov.py analyze`
+  checks registry ↔ artifact agreement).
+- **E2** IDs follow `{prefix}-{MOD}-{seq}` (seq width 3) with the module codes of this section only.
+- **E3** Entities are classified with the kinds: master, transactional, lookup, config, security.
+- **E4** Sources to cite when a stage resolves an ambiguity: `profiles/erp/knowledge/erp-domain-standards.md`,
+  then `erp/domain-profile.md` itself, then the three module plans (`new project/*-plan-en.md`)
+  named in `domain-profile.md §7.5`.
+- **E5** Pipeline status (below) is maintained by the orchestrator from commits; seeded here as NOT STARTED.
+
+## MODULE / COMPONENT INDEX
+| # | Code | Module | Bounded context | Category | Core/ext | Status | Source |
+|---|---|---|---|---|---|---|---|
+| 1 | SEC | Security | organization | Foundation | Core | CANDIDATE — this batch, first | domain-profile §4 row 1 |
+| 2 | MDL | Master Data Lookup | organization | Foundation | Core | CANDIDATE — this batch, second | domain-profile §4 row 2 |
+| 3 | FIN | Finance (General Ledger) | finance | Business — Tier 1 | Core | CANDIDATE — this batch, third | domain-profile §4 row 3 |
+| 4 | ORG | Organization | organization | Foundation | — | RESERVED — not this batch | domain-profile §4 row 4; profile |
+| 5 | PRC | Procurement | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 5; profile |
+| 6 | HR | Human Resources | people | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 6; profile |
+| 7 | INV | Inventory | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 7; profile |
+| 8 | SLS | Sales | commercial | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 8; profile |
+| 9 | CTR | Contracts | commercial | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 9; profile |
+
+## ENTITY OWNERSHIP
+none yet — `domain-profile.md` names no concrete entities (P1 SRS per module assigns `ENT` IDs;
+this registry's entity section is populated as each module's P1 runs).
+
+## SHARED ENTITY DECLARATIONS
+none yet — no SHARED entity candidate identified at this stage; expected first candidates
+(e.g. SEC's User/Role, MDL's Lookup Type/Value) are named once SEC's and MDL's P1 (SRS) run.
+
+## STRUCTURAL / IMPLEMENTATION REGISTRY
+none yet — filled by P2 (`DBF`) / P3.1 (`API`) per module version.
+
+## CROSS-MODULE DEPENDENCY INDEX
+| Candidate ref | Kind | From module | To module | Consumes | Status | Evidence |
+|---|---|---|---|---|---|---|
+| XM-CAND-001 | HARD-FK | FIN | SEC | identity + module/screen/action grants + SoD (entry-creator ≠ period-close approver) | CANDIDATE | domain-profile §6 row "FIN \| SEC \| HARD-FK" |
+| XM-CAND-002 | HARD-FK | FIN | MDL | payment methods, accounting event types, account types, period states, journal types | CANDIDATE | domain-profile §6 row "FIN \| MDL \| HARD-FK" |
+| XM-CAND-003 | SOFT/EVENT | FIN | Notifications (NOTIF, out of this batch) | period-close-awaiting notice, statement export — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
+| XM-CAND-004 | SOFT/EVENT | FIN | File Service (FILESVC, out of this batch) | statement/export file — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
+| XM-CAND-005 | SOFT | SEC | Notifications (NOTIF, out of this batch) | password-reset message — optional only | CANDIDATE | domain-profile §6; security-module-plan-en.md §8 |
+| XM-CAND-006 | EVENT | host business system (out of scope) | FIN | canonical accounting event only — no direct table read/write either direction | CANDIDATE | domain-profile §6 row "host → FIN (event only)"; general-accounting-system-plan-en.md §3 |
+Note: every consumer module (all 9, per SEC/MDL plans §7/§4) will register the same
+FIN→SEC / FIN→MDL shape once it exists; only the three modules named in this batch are
+pre-registered as candidates above — this is not a closed list.
+
+## DECISION INDEX
+| # | Decision | Status | Source |
+|---|---|---|---|
+| 1 | PostgreSQL is the sole DB build target; Oracle/ADF remains an upstream event source only | ACCEPTED | domain-profile §8 row 1 |
+| 2 | Hierarchical 3-level RBAC (Module→Screen→Action) replaces any module-local security | ACCEPTED | domain-profile §8 row 2 |
+| 3 | One central Lookup master-detail hub replaces module-local lookup tables | ACCEPTED | domain-profile §8 row 3 |
+| 4 | No per-entry approval in GL; the only human control point is period close | ACCEPTED | domain-profile §8 row 4 |
+| 5 | This batch's scope and order: SEC, then MDL, then FIN, strictly in that order | ACCEPTED | domain-profile §8 row 5 |
+| 6 | Notifications/File Service integration is optional-only, used solely on explicit plan need | ACCEPTED | domain-profile §8 row 6 |
+
+## OPEN QUESTION INDEX
+none — `domain-profile.md` §10 records no open item.
+
+## PIPELINE / PROGRESS STATUS
+| Module | Version | Last committed stage | Last gate verdict | Delivered tracks | Tag |
+|---|---|---|---|---|---|
+| SEC | v1 | domain-profile (platform-level; module stages NOT STARTED) | — | — | — |
+| MDL | v1 | NOT STARTED | — | — | — |
+| FIN | v1 | NOT STARTED | — | — | — |
+| ORG | — | NOT STARTED | — | — | — |
+| PRC | — | NOT STARTED | — | — | — |
+| HR | — | NOT STARTED | — | — | — |
+| INV | — | NOT STARTED | — | — | — |
+| SLS | — | NOT STARTED | — | — | — |
+| CTR | — | NOT STARTED | — | — | — |
+
+## CHANGE / EVENT HISTORY
+| Date | Stage/tool | Module | Version | Event |
+|---|---|---|---|---|
+| 2026-09-10 | domain-profile | (platform) | — | domain-profile.md v1 saved and committed (23b3176) |
+| 2026-09-10 | P-1 | (platform) | — | BOOTSTRAP — extracted 9 module rows, 0 entity candidates, 6 XM candidates, 6 confirmed decisions, 0 open items from domain-profile.md v1 |
+══════════════════════════════════════════════════════════════════
+
 <<<END INPUT>>>
 
 ---
@@ -1309,11 +1651,353 @@ Structural checks:
 <<<END INPUT>>>
 
 <<<INPUT: domain-profile>>>
-(MISSING — the orchestrator refuses to run this stage until it exists)
+# DOMAIN PROFILE — منصة تخطيط موارد المؤسسات (ERP Platform)
+══════════════════════════════════════════════════════════════════
+Profile         : erp (ERP Platform)
+Version         : 1
+Last Updated    : 2026-09-10
+Status          : FRESH
+Research        : 3 sources cited (block 9)
+══════════════════════════════════════════════════════════════════
+
+## 1. SCOPE
+
+**داخل النطاق (In bounds):** بناء منصة ERP متعددة الوحدات (multi-module) بعمارة قائمة على
+البيانات لا الشيفرة ("everything that can change = defined data, not code")، تُبنى بلغة
+Spring (خلفية) و React (واجهة) وقاعدة بيانات **PostgreSQL** كهدف بناء جديد. النظام القديم
+Oracle/ADF يبقى فقط كمصدر أحداث علوي (upstream event source) ولا يُبنى عليه أي وحدة جديدة.
+
+دفعة العمل الحالية (هذه الجلسة) تُغطّي ثلاث وحدات أساسية مشتركة ومؤسِّسة:
+1. **وحدة الأمان (SEC)** — مصادقة + تحكم هرمي بالصلاحيات (Module → Screen → Action).
+2. **وحدة البيانات المرجعية (MDL/Lookup)** — مركز موحّد لكل قوائم القيم المُرمَّزة.
+3. **وحدة الحسابات العامة (FIN/GL)** — دفتر أستاذ عام قابل للتوصيل (pluggable) بأي نظام مضيف.
+
+باقي وحدات المنصة (ORG, PRC, HR, INV, SLS, CTR) معروفة الرمز والسياق ضمن `profiles/erp.yaml`
+لكنها **خارج نطاق هذه الدفعة** — تُفصَّل لاحقًا بنفس الأسلوب.
+
+**خارج النطاق صراحة (Out of bounds, stated by the user):**
+- أي منطق عمل خاص بمجال مضيف (host business world) داخل وحدة الحسابات.
+- تعدد العملات، تعدد الدفاتر/الكيانات، الحسابات الإحصائية، التقويم متعدد الأنماط،
+  والمرفقات (attachments) — مستبعدة صراحة من GL في هذه الدفعة.
+- محرك سير العمل (workflow engine) — ممنوع بحكم `profiles/erp.yaml → conventions.workflow_engine: forbidden`.
+- طبقة النقل (AQ/RabbitMQ) ومستهلك الأحداث (Event consumer) والوحدة التجارية (Business Module)
+  — خارج نطاق وثيقة FIN، توثَّق في مكان آخر.
+
+## 2. PURPOSE
+
+المنصّة تحل مشكلة تكرار وتضارب القدرات المشتركة (الهوية، الصلاحيات، البيانات المرجعية)
+عبر كل وحدة أعمال جديدة: بدل أن تبني كل وحدة نظام دخول وصلاحيات وقوائم قيم خاصًا بها
+(ما يُنتج ازدواجية وتضاربًا حتميًا)، تُبنى هذه القدرات **مرة واحدة، بشكل عام (generic) بالكامل**،
+وتُستهلك بيانيًا من أي وحدة عمل — بدءًا بالحسابات العامة كأول وحدة عمل تستهلكها.
+لكل واحدة من الوحدات الثلاث سبب وجود مستقل:
+- **SEC** يحل مشكلة تشتّت الهوية والصلاحيات: نظام أمان واحد للمنصة بأكملها.
+- **MDL** يحل مشكلة انحراف القيم المرجعية (reference-data drift) بين الوحدات.
+- **FIN** يحل مشكلة الاعتماد على أرصدة مخزَّنة وغير موثوقة في الأنظمة القديمة، عبر دفتر
+  أستاذ يُشتق كل رصيد فيه من القيود المُرحَّلة فقط، لا من عمود رصيد مُجمَّع يفقد التزامنه.
+
+## 3. RESPONSIBILITIES
+
+| الوحدة | تملك | لا تملك |
+|---|---|---|
+| SEC | تسجيل الدخول/التسجيل/استرجاع كلمة المرور، المستخدمون، الأدوار، التفويض الهرمي (Module→Screen→Action)، القائمة الديناميكية، لوحة تحكم الأمان، سجل التدقيق | أي منطق عمل خاص بوحدة أخرى |
+| MDL | نوع اللوكب (Lookup Type) + قيمه (Lookup Value)، شاشة عامة واحدة Master-Detail لكل القوائم، تسجيل الملكية (namespacing) لكل وحدة | معنى القوائم الخاص بمجال وحدة أخرى — الملكية الدلالية تبقى للوحدة المسجِّلة |
+| FIN | شجرة الحسابات والأبعاد، محرك القواعد (event_type → قيد)، دورة حياة القيد، دورة حياة الفترة المحاسبية، التقارير المالية المُشتقة | أي مستخدمين/أدوار/تسجيل دخول خاصة بها، أي جدول lookup خاص بها، أي معرفة بالعالم التجاري المضيف |
+
+## 4. MAIN COMPONENTS
+
+| # | Component | Module code | Bounded context | Category (user-defined) | Core / extension | Notes |
+|---|-----------|-------------|-----------------|--------------------------|------------------|-------|
+| 1 | الأمان / Security | SEC | organization | Foundation | Core | KB §1 Tier 0 — يجب أن يوجد قبل أي وحدة أعمال؛ لا وحدة تملك أمانها الخاص |
+| 2 | البيانات المرجعية / Master Data Lookup | MDL | organization | Foundation | Core | KB §1 Tier 0 — مركز واحد لكل القوائم المُرمَّزة عبر المنصة |
+| 3 | الحسابات العامة / Finance (General Ledger) | FIN | finance | Business — Tier 1 | Core | KB §1 Tier 1 — أول وحدة عمل تستهلك SEC وMDL؛ قابلة للتوصيل بأي مضيف |
+| 4 | الهيكل التنظيمي / Organization | ORG | organization | Foundation | (غير مفصّلة هذه الدفعة) | من `profiles/erp.yaml → vocabulary.module_prefixes` — PROPOSED سابقًا في الملف الشخصي، خارج نطاق هذه الجلسة |
+| 5 | المشتريات / Procurement | PRC | supply | Business — Tier 1 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 6 | الموارد البشرية / Human Resources | HR | people | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 7 | المخزون / Inventory | INV | supply | Business — Tier 1 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 8 | المبيعات / Sales | SLS | commercial | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+| 9 | العقود / Contracts | CTR | commercial | Business — Tier 2 | (غير مفصّلة هذه الدفعة) | من الملف الشخصي؛ خارج النطاق |
+
+الصفوف 1–3 مصدرها خطط الوحدات الثلاث المرفقة لهذه الجلسة (security-module-plan-en.md،
+lookup-module-plan-en.md، general-accounting-system-plan-en.md)؛ الصفوف 4–9 مصدرها
+`profiles/erp.yaml → vocabulary.module_prefixes` المُثبَّت مسبقًا من قِبل المستخدم — تُدرَج هنا
+للاكتمال المرجعي فقط ولا تُفصَّل في هذه الدفعة.
+
+## 5. GOVERNING RULES
+
+| # | القاعدة | المصدر |
+|---|---|---|
+| G1 | كل ما يمكن أن يتغير = بيانات مُعرَّفة، لا شيفرة (no hardcode / no duplication / no contradiction) | الخطط الثلاث §Governing rule؛ [KB:erp-domain-standards §2-3] |
+| G2 | نظام أمان واحد للمنصة بأكملها؛ لا وحدة تملك مستخدمين/أدوار/دخولاً خاصًا بها | security-module-plan-en.md §2 |
+| G3 | بوابة الوحدة (module gate) تُفحص أولاً، قبل أي فحص شاشة/إجراء؛ عدم امتلاك الوحدة = غياب تام من القائمة ومن الوصول المباشر بالرابط | security-module-plan-en.md §4.2 |
+| G4 | مركز واحد وموثوق للبيانات المرجعية؛ لا وحدة تحتفظ بجداول lookup خاصة بها | lookup-module-plan-en.md §2؛ بحث: نمط "MDM hub" — راجع قسم 9 |
+| G5 | التخزين والشاشة مركزيان، لكن المعنى الدلالي للقائمة يبقى ملكًا للوحدة المسجِّلة (namespacing بالمالك) | lookup-module-plan-en.md §2, §3 |
+| G6 | الحسابات لا تعرف شيئًا عن العالم التجاري المضيف؛ لا اسم حساب داخل حمولة الحدث (event payload) | general-accounting-system-plan-en.md §3, §15 |
+| G7 | تساوي المدين والدائن ثابت مطلق (debit = credit invariant) لكل قيد يصل POSTED | general-accounting-system-plan-en.md §12.1 |
+| G8 | لا موافقة على مستوى القيد الفردي؛ نقطة التحكم البشري الوحيدة هي إغلاق الفترة، وفصل المهام بين منشئ القيد ومعتمد الإغلاق يُنفَّذ عبر SEC | general-accounting-system-plan-en.md §8.2, §10.3 |
+| G9 | الأرصدة تُشتق دائمًا من القيود المُرحَّلة (POSTED) فقط، ولا يوجد عمود رصيد مُخزَّن يُعتمَد عليه | general-accounting-system-plan-en.md §11, §12.9 |
+| G10 | الهدف الأول لقاعدة البيانات هو PostgreSQL؛ Oracle/ADF القديم مصدر أحداث فقط | الخطط الثلاث §1؛ توجيه GENERATION-INSTRUCTIONS.md |
+| G11 | اللغتان العربية والإنجليزية إلزاميتان في كل قطعة مُسمّاة (وحدة/كيان/حقل/شاشة) | `profiles/erp.yaml → languages` |
+| G12 | لا محرك سير عمل (workflow engine) في هذه المنصة | `profiles/erp.yaml → conventions.workflow_engine: forbidden` |
+
+## 6. RELATIONSHIPS WITH OTHER DOMAINS
+
+| This component | Depends on | Kind | Direction | Stated by |
+|---|---|---|---|---|
+| كل وحدة عمل (بما فيها FIN لاحقًا كل وحدة أخرى) | SEC | HARD (تسجيل الوحدة/الشاشات/الإجراءات كبيانات + بوابة الوحدة) | consumer → SEC | security-module-plan-en.md §7 |
+| كل وحدة عمل (بما فيها FIN) | MDL | HARD (تسجيل أنواع lookup كبيانات + قراءة القيم) | consumer → MDL | lookup-module-plan-en.md §4 |
+| FIN | SEC | HARD-FK (هوية + صلاحيات الشاشات/الإجراءات + SoD) | FIN → SEC | general-accounting-system-plan-en.md §2 |
+| FIN | MDL | HARD-FK (طرق الدفع، أنواع أحداث المحاسبة، أنواع الحسابات، حالات الفترة، أنواع اليومية) | FIN → MDL | general-accounting-system-plan-en.md §5.2 |
+| FIN | Notifications (جاهزة، خارج هذه الجلسة) | SOFT/EVENT — اختياري فقط | FIN → NOTIF | general-accounting-system-plan-en.md §2.3؛ `new project/integration-notifications-fileservice.md` |
+| FIN | File Service (جاهزة، خارج هذه الجلسة) | SOFT/EVENT — اختياري فقط | FIN → FILESVC | general-accounting-system-plan-en.md §2.3؛ `new project/integration-notifications-fileservice.md` |
+| SEC | Notifications (جاهزة) | SOFT — اختياري (مثال: بريد إعادة تعيين كلمة المرور) | SEC → NOTIF | security-module-plan-en.md §8 |
+| FIN | نظام مضيف (host business system) | EVENT فقط، عبر حدث محاسبي قياسي (canonical event)؛ لا قراءة ولا كتابة مباشرة لجداول المضيف | host → FIN (event only) | general-accounting-system-plan-en.md §3 |
+
+## 7. STEERING  (read verbatim by every later stage)
+
+### 7.1 Ubiquitous language
+
+| Term (ar/en) | Definition | Do not say | Module code |
+|---|---|---|---|
+| بوابة الوحدة / Module gate | الفحص الأول والحاسم لامتلاك الدور للوحدة قبل أي فحص شاشة/إجراء؛ غيابها = غياب تام | "صلاحية الوحدة" بمعنى فضفاض | SEC |
+| منح الشاشة / Screen grant | صلاحية وصول لشاشة محددة داخل وحدة ممنوحة فعلاً | "صلاحية القائمة" | SEC |
+| منح الإجراء / Action grant | صلاحية VIEW/CREATE/UPDATE/DELETE أو إجراء مخصّص على شاشة ممنوحة | "دور" (Role يبقى مصطلحًا مستقلاً) | SEC |
+| الشاشة المركّبة / Composite Screen | بحث + إدخال (أو رئيسي + تفصيلي، أو معالج) تُعامَل كشاشة واحدة بمعرّف SCR واحد | "صفحة" منفردة لكل جزء | (عام) |
+| نوع اللوكب / Lookup Type | الـ"master" لقائمة قيم مُرمَّزة، يملكه اسميًا موديول مُسجِّل | "جدول Enum" | MDL |
+| قيمة اللوكب / Lookup Value | الـ"detail" — قيمة مُرمَّزة ضمن نوع لوكب: كود، تسميتان، ترتيب، حالة نشاط | "قيمة ثابتة" في الشيفرة | MDL |
+| الحدث المحاسبي القياسي / Canonical accounting event | مدخل الحسابات الوحيد؛ حدث جاهز الشكل قادم من مستهلك الأحداث خارج النطاق | "معاملة تجارية" (يحمل دلالة عالم المضيف) | FIN |
+| شجرة الحسابات / Chart of Accounts | بنية هرمية للحسابات؛ الأوراق فقط تقبل ترحيلاً مباشرًا | "دليل حسابات" بلا بنية هرمية | FIN |
+| البُعد / Dimension | مقطع بيانات (segment) يُعرَّف كبيانات ليُشكّل مع الحساب الأساسي تركيبة الترحيل | "تصنيف تحليلي" غامض | FIN |
+| الترحيل / Posting | إدخال قيد بحالة POSTED مؤثرًا في الأرصدة وغير قابل للتعديل | "اعتماد" (الاعتماد مصطلح مختلف يخص إغلاق الفترة) | FIN |
+| قيد اليومية / Journal Entry | وحدة الإدخال المحاسبي الأساسية (رأس + سطور متوازنة مدين/دائن) | "سند" فقط دون تحديد | FIN |
+| الفترة المحاسبية / Accounting Period | نافذة زمنية بحالة (Open / Soft Close / Hard Close / Year-End Close) تتحكم بقبول الترحيل | "شهر مالي" | FIN |
+| قيد العكس / Reversing Entry | تصحيح عبر قيد جديد مرتبط ثنائي الاتجاه بالأصل، مطابق سطرًا بسطر بعكس الاتجاه | "حذف القيد" (ممنوع) | FIN |
+| ميزان المراجعة / Trial Balance | تقرير متوازن دائمًا، مُشتق من القيود المُرحَّلة فقط | "كشف حساب" | FIN |
+
+### 7.2 Bounded contexts
+
+| Context | Owns module codes | Boundary statement |
+|---|---|---|
+| organization | ORG, SEC, MDL | القدرات المؤسِّسة (Tier 0) التي يعتمد عليها أي سياق آخر: الهيكل التنظيمي، الأمان، البيانات المرجعية |
+| supply | PRC, INV | تدفقات التوريد والمخزون (خارج نطاق هذه الدفعة) |
+| finance | FIN | الحسابات العامة ودفتر الأستاذ؛ تستهلك organization ولا تُنتج له شيئًا |
+| people | HR | الموارد البشرية (خارج نطاق هذه الدفعة) |
+| commercial | SLS, CTR | المبيعات والعقود (خارج نطاق هذه الدفعة) |
+
+(منقولة حرفيًا من `profile.vocabulary.bounded_contexts`)
+
+### 7.3 Module prefixes proposal
+
+| Code | Display | Status |
+|---|---|---|
+| ORG | Organization | IN PROFILE |
+| SEC | Security | IN PROFILE — هذه الدفعة |
+| MDL | Master Data Lookup | IN PROFILE — هذه الدفعة |
+| PRC | Procurement | IN PROFILE |
+| FIN | Finance | IN PROFILE — هذه الدفعة |
+| HR | Human Resources | IN PROFILE |
+| INV | Inventory | IN PROFILE |
+| SLS | Sales | IN PROFILE |
+| CTR | Contracts | IN PROFILE |
+
+كل الرموز موجودة مسبقًا في `profiles/erp.yaml → vocabulary.module_prefixes`؛ لا رمز جديد اقترحته
+هذه الجلسة.
+
+### 7.4 Identifier rules
+
+المعرّفات اللاحقة تُبنى بالصيغة `{prefix}-{MOD}-{seq}` بعرض تسلسل 3 خانات
+(`factory.ids.pattern`, `factory.ids.seq_width`). أنواع الكيانات: master, transactional,
+lookup, config, security (`profile.vocabulary.entity_kinds`).
+
+### 7.5 Knowledge sources to cite
+
+- `profiles/erp/knowledge/erp-domain-standards.md`
+- `new project/security-module-plan-en.md` — المصدر التأسيسي لوحدة SEC
+- `new project/lookup-module-plan-en.md` — المصدر التأسيسي لوحدة MDL
+- `new project/general-accounting-system-plan-en.md` — المصدر التأسيسي لوحدة FIN، بما فيه القسم
+  12 "details the analysis agent MUST honor" المُلزِم لكل تحليل لاحق
+- `new project/integration-notifications-fileservice.md` — يُستخدم فقط عند حاجة فعلية مذكورة
+  صراحة في إحدى الخطط الثلاث (لا يُعاد تصميمه)
+- plus the research sources in block 9
+
+## 8. RESOLVED DECISIONS
+
+| # | Point | Decision | Recommended by dialogue? | Confirmed by user | Sources |
+|---|---|---|---|---|---|
+| 1 | هدف قاعدة البيانات | PostgreSQL هو الهدف الوحيد لهذا البناء؛ Oracle/ADF يبقى مصدر أحداث فقط | لا — منصوص صراحة | نعم — منصوص في الخطط الثلاث وفي أمر التنفيذ | الخطط الثلاث §1؛ GENERATION-INSTRUCTIONS.md |
+| 2 | نموذج الأمان | RBAC هرمي بثلاث مستويات (Module→Screen→Action) بديلاً عن أي أمان محلي بالوحدات | لا — منصوص صراحة | نعم | security-module-plan-en.md §4 |
+| 3 | نموذج البيانات المرجعية | مركز lookup عام Master-Detail واحد لكل المنصة، بدل جداول lookup محلية | لا — منصوص صراحة | نعم | lookup-module-plan-en.md §2-3 |
+| 4 | نموذج اعتماد قيود المحاسبة | لا اعتماد على مستوى القيد الفردي؛ الاعتماد الوحيد عند إغلاق الفترة فقط | لا — منصوص صراحة، ويتوافق مع ممارسات GL الحديثة القائمة على الأحداث (انظر قسم 9، R1) | نعم | general-accounting-system-plan-en.md §8 |
+| 5 | نطاق هذه الدفعة | SEC ثم MDL ثم FIN فقط، بهذا الترتيب الصارم؛ باقي الوحدات خارج النطاق الآن | لا — منصوص صراحة | نعم | GENERATION-INSTRUCTIONS.md §3 |
+| 6 | استخدام Notifications/File Service | تكامل اختياري بحت، فقط عند حاجة صريحة يذكرها أحد الخطط الثلاث؛ لا إعادة تصميم لهما | لا — منصوص صراحة | نعم | الخطط الثلاث §8/§5/§2.3؛ GENERATION-INSTRUCTIONS.md §4.6 |
+
+## 9. RESEARCH LOG
+
+| # | Point | What established systems do | Source(s) (title, URL/path, date) | Used in |
+|---|---|---|---|---|
+| R1 | RBAC هرمي بمستوى module→screen→action | الأنظمة الناضجة تفصل "ما الذي يمكن فعله" (action) عن "أين" (scope/module)، وتستخدم الهرمية لتقليل تكرار الأدوار؛ التفويض الهرمي يُستخدم بحيث تتحكم صلاحية بوحدة كاملة وأخرى بإجراء داخلها | [How to Design an RBAC System — NocoBase](https://www.nocobase.com/en/blog/how-to-design-rbac-role-based-access-control-system), accessed 2026-09-10; [Access Control Design for Scalable RBAC Systems](https://www.loginradius.com/blog/identity/design-effective-rbac-system), accessed 2026-09-10 | G3، §7.1 "بوابة الوحدة" |
+| R2 | مركز بيانات مرجعية موحّد (MDM hub) | النمط الشائع هو مركز واحد (hub) يخزن البيانات المرجعية/الأساسية ويُنشرها للأنظمة الأخرى؛ النطاقات (domains) تتوافق مع بيانات مرجعية مُدارة مركزيًا بدل نسخ محلية متضاربة | [Why the Data Hub is the Future of Data Management — Semarchy](https://www.semarchy.com/blog/backtobasics-mdm-hub-patterns/), accessed 2026-09-10 | G4/G5، وحدة MDL بأكملها |
+| R3 | محاسبة قائمة على الأحداث (event-driven GL) | الأنظمة الحديثة تدمج دفتر الأستاذ مع معمارية قائمة على الأحداث: مصدر يُصدر معاملات، خدمة تحقق/تطبيع، ثم خدمة ترحيل تطبّق قاعدة القيد المزدوج وتُلحق القيود في مخزن إلحاقي فقط (append-only)؛ من التحديات الشائعة الأحداث المكرَّرة التي تُسبب ترحيلاً مزدوجًا | [General Ledger Postings: A Comprehensive Guide — Dualentry](https://www.dualentry.com/blog/general-ledger-postings), accessed 2026-09-10 | G7/G9، §12.12 "idempotency at the boundary" في خطة FIN |
+
+## 10. OPEN ITEMS
+
+لا يوجد — النطاق محدَّد بالكامل من الخطط الثلاث المرفقة وتوجيهات GENERATION-INSTRUCTIONS.md؛
+لا نقطة غموض تتطلب حوارًا إضافيًا مع المستخدم في هذه المرحلة.
+══════════════════════════════════════════════════════════════════
+
 <<<END INPUT>>>
 
 <<<INPUT: project-registry>>>
-(MISSING — the orchestrator refuses to run this stage until it exists)
+# PROJECT REGISTRY — منصة تخطيط موارد المؤسسات (ERP Platform)
+══════════════════════════════════════════════════════════════════
+Profile            : erp
+Registry Version   : 1.0.0
+Domain Profile     : erp/domain-profile.md v1
+Last Updated       : 2026-09-10 by P-1
+Modules registered : 9   Entity candidates : 0   Open items : 0
+══════════════════════════════════════════════════════════════════
+
+## SCHEMA COMPLIANCE MAP
+| Section of this registry | Category (shared/REGISTRY-SCHEMA.md) |
+|---|---|
+| IDENTITY & VERSIONING | CAT-1 identity & conventions |
+| CONVENTIONS & STEERING | CAT-1 identity & conventions |
+| MODULE / COMPONENT INDEX | CAT-2 module index |
+| ENTITY OWNERSHIP | CAT-3 entity ownership |
+| SHARED ENTITY DECLARATIONS | CAT-4 shared declarations |
+| STRUCTURAL / IMPLEMENTATION REGISTRY | CAT-5 structural registry |
+| CROSS-MODULE DEPENDENCY INDEX | CAT-6 dependency indexes |
+| DECISION INDEX | CAT-7 decision index |
+| PIPELINE / PROGRESS STATUS | CAT-8 pipeline status |
+| CHANGE / EVENT HISTORY | CAT-9 event history |
+Uncovered: none
+
+## IDENTITY & VERSIONING
+| Field | Value |
+|---|---|
+| Profile | erp — ERP Platform |
+| Registry version | 1.0.0 |
+| Domain profile source | erp/domain-profile.md v1 |
+
+### Version history
+| Version | Date | Change |
+|---|---|---|
+| 1.0.0 | 2026-09-10 | Initial bootstrap from erp/domain-profile.md v1 (BOOTSTRAP event, see CHANGE/EVENT HISTORY) |
+
+## CONVENTIONS & STEERING
+(copied verbatim from `erp/domain-profile.md` §7 — the authoritative source; this section
+mirrors it for engines that read only the registry)
+
+### Ubiquitous language
+See `erp/domain-profile.md` §7.1 for the full bilingual (ar/en) term table — copied verbatim,
+not restated here to avoid drift; cite as `[domain-profile §7.1]`.
+
+### Bounded contexts
+| Context | Owns module codes | Boundary statement |
+|---|---|---|
+| organization | ORG, SEC, MDL | Foundational capabilities (Tier 0) every other context depends on |
+| supply | PRC, INV | Supply and inventory flows (out of scope this batch) |
+| finance | FIN | General ledger; consumes organization, produces nothing back to it |
+| people | HR | Human resources (out of scope this batch) |
+| commercial | SLS, CTR | Sales and contracts (out of scope this batch) |
+
+### Module prefixes
+| Code | Display | Status |
+|---|---|---|
+| ORG | Organization | IN PROFILE |
+| SEC | Security | IN PROFILE |
+| MDL | Master Data Lookup | IN PROFILE |
+| PRC | Procurement | IN PROFILE |
+| FIN | Finance | IN PROFILE |
+| HR | Human Resources | IN PROFILE |
+| INV | Inventory | IN PROFILE |
+| SLS | Sales | IN PROFILE |
+| CTR | Contracts | IN PROFILE |
+
+### Identifier rules
+`{prefix}-{MOD}-{seq}` — seq width 3 (`factory.ids.pattern`, `factory.ids.seq_width`).
+Entity kinds: master, transactional, lookup, config, security.
+
+### ENFORCEMENT NOTES
+- **E1** Every later artifact uses the terms of `domain-profile.md §7.1` verbatim; a synonym
+  listed under "do not say" is a consistency finding at the pass gate (`gov.py analyze`
+  checks registry ↔ artifact agreement).
+- **E2** IDs follow `{prefix}-{MOD}-{seq}` (seq width 3) with the module codes of this section only.
+- **E3** Entities are classified with the kinds: master, transactional, lookup, config, security.
+- **E4** Sources to cite when a stage resolves an ambiguity: `profiles/erp/knowledge/erp-domain-standards.md`,
+  then `erp/domain-profile.md` itself, then the three module plans (`new project/*-plan-en.md`)
+  named in `domain-profile.md §7.5`.
+- **E5** Pipeline status (below) is maintained by the orchestrator from commits; seeded here as NOT STARTED.
+
+## MODULE / COMPONENT INDEX
+| # | Code | Module | Bounded context | Category | Core/ext | Status | Source |
+|---|---|---|---|---|---|---|---|
+| 1 | SEC | Security | organization | Foundation | Core | CANDIDATE — this batch, first | domain-profile §4 row 1 |
+| 2 | MDL | Master Data Lookup | organization | Foundation | Core | CANDIDATE — this batch, second | domain-profile §4 row 2 |
+| 3 | FIN | Finance (General Ledger) | finance | Business — Tier 1 | Core | CANDIDATE — this batch, third | domain-profile §4 row 3 |
+| 4 | ORG | Organization | organization | Foundation | — | RESERVED — not this batch | domain-profile §4 row 4; profile |
+| 5 | PRC | Procurement | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 5; profile |
+| 6 | HR | Human Resources | people | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 6; profile |
+| 7 | INV | Inventory | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 7; profile |
+| 8 | SLS | Sales | commercial | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 8; profile |
+| 9 | CTR | Contracts | commercial | Business — Tier 2 | — | RESERVED — not this batch | domain-profile §4 row 9; profile |
+
+## ENTITY OWNERSHIP
+none yet — `domain-profile.md` names no concrete entities (P1 SRS per module assigns `ENT` IDs;
+this registry's entity section is populated as each module's P1 runs).
+
+## SHARED ENTITY DECLARATIONS
+none yet — no SHARED entity candidate identified at this stage; expected first candidates
+(e.g. SEC's User/Role, MDL's Lookup Type/Value) are named once SEC's and MDL's P1 (SRS) run.
+
+## STRUCTURAL / IMPLEMENTATION REGISTRY
+none yet — filled by P2 (`DBF`) / P3.1 (`API`) per module version.
+
+## CROSS-MODULE DEPENDENCY INDEX
+| Candidate ref | Kind | From module | To module | Consumes | Status | Evidence |
+|---|---|---|---|---|---|---|
+| XM-CAND-001 | HARD-FK | FIN | SEC | identity + module/screen/action grants + SoD (entry-creator ≠ period-close approver) | CANDIDATE | domain-profile §6 row "FIN \| SEC \| HARD-FK" |
+| XM-CAND-002 | HARD-FK | FIN | MDL | payment methods, accounting event types, account types, period states, journal types | CANDIDATE | domain-profile §6 row "FIN \| MDL \| HARD-FK" |
+| XM-CAND-003 | SOFT/EVENT | FIN | Notifications (NOTIF, out of this batch) | period-close-awaiting notice, statement export — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
+| XM-CAND-004 | SOFT/EVENT | FIN | File Service (FILESVC, out of this batch) | statement/export file — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
+| XM-CAND-005 | SOFT | SEC | Notifications (NOTIF, out of this batch) | password-reset message — optional only | CANDIDATE | domain-profile §6; security-module-plan-en.md §8 |
+| XM-CAND-006 | EVENT | host business system (out of scope) | FIN | canonical accounting event only — no direct table read/write either direction | CANDIDATE | domain-profile §6 row "host → FIN (event only)"; general-accounting-system-plan-en.md §3 |
+Note: every consumer module (all 9, per SEC/MDL plans §7/§4) will register the same
+FIN→SEC / FIN→MDL shape once it exists; only the three modules named in this batch are
+pre-registered as candidates above — this is not a closed list.
+
+## DECISION INDEX
+| # | Decision | Status | Source |
+|---|---|---|---|
+| 1 | PostgreSQL is the sole DB build target; Oracle/ADF remains an upstream event source only | ACCEPTED | domain-profile §8 row 1 |
+| 2 | Hierarchical 3-level RBAC (Module→Screen→Action) replaces any module-local security | ACCEPTED | domain-profile §8 row 2 |
+| 3 | One central Lookup master-detail hub replaces module-local lookup tables | ACCEPTED | domain-profile §8 row 3 |
+| 4 | No per-entry approval in GL; the only human control point is period close | ACCEPTED | domain-profile §8 row 4 |
+| 5 | This batch's scope and order: SEC, then MDL, then FIN, strictly in that order | ACCEPTED | domain-profile §8 row 5 |
+| 6 | Notifications/File Service integration is optional-only, used solely on explicit plan need | ACCEPTED | domain-profile §8 row 6 |
+
+## OPEN QUESTION INDEX
+none — `domain-profile.md` §10 records no open item.
+
+## PIPELINE / PROGRESS STATUS
+| Module | Version | Last committed stage | Last gate verdict | Delivered tracks | Tag |
+|---|---|---|---|---|---|
+| SEC | v1 | domain-profile (platform-level; module stages NOT STARTED) | — | — | — |
+| MDL | v1 | NOT STARTED | — | — | — |
+| FIN | v1 | NOT STARTED | — | — | — |
+| ORG | — | NOT STARTED | — | — | — |
+| PRC | — | NOT STARTED | — | — | — |
+| HR | — | NOT STARTED | — | — | — |
+| INV | — | NOT STARTED | — | — | — |
+| SLS | — | NOT STARTED | — | — | — |
+| CTR | — | NOT STARTED | — | — | — |
+
+## CHANGE / EVENT HISTORY
+| Date | Stage/tool | Module | Version | Event |
+|---|---|---|---|---|
+| 2026-09-10 | domain-profile | (platform) | — | domain-profile.md v1 saved and committed (23b3176) |
+| 2026-09-10 | P-1 | (platform) | — | BOOTSTRAP — extracted 9 module rows, 0 entity candidates, 6 XM candidates, 6 confirmed decisions, 0 open items from domain-profile.md v1 |
+══════════════════════════════════════════════════════════════════
+
 <<<END INPUT>>>
 
 ---
