@@ -1,0 +1,13 @@
+{
+  "module": "FIN",
+  "track": "backend",
+  "plan": "exec",
+  "version": 1,
+  "verify": "sha256",
+  "source": "erp/modules/FIN/P3_1/backend-execution-plan-fin.md",
+  "checked": 45,
+  "missing": [],
+  "mismatched": [],
+  "ok": true,
+  "at": "2026-09-10T16:44:46+00:00"
+}
