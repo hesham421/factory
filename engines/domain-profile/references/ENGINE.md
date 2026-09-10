@@ -70,7 +70,9 @@ STEP 1.2 — Framing (before any field question)
   Propose a candidate MAIN COMPONENTS structure to react to — a proposal, not a fact.
   Cross-check candidate components against the profile's module codes
   (`profile.vocabulary.module_prefixes`) and bounded contexts
-  (`profile.vocabulary.bounded_contexts`) — the profile is the authority on codes.
+  (`profile.vocabulary.bounded_contexts`) — these are the starting vocabulary,
+  not a closed list: a component the profile does not yet name is proposed
+  freely (§4 block 7.3) and flows forward as RESERVED, never blocked on it.
 
 STEP 1.3 — Open-point inventory
   List every point the intake did not settle (scope edge, component ownership,
@@ -215,10 +217,13 @@ Every row is something the user named explicitly.
 ### 7.3 Module prefixes proposal
 | Code | Display | Status |
 |---|---|---|
-| [code] | [display] | IN PROFILE / PROPOSED — add to profile before {{ stage.next }} |
-Codes are taken from `profile.vocabulary.module_prefixes`. A module the profile does not
-list is recorded as PROPOSED; the user adds it to the profile (data, not engine text)
-before `{{ stage.next }}` runs. Engines never invent codes.
+| [code] | [display] | IN PROFILE / PROPOSED — carried into `{{ stage.next }}` as RESERVED |
+Codes are taken from `profile.vocabulary.module_prefixes` where they already exist.
+A module the profile does not list is recorded as PROPOSED here and needs no manual
+profile edit to proceed: `{{ stage.next }}` registers it as RESERVED and the pipeline
+continues normally. Adding the code to `profiles/erp.yaml` (or the active profile) is
+optional bookkeeping the user can do whenever convenient — never a gate. Engines never
+invent codes; they only carry forward what the user named.
 
 ### 7.4 Identifier rules
 Later stages build IDs as `{{ factory.ids.pattern }}` (seq width {{ factory.ids.seq_width }}) with

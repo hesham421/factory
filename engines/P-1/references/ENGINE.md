@@ -86,7 +86,9 @@ STEP D — profile facts that the registry must echo (read-only, cited as "profi
 
 A module code that appears in the domain-profile as PROPOSED but is not in
 `profile.vocabulary.module_prefixes` is registered with Status RESERVED and a note
-"awaiting profile update" — the profile is the authority on codes.
+"not yet in profile.vocabulary.module_prefixes" — this never blocks the run; the
+profile is the durable record of codes and is extended later, at the user's
+convenience, from the codes this stage and later ones have already used.
 
 ---
 

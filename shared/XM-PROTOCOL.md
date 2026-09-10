@@ -27,7 +27,7 @@ Every `XM` block/row carries:
 |---|---|
 | id | `XM` atom per `factory.ids.pattern`, module part = the consuming module |
 | type | `HARD-FK` — a physical constraint on the owner's table; `SOFT-READ` — an application-layer read without a constraint (governed exactly like a hard one; untracked reads are a finding) |
-| target module | one of `profile.vocabulary.module_prefixes`, never the consuming module |
+| target module | a module code in `profile.vocabulary.module_prefixes` or RESERVED per the registry, never the consuming module |
 | target entity | the **owner's** `ENT` ID (and the owner's `DBF` when a column is named). A consumer never re-creates the entity, never assigns it a new ID, never adds fields to it |
 | traces | ≥1 `REQ` of the consuming module (C6.3) |
 | state | §4 |

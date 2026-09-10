@@ -43,7 +43,7 @@ Every domain word comes from `profile.vocabulary` and nowhere else:
 
 | Key | Used for |
 |---|---|
-| `vocabulary.module_prefixes` | the only module codes (`naming.module_code`); every module-qualified ID and filename uses one of them |
+| `vocabulary.module_prefixes` | the module codes registered so far (`naming.module_code`); a module named during a run but not yet listed here is used as RESERVED (never blocked) and the list is extended later — no stage invents a code, but no stage waits on the profile either |
 | `vocabulary.keyword_map` | free-text → module detection at inception (any language) |
 | `vocabulary.entity_kinds` | the classification every entity carries; `profile.conventions.entity_defaults` is keyed by it |
 | `vocabulary.glossary` | terms used **verbatim** by every stage and every artifact (DDD ubiquitous language); a retired or synonymous term is a DRIFT finding |

@@ -17,7 +17,9 @@ languages:
   require_all: true                 # bilingual artifacts; English-only = incomplete
 
 vocabulary:
-  module_prefixes:
+  module_prefixes:                    # living registry, not a closed catalog — a code named
+                                       # during a run but missing here flows through as RESERVED
+                                       # (shared/GOVERNANCE-CORE.md §2); add it here whenever convenient
     ORG: Organization
     SEC: Security
     MDL: Master Data Lookup
@@ -27,7 +29,9 @@ vocabulary:
     INV: Inventory
     SLS: Sales
     CTR: Contracts
-  keyword_map:                      # used by P0 to detect modules in free text (any language)
+  keyword_map:                      # optional detection aid for P0, not a closed rule — a
+                                     # module with no entry here is still matched via
+                                     # domain-profile components + layer heuristics (engines/P0)
     PRC: [مشتريات, procurement, vendors, suppliers]
     HR:  [موظفين, HR, رواتب, payroll, employees]
     INV: [مخزون, inventory, warehouses, stock]
@@ -41,7 +45,9 @@ vocabulary:
     Composite Screen: Search + Entry (or Master + Detail, Wizard) treated as ONE screen with ONE SCR-ID.
     XM: A cross-module dependency (HARD-FK or SOFT-READ) declared by the consuming module.
     LOV: List of values loaded at runtime from the lookup module — never hardcoded.
-  bounded_contexts:
+  bounded_contexts:                 # starting grouping, not a fixed partition — a new module
+                                     # can join an existing context or start a new one; only
+                                     # a tiering deviation from it needs an ADR (XM-PROTOCOL.md)
     - {id: organization, owns: [ORG, SEC, MDL]}
     - {id: supply,       owns: [PRC, INV]}
     - {id: finance,      owns: [FIN]}
