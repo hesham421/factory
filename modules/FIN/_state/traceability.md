@@ -40,7 +40,65 @@
 | `AC-FIN-035` | srs | REQ-FIN-033 | — |
 | `AC-FIN-036` | srs | REQ-FIN-034 | — |
 | `AC-FIN-037` | srs | REQ-FIN-034 | — |
-| `DBF-FIN-001` | db-script | ENT-FIN-001, REQ-FIN-001 | — |
+| `API-FIN-001` | backend-execution-plan | REQ-FIN-001, REQ-FIN-003, DBF-FIN-001 | — |
+| `API-FIN-002` | backend-execution-plan | REQ-FIN-001, DBF-FIN-001 | — |
+| `API-FIN-003` | backend-execution-plan | REQ-FIN-001, DBF-FIN-001 | — |
+| `API-FIN-004` | backend-execution-plan | REQ-FIN-001, REQ-FIN-003, DBF-FIN-001 | — |
+| `API-FIN-005` | backend-execution-plan | REQ-FIN-001, DBF-FIN-010 | — |
+| `API-FIN-006` | backend-execution-plan | REQ-FIN-004, DBF-FIN-015 | — |
+| `API-FIN-007` | backend-execution-plan | REQ-FIN-004, DBF-FIN-015 | — |
+| `API-FIN-008` | backend-execution-plan | REQ-FIN-004, DBF-FIN-015 | — |
+| `API-FIN-009` | backend-execution-plan | REQ-FIN-004, REQ-FIN-005, DBF-FIN-015 | — |
+| `API-FIN-010` | backend-execution-plan | REQ-FIN-004, DBF-FIN-020 | — |
+| `API-FIN-011` | backend-execution-plan | REQ-FIN-006, REQ-FIN-007, DBF-FIN-028 | — |
+| `API-FIN-012` | backend-execution-plan | REQ-FIN-006, DBF-FIN-028 | — |
+| `API-FIN-013` | backend-execution-plan | REQ-FIN-006, DBF-FIN-028 | — |
+| `API-FIN-014` | backend-execution-plan | REQ-FIN-006, DBF-FIN-028 | — |
+| `API-FIN-015` | backend-execution-plan | REQ-FIN-006, DBF-FIN-032 | — |
+| `API-FIN-016` | backend-execution-plan | REQ-FIN-008, REQ-FIN-013, DBF-FIN-040 | — |
+| `API-FIN-017` | backend-execution-plan | REQ-FIN-008, DBF-FIN-040 | — |
+| `API-FIN-018` | backend-execution-plan | REQ-FIN-008, DBF-FIN-040 | — |
+| `API-FIN-019` | backend-execution-plan | REQ-FIN-009, REQ-FIN-010, REQ-FIN-011, REQ-FIN-012, DBF-FIN-049 | — |
+| `API-FIN-020` | backend-execution-plan | REQ-FIN-008, DBF-FIN-044 | — |
+| `API-FIN-021` | backend-execution-plan | REQ-FIN-016, DBF-FIN-094 | — |
+| `API-FIN-022` | backend-execution-plan | REQ-FIN-016, DBF-FIN-094 | — |
+| `API-FIN-023` | backend-execution-plan | REQ-FIN-016, DBF-FIN-094 | — |
+| `API-FIN-024` | backend-execution-plan | REQ-FIN-016, DBF-FIN-094 | — |
+| `API-FIN-025` | backend-execution-plan | REQ-FIN-016, DBF-FIN-100 | — |
+| `API-FIN-026` | backend-execution-plan | REQ-FIN-017, DBF-FIN-115 | — |
+| `API-FIN-027` | backend-execution-plan | REQ-FIN-017, DBF-FIN-115 | — |
+| `API-FIN-028` | backend-execution-plan | REQ-FIN-017, DBF-FIN-115 | — |
+| `API-FIN-029` | backend-execution-plan | REQ-FIN-017, DBF-FIN-115 | — |
+| `API-FIN-030` | backend-execution-plan | REQ-FIN-017, DBF-FIN-119 | — |
+| `API-FIN-031` | backend-execution-plan | REQ-FIN-017, DBF-FIN-118 | — |
+| `API-FIN-032` | backend-execution-plan | REQ-FIN-015, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-028, DBF-FIN-067 | — |
+| `API-FIN-033` | backend-execution-plan | REQ-FIN-018, DBF-FIN-067 | — |
+| `API-FIN-034` | backend-execution-plan | REQ-FIN-018, REQ-FIN-034, DBF-FIN-067 | — |
+| `API-FIN-035` | backend-execution-plan | REQ-FIN-023, REQ-FIN-024, DBF-FIN-077 | — |
+| `API-FIN-036` | backend-execution-plan | REQ-FIN-027, DBF-FIN-136 | — |
+| `API-FIN-037` | backend-execution-plan | REQ-FIN-027, DBF-FIN-136 | — |
+| `API-FIN-038` | backend-execution-plan | REQ-FIN-027, DBF-FIN-136 | — |
+| `API-FIN-039` | backend-execution-plan | REQ-FIN-021, REQ-FIN-022, REQ-FIN-029, DBF-FIN-157 | — |
+| `API-FIN-040` | backend-execution-plan | REQ-FIN-030, REQ-FIN-031, DBF-FIN-142 | — |
+| `API-FIN-041` | backend-execution-plan | REQ-FIN-027, DBF-FIN-148 | — |
+| `API-FIN-042` | backend-execution-plan | REQ-FIN-032, REQ-FIN-034, DBF-FIN-086 | — |
+| `API-FIN-043` | backend-execution-plan | REQ-FIN-032, REQ-FIN-034, DBF-FIN-086 | — |
+| `API-FIN-044` | backend-execution-plan | REQ-FIN-032, REQ-FIN-034, DBF-FIN-086 | — |
+| `API-FIN-045` | backend-execution-plan | REQ-FIN-032, REQ-FIN-034, DBF-FIN-086 | — |
+| `API-FIN-046` | backend-execution-plan | REQ-FIN-033, REQ-FIN-034, DBF-FIN-093 | — |
+| `API-FIN-047` | backend-execution-plan | REQ-FIN-025, DBF-FIN-164 | — |
+| `API-FIN-048` | backend-execution-plan | REQ-FIN-025, DBF-FIN-164 | — |
+| `API-FIN-049` | backend-execution-plan | REQ-FIN-025, DBF-FIN-164 | — |
+| `API-FIN-050` | backend-execution-plan | REQ-FIN-025, DBF-FIN-164 | — |
+| `API-FIN-051` | backend-execution-plan | REQ-FIN-025, DBF-FIN-166 | — |
+| `API-FIN-052` | backend-execution-plan | REQ-FIN-025, DBF-FIN-170 | — |
+| `API-FIN-053` | backend-execution-plan | REQ-FIN-025, REQ-FIN-026, DBF-FIN-175 | — |
+| `API-FIN-054` | backend-execution-plan | REQ-FIN-025, DBF-FIN-175 | — |
+| `API-FIN-055` | backend-execution-plan | REQ-FIN-025, REQ-FIN-026, DBF-FIN-175 | — |
+| `API-FIN-056` | backend-execution-plan | REQ-FIN-026, DBF-FIN-175 | — |
+| `API-FIN-057` | backend-execution-plan | REQ-FIN-025, DBF-FIN-179 | — |
+| `API-FIN-058` | backend-execution-plan | REQ-FIN-026, DBF-FIN-188 | — |
+| `DBF-FIN-001` | db-script | ENT-FIN-001, REQ-FIN-001 | API-FIN-001, API-FIN-002, API-FIN-003, API-FIN-004 |
 | `DBF-FIN-002` | db-script | ENT-FIN-001, REQ-FIN-001 | — |
 | `DBF-FIN-003` | db-script | ENT-FIN-001, REQ-FIN-001 | — |
 | `DBF-FIN-004` | db-script | ENT-FIN-001, REQ-FIN-001 | — |
@@ -49,17 +107,17 @@
 | `DBF-FIN-007` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
 | `DBF-FIN-008` | db-script | ENT-FIN-001, REQ-FIN-002 | — |
 | `DBF-FIN-009` | db-script | ENT-FIN-001, REQ-FIN-031 | — |
-| `DBF-FIN-010` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
+| `DBF-FIN-010` | db-script | ENT-FIN-001, REQ-FIN-003 | API-FIN-005 |
 | `DBF-FIN-011` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
 | `DBF-FIN-012` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
 | `DBF-FIN-013` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
 | `DBF-FIN-014` | db-script | ENT-FIN-001, REQ-FIN-003 | — |
-| `DBF-FIN-015` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
+| `DBF-FIN-015` | db-script | ENT-FIN-002, REQ-FIN-004 | API-FIN-006, API-FIN-007, API-FIN-008, API-FIN-009 |
 | `DBF-FIN-016` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-017` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-018` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-019` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
-| `DBF-FIN-020` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
+| `DBF-FIN-020` | db-script | ENT-FIN-002, REQ-FIN-004 | API-FIN-010 |
 | `DBF-FIN-021` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-022` | db-script | ENT-FIN-002, REQ-FIN-005 | — |
 | `DBF-FIN-023` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
@@ -67,11 +125,11 @@
 | `DBF-FIN-025` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-026` | db-script | ENT-FIN-002, REQ-FIN-004 | — |
 | `DBF-FIN-027` | db-script | ENT-FIN-002, REQ-FIN-005 | — |
-| `DBF-FIN-028` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
+| `DBF-FIN-028` | db-script | ENT-FIN-003, REQ-FIN-006 | API-FIN-011, API-FIN-012, API-FIN-013, API-FIN-014 |
 | `DBF-FIN-029` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
 | `DBF-FIN-030` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
 | `DBF-FIN-031` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
-| `DBF-FIN-032` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
+| `DBF-FIN-032` | db-script | ENT-FIN-003, REQ-FIN-006 | API-FIN-015 |
 | `DBF-FIN-033` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
 | `DBF-FIN-034` | db-script | ENT-FIN-003, REQ-FIN-007 | — |
 | `DBF-FIN-035` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
@@ -79,16 +137,16 @@
 | `DBF-FIN-037` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
 | `DBF-FIN-038` | db-script | ENT-FIN-003, REQ-FIN-006 | — |
 | `DBF-FIN-039` | db-script | ENT-FIN-003, REQ-FIN-007 | — |
-| `DBF-FIN-040` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
+| `DBF-FIN-040` | db-script | ENT-FIN-004, REQ-FIN-008 | API-FIN-016, API-FIN-017, API-FIN-018 |
 | `DBF-FIN-041` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
 | `DBF-FIN-042` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
 | `DBF-FIN-043` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
-| `DBF-FIN-044` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
+| `DBF-FIN-044` | db-script | ENT-FIN-004, REQ-FIN-008 | API-FIN-020 |
 | `DBF-FIN-045` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
 | `DBF-FIN-046` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
 | `DBF-FIN-047` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
 | `DBF-FIN-048` | db-script | ENT-FIN-004, REQ-FIN-008 | — |
-| `DBF-FIN-049` | db-script | ENT-FIN-005, REQ-FIN-009 | — |
+| `DBF-FIN-049` | db-script | ENT-FIN-005, REQ-FIN-009 | API-FIN-019 |
 | `DBF-FIN-050` | db-script | ENT-FIN-005, REQ-FIN-008 | — |
 | `DBF-FIN-051` | db-script | ENT-FIN-005, REQ-FIN-009 | — |
 | `DBF-FIN-052` | db-script | ENT-FIN-005, REQ-FIN-010 | — |
@@ -106,7 +164,7 @@
 | `DBF-FIN-064` | db-script | ENT-FIN-005, REQ-FIN-010 | — |
 | `DBF-FIN-065` | db-script | ENT-FIN-005, REQ-FIN-010 | — |
 | `DBF-FIN-066` | db-script | ENT-FIN-005, REQ-FIN-010 | — |
-| `DBF-FIN-067` | db-script | ENT-FIN-006, REQ-FIN-018 | — |
+| `DBF-FIN-067` | db-script | ENT-FIN-006, REQ-FIN-018 | API-FIN-032, API-FIN-033, API-FIN-034 |
 | `DBF-FIN-068` | db-script | ENT-FIN-006, REQ-FIN-018 | — |
 | `DBF-FIN-069` | db-script | ENT-FIN-006, REQ-FIN-018 | — |
 | `DBF-FIN-070` | db-script | ENT-FIN-006, REQ-FIN-014 | — |
@@ -116,7 +174,7 @@
 | `DBF-FIN-074` | db-script | ENT-FIN-006, REQ-FIN-034 | — |
 | `DBF-FIN-075` | db-script | ENT-FIN-006, REQ-FIN-016 | — |
 | `DBF-FIN-076` | db-script | ENT-FIN-006, REQ-FIN-017 | — |
-| `DBF-FIN-077` | db-script | ENT-FIN-006, REQ-FIN-023 | — |
+| `DBF-FIN-077` | db-script | ENT-FIN-006, REQ-FIN-023 | API-FIN-035 |
 | `DBF-FIN-078` | db-script | ENT-FIN-006, REQ-FIN-023 | — |
 | `DBF-FIN-079` | db-script | ENT-FIN-006, REQ-FIN-018 | — |
 | `DBF-FIN-080` | db-script | ENT-FIN-006, REQ-FIN-018 | — |
@@ -125,21 +183,21 @@
 | `DBF-FIN-083` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
 | `DBF-FIN-084` | db-script | ENT-FIN-007, REQ-FIN-018 | — |
 | `DBF-FIN-085` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
-| `DBF-FIN-086` | db-script | ENT-FIN-007, REQ-FIN-002 | — |
+| `DBF-FIN-086` | db-script | ENT-FIN-007, REQ-FIN-002 | API-FIN-042, API-FIN-043, API-FIN-044, API-FIN-045 |
 | `DBF-FIN-087` | db-script | ENT-FIN-007, REQ-FIN-018 | — |
 | `DBF-FIN-088` | db-script | ENT-FIN-007, REQ-FIN-019 | — |
 | `DBF-FIN-089` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
 | `DBF-FIN-090` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
 | `DBF-FIN-091` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
 | `DBF-FIN-092` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
-| `DBF-FIN-093` | db-script | ENT-FIN-007, REQ-FIN-005 | — |
-| `DBF-FIN-094` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
+| `DBF-FIN-093` | db-script | ENT-FIN-007, REQ-FIN-005 | API-FIN-046 |
+| `DBF-FIN-094` | db-script | ENT-FIN-008, REQ-FIN-016 | API-FIN-021, API-FIN-022, API-FIN-023, API-FIN-024 |
 | `DBF-FIN-095` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-096` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-097` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-098` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-099` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
-| `DBF-FIN-100` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
+| `DBF-FIN-100` | db-script | ENT-FIN-008, REQ-FIN-016 | API-FIN-025 |
 | `DBF-FIN-101` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-102` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-103` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
@@ -154,11 +212,11 @@
 | `DBF-FIN-112` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-113` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
 | `DBF-FIN-114` | db-script | ENT-FIN-008, REQ-FIN-016 | — |
-| `DBF-FIN-115` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
+| `DBF-FIN-115` | db-script | ENT-FIN-009, REQ-FIN-017 | API-FIN-026, API-FIN-027, API-FIN-028, API-FIN-029 |
 | `DBF-FIN-116` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
 | `DBF-FIN-117` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
-| `DBF-FIN-118` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
-| `DBF-FIN-119` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
+| `DBF-FIN-118` | db-script | ENT-FIN-009, REQ-FIN-017 | API-FIN-031 |
+| `DBF-FIN-119` | db-script | ENT-FIN-009, REQ-FIN-017 | API-FIN-030 |
 | `DBF-FIN-120` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
 | `DBF-FIN-121` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
 | `DBF-FIN-122` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
@@ -175,19 +233,19 @@
 | `DBF-FIN-133` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
 | `DBF-FIN-134` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
 | `DBF-FIN-135` | db-script | ENT-FIN-009, REQ-FIN-017 | — |
-| `DBF-FIN-136` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
+| `DBF-FIN-136` | db-script | ENT-FIN-010, REQ-FIN-027 | API-FIN-036, API-FIN-037, API-FIN-038 |
 | `DBF-FIN-137` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-138` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-139` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-140` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-141` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
-| `DBF-FIN-142` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
+| `DBF-FIN-142` | db-script | ENT-FIN-010, REQ-FIN-027 | API-FIN-040 |
 | `DBF-FIN-143` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-144` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-145` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-146` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
 | `DBF-FIN-147` | db-script | ENT-FIN-010, REQ-FIN-027 | — |
-| `DBF-FIN-148` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
+| `DBF-FIN-148` | db-script | ENT-FIN-011, REQ-FIN-027 | API-FIN-041 |
 | `DBF-FIN-149` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-150` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-151` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
@@ -196,29 +254,29 @@
 | `DBF-FIN-154` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-155` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-156` | db-script | ENT-FIN-011, REQ-FIN-028 | — |
-| `DBF-FIN-157` | db-script | ENT-FIN-011, REQ-FIN-021 | — |
+| `DBF-FIN-157` | db-script | ENT-FIN-011, REQ-FIN-021 | API-FIN-039 |
 | `DBF-FIN-158` | db-script | ENT-FIN-011, REQ-FIN-021 | — |
 | `DBF-FIN-159` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-160` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-161` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-162` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
 | `DBF-FIN-163` | db-script | ENT-FIN-011, REQ-FIN-027 | — |
-| `DBF-FIN-164` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
+| `DBF-FIN-164` | db-script | ENT-FIN-012, REQ-FIN-025 | API-FIN-047, API-FIN-048, API-FIN-049, API-FIN-050 |
 | `DBF-FIN-165` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
-| `DBF-FIN-166` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
+| `DBF-FIN-166` | db-script | ENT-FIN-012, REQ-FIN-025 | API-FIN-051 |
 | `DBF-FIN-167` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
 | `DBF-FIN-168` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
 | `DBF-FIN-169` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
-| `DBF-FIN-170` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
+| `DBF-FIN-170` | db-script | ENT-FIN-012, REQ-FIN-025 | API-FIN-052 |
 | `DBF-FIN-171` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
 | `DBF-FIN-172` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
 | `DBF-FIN-173` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
 | `DBF-FIN-174` | db-script | ENT-FIN-012, REQ-FIN-025 | — |
-| `DBF-FIN-175` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
+| `DBF-FIN-175` | db-script | ENT-FIN-013, REQ-FIN-025 | API-FIN-053, API-FIN-054, API-FIN-055, API-FIN-056 |
 | `DBF-FIN-176` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
 | `DBF-FIN-177` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
 | `DBF-FIN-178` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
-| `DBF-FIN-179` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
+| `DBF-FIN-179` | db-script | ENT-FIN-013, REQ-FIN-025 | API-FIN-057 |
 | `DBF-FIN-180` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
 | `DBF-FIN-181` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
 | `DBF-FIN-182` | db-script | ENT-FIN-013, REQ-FIN-025 | — |
@@ -227,7 +285,7 @@
 | `DBF-FIN-185` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
 | `DBF-FIN-186` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
 | `DBF-FIN-187` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
-| `DBF-FIN-188` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
+| `DBF-FIN-188` | db-script | ENT-FIN-013, REQ-FIN-026 | API-FIN-058 |
 | `DBF-FIN-189` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
 | `DBF-FIN-190` | db-script | ENT-FIN-013, REQ-FIN-026 | — |
 | `ENT-FIN-001` | srs | — | DBF-FIN-001, DBF-FIN-002, DBF-FIN-003, DBF-FIN-004, DBF-FIN-005, DBF-FIN-006, DBF-FIN-007, DBF-FIN-008, DBF-FIN-009, DBF-FIN-010, DBF-FIN-011, DBF-FIN-012, DBF-FIN-013, DBF-FIN-014 |
@@ -253,40 +311,98 @@
 | `POL-FIN-008` | business-policies | — | US-FIN-012 |
 | `POL-FIN-009` | business-policies | — | US-FIN-015, US-FIN-016, US-FIN-017 |
 | `POL-FIN-010` | business-policies | — | US-FIN-013, US-FIN-014 |
-| `REQ-FIN-001` | srs | US-FIN-001 | AC-FIN-001, DBF-FIN-001, DBF-FIN-002, DBF-FIN-003, DBF-FIN-004, DBF-FIN-005, SCR-REQ-FIN-001 |
+| `QR-FIN-001` | backend-execution-plan | — | — |
+| `QR-FIN-002` | backend-execution-plan | — | — |
+| `QR-FIN-003` | backend-execution-plan | — | — |
+| `QR-FIN-004` | backend-execution-plan | — | — |
+| `QR-FIN-005` | backend-execution-plan | — | — |
+| `QR-FIN-006` | backend-execution-plan | — | — |
+| `QR-FIN-007` | backend-execution-plan | — | — |
+| `QR-FIN-008` | backend-execution-plan | — | — |
+| `QR-FIN-009` | backend-execution-plan | — | — |
+| `QR-FIN-010` | backend-execution-plan | — | — |
+| `QR-FIN-011` | backend-execution-plan | — | — |
+| `QR-FIN-012` | backend-execution-plan | — | — |
+| `QR-FIN-013` | backend-execution-plan | — | — |
+| `QR-FIN-014` | backend-execution-plan | — | — |
+| `QR-FIN-015` | backend-execution-plan | — | — |
+| `QR-FIN-016` | backend-execution-plan | — | — |
+| `QR-FIN-017` | backend-execution-plan | — | — |
+| `QR-FIN-018` | backend-execution-plan | — | — |
+| `QR-FIN-019` | backend-execution-plan | — | — |
+| `QR-FIN-020` | backend-execution-plan | — | — |
+| `QR-FIN-021` | backend-execution-plan | — | — |
+| `QR-FIN-022` | backend-execution-plan | — | — |
+| `QR-FIN-023` | backend-execution-plan | — | — |
+| `QR-FIN-024` | backend-execution-plan | — | — |
+| `QR-FIN-025` | backend-execution-plan | — | — |
+| `QR-FIN-026` | backend-execution-plan | — | — |
+| `QR-FIN-027` | backend-execution-plan | — | — |
+| `QR-FIN-028` | backend-execution-plan | — | — |
+| `QR-FIN-029` | backend-execution-plan | — | — |
+| `QR-FIN-030` | backend-execution-plan | — | — |
+| `QR-FIN-031` | backend-execution-plan | — | — |
+| `QR-FIN-032` | backend-execution-plan | — | — |
+| `QR-FIN-033` | backend-execution-plan | — | — |
+| `QR-FIN-034` | backend-execution-plan | — | — |
+| `QR-FIN-035` | backend-execution-plan | — | — |
+| `QR-FIN-036` | backend-execution-plan | — | — |
+| `QR-FIN-037` | backend-execution-plan | — | — |
+| `QR-FIN-038` | backend-execution-plan | — | — |
+| `QR-FIN-039` | backend-execution-plan | — | — |
+| `QR-FIN-040` | backend-execution-plan | — | — |
+| `QR-FIN-041` | backend-execution-plan | — | — |
+| `QR-FIN-042` | backend-execution-plan | — | — |
+| `QR-FIN-043` | backend-execution-plan | — | — |
+| `QR-FIN-044` | backend-execution-plan | — | — |
+| `QR-FIN-045` | backend-execution-plan | — | — |
+| `QR-FIN-046` | backend-execution-plan | — | — |
+| `QR-FIN-047` | backend-execution-plan | — | — |
+| `QR-FIN-048` | backend-execution-plan | — | — |
+| `QR-FIN-049` | backend-execution-plan | — | — |
+| `QR-FIN-050` | backend-execution-plan | — | — |
+| `QR-FIN-051` | backend-execution-plan | — | — |
+| `QR-FIN-052` | backend-execution-plan | — | — |
+| `QR-FIN-053` | backend-execution-plan | — | — |
+| `QR-FIN-054` | backend-execution-plan | — | — |
+| `QR-FIN-055` | backend-execution-plan | — | — |
+| `QR-FIN-056` | backend-execution-plan | — | — |
+| `QR-FIN-057` | backend-execution-plan | — | — |
+| `QR-FIN-058` | backend-execution-plan | — | — |
+| `REQ-FIN-001` | srs | US-FIN-001 | AC-FIN-001, API-FIN-001, API-FIN-002, API-FIN-003, API-FIN-004, API-FIN-005, DBF-FIN-001, DBF-FIN-002, DBF-FIN-003, DBF-FIN-004, DBF-FIN-005, SCR-REQ-FIN-001 |
 | `REQ-FIN-002` | srs | US-FIN-001 | AC-FIN-002, DBF-FIN-008, DBF-FIN-086, RULE-FIN-001, SCR-REQ-FIN-001 |
-| `REQ-FIN-003` | srs | US-FIN-001 | AC-FIN-003, DBF-FIN-006, DBF-FIN-007, DBF-FIN-010, DBF-FIN-011, DBF-FIN-012, DBF-FIN-013, DBF-FIN-014, RULE-FIN-011, SCR-REQ-FIN-001 |
-| `REQ-FIN-004` | srs | US-FIN-002 | AC-FIN-004, DBF-FIN-015, DBF-FIN-016, DBF-FIN-017, DBF-FIN-018, DBF-FIN-019, DBF-FIN-020, DBF-FIN-021, DBF-FIN-023, DBF-FIN-024, DBF-FIN-025, DBF-FIN-026, SCR-REQ-FIN-002 |
-| `REQ-FIN-005` | srs | US-FIN-001, US-FIN-002 | AC-FIN-005, DBF-FIN-022, DBF-FIN-027, DBF-FIN-083, DBF-FIN-085, DBF-FIN-089, DBF-FIN-090, DBF-FIN-091, DBF-FIN-092, DBF-FIN-093, RULE-FIN-003, SCR-REQ-FIN-002 |
-| `REQ-FIN-006` | srs | US-FIN-003 | AC-FIN-006, DBF-FIN-028, DBF-FIN-029, DBF-FIN-030, DBF-FIN-031, DBF-FIN-032, DBF-FIN-033, DBF-FIN-035, DBF-FIN-036, DBF-FIN-037, DBF-FIN-038, SCR-REQ-FIN-003 |
-| `REQ-FIN-007` | srs | US-FIN-003 | AC-FIN-007, DBF-FIN-034, DBF-FIN-039, SCR-REQ-FIN-003 |
-| `REQ-FIN-008` | srs | US-FIN-004 | AC-FIN-008, DBF-FIN-040, DBF-FIN-041, DBF-FIN-042, DBF-FIN-043, DBF-FIN-044, DBF-FIN-045, DBF-FIN-046, DBF-FIN-047, DBF-FIN-048, DBF-FIN-050, RULE-FIN-012, SCR-REQ-FIN-004 |
-| `REQ-FIN-009` | srs | US-FIN-004 | AC-FIN-009, DBF-FIN-049, DBF-FIN-051, DBF-FIN-058, DBF-FIN-061, SCR-REQ-FIN-004 |
-| `REQ-FIN-010` | srs | US-FIN-004 | AC-FIN-010, DBF-FIN-052, DBF-FIN-053, DBF-FIN-054, DBF-FIN-062, DBF-FIN-063, DBF-FIN-064, DBF-FIN-065, DBF-FIN-066, SCR-REQ-FIN-004 |
-| `REQ-FIN-011` | srs | US-FIN-004 | AC-FIN-011, DBF-FIN-055, DBF-FIN-056, DBF-FIN-057, SCR-REQ-FIN-004 |
-| `REQ-FIN-012` | srs | US-FIN-004 | AC-FIN-012, AC-FIN-013, DBF-FIN-059, DBF-FIN-060, RULE-FIN-005, SCR-REQ-FIN-004 |
-| `REQ-FIN-013` | srs | US-FIN-004 | AC-FIN-014, SCR-REQ-FIN-004 |
+| `REQ-FIN-003` | srs | US-FIN-001 | AC-FIN-003, API-FIN-001, API-FIN-004, DBF-FIN-006, DBF-FIN-007, DBF-FIN-010, DBF-FIN-011, DBF-FIN-012, DBF-FIN-013, DBF-FIN-014, RULE-FIN-011, SCR-REQ-FIN-001 |
+| `REQ-FIN-004` | srs | US-FIN-002 | AC-FIN-004, API-FIN-006, API-FIN-007, API-FIN-008, API-FIN-009, API-FIN-010, DBF-FIN-015, DBF-FIN-016, DBF-FIN-017, DBF-FIN-018, DBF-FIN-019, DBF-FIN-020, DBF-FIN-021, DBF-FIN-023, DBF-FIN-024, DBF-FIN-025, DBF-FIN-026, SCR-REQ-FIN-002 |
+| `REQ-FIN-005` | srs | US-FIN-001, US-FIN-002 | AC-FIN-005, API-FIN-009, DBF-FIN-022, DBF-FIN-027, DBF-FIN-083, DBF-FIN-085, DBF-FIN-089, DBF-FIN-090, DBF-FIN-091, DBF-FIN-092, DBF-FIN-093, RULE-FIN-003, SCR-REQ-FIN-002 |
+| `REQ-FIN-006` | srs | US-FIN-003 | AC-FIN-006, API-FIN-011, API-FIN-012, API-FIN-013, API-FIN-014, API-FIN-015, DBF-FIN-028, DBF-FIN-029, DBF-FIN-030, DBF-FIN-031, DBF-FIN-032, DBF-FIN-033, DBF-FIN-035, DBF-FIN-036, DBF-FIN-037, DBF-FIN-038, SCR-REQ-FIN-003 |
+| `REQ-FIN-007` | srs | US-FIN-003 | AC-FIN-007, API-FIN-011, DBF-FIN-034, DBF-FIN-039, SCR-REQ-FIN-003 |
+| `REQ-FIN-008` | srs | US-FIN-004 | AC-FIN-008, API-FIN-016, API-FIN-017, API-FIN-018, API-FIN-020, DBF-FIN-040, DBF-FIN-041, DBF-FIN-042, DBF-FIN-043, DBF-FIN-044, DBF-FIN-045, DBF-FIN-046, DBF-FIN-047, DBF-FIN-048, DBF-FIN-050, RULE-FIN-012, SCR-REQ-FIN-004 |
+| `REQ-FIN-009` | srs | US-FIN-004 | AC-FIN-009, API-FIN-019, DBF-FIN-049, DBF-FIN-051, DBF-FIN-058, DBF-FIN-061, SCR-REQ-FIN-004 |
+| `REQ-FIN-010` | srs | US-FIN-004 | AC-FIN-010, API-FIN-019, DBF-FIN-052, DBF-FIN-053, DBF-FIN-054, DBF-FIN-062, DBF-FIN-063, DBF-FIN-064, DBF-FIN-065, DBF-FIN-066, SCR-REQ-FIN-004 |
+| `REQ-FIN-011` | srs | US-FIN-004 | AC-FIN-011, API-FIN-019, DBF-FIN-055, DBF-FIN-056, DBF-FIN-057, SCR-REQ-FIN-004 |
+| `REQ-FIN-012` | srs | US-FIN-004 | AC-FIN-012, AC-FIN-013, API-FIN-019, DBF-FIN-059, DBF-FIN-060, RULE-FIN-005, SCR-REQ-FIN-004 |
+| `REQ-FIN-013` | srs | US-FIN-004 | AC-FIN-014, API-FIN-016, SCR-REQ-FIN-004 |
 | `REQ-FIN-014` | srs | US-FIN-005 | AC-FIN-015, DBF-FIN-070, SCR-REQ-FIN-007 |
-| `REQ-FIN-015` | srs | US-FIN-006 | AC-FIN-016, SCR-REQ-FIN-007 |
-| `REQ-FIN-016` | srs | US-FIN-007 | AC-FIN-017, DBF-FIN-075, DBF-FIN-094, DBF-FIN-095, DBF-FIN-096, DBF-FIN-097, DBF-FIN-098, DBF-FIN-099, DBF-FIN-100, DBF-FIN-101, DBF-FIN-102, DBF-FIN-103, DBF-FIN-104, DBF-FIN-105, DBF-FIN-106, DBF-FIN-107, DBF-FIN-108, DBF-FIN-109, DBF-FIN-110, DBF-FIN-111, DBF-FIN-112, DBF-FIN-113, DBF-FIN-114, RULE-FIN-013, SCR-REQ-FIN-005 |
-| `REQ-FIN-017` | srs | US-FIN-008 | AC-FIN-018, DBF-FIN-076, DBF-FIN-115, DBF-FIN-116, DBF-FIN-117, DBF-FIN-118, DBF-FIN-119, DBF-FIN-120, DBF-FIN-121, DBF-FIN-122, DBF-FIN-123, DBF-FIN-124, DBF-FIN-125, DBF-FIN-126, DBF-FIN-127, DBF-FIN-128, DBF-FIN-129, DBF-FIN-130, DBF-FIN-131, DBF-FIN-132, DBF-FIN-133, DBF-FIN-134, DBF-FIN-135, RULE-FIN-014, SCR-REQ-FIN-006 |
-| `REQ-FIN-018` | srs | US-FIN-009 | AC-FIN-019, AC-FIN-020, DBF-FIN-067, DBF-FIN-068, DBF-FIN-069, DBF-FIN-071, DBF-FIN-079, DBF-FIN-080, DBF-FIN-081, DBF-FIN-082, DBF-FIN-084, DBF-FIN-087, RULE-FIN-001, RULE-FIN-002, RULE-FIN-003, RULE-FIN-004, RULE-FIN-006, SCR-REQ-FIN-007 |
-| `REQ-FIN-019` | srs | US-FIN-009 | AC-FIN-021, DBF-FIN-088, RULE-FIN-002, SCR-REQ-FIN-007 |
-| `REQ-FIN-020` | srs | US-FIN-009, US-FIN-005 | AC-FIN-022, SCR-REQ-FIN-007 |
-| `REQ-FIN-021` | srs | US-FIN-010 | AC-FIN-023, DBF-FIN-157, DBF-FIN-158, SCR-REQ-FIN-008 |
-| `REQ-FIN-022` | srs | US-FIN-010 | AC-FIN-024, RULE-FIN-008, SCR-REQ-FIN-008 |
-| `REQ-FIN-023` | srs | US-FIN-011 | AC-FIN-025, DBF-FIN-077, DBF-FIN-078, RULE-FIN-006, RULE-FIN-007, SCR-REQ-FIN-007 |
-| `REQ-FIN-024` | srs | US-FIN-011 | AC-FIN-026, SCR-REQ-FIN-007 |
-| `REQ-FIN-025` | srs | US-FIN-012 | AC-FIN-027, DBF-FIN-164, DBF-FIN-165, DBF-FIN-166, DBF-FIN-167, DBF-FIN-168, DBF-FIN-169, DBF-FIN-170, DBF-FIN-171, DBF-FIN-172, DBF-FIN-173, DBF-FIN-174, DBF-FIN-175, DBF-FIN-176, DBF-FIN-177, DBF-FIN-178, DBF-FIN-179, DBF-FIN-180, DBF-FIN-181, DBF-FIN-182, DBF-FIN-183, SCR-REQ-FIN-014, SCR-REQ-FIN-015, SCR-REQ-FIN-016 |
-| `REQ-FIN-026` | srs | US-FIN-012, US-FIN-010 | AC-FIN-028, DBF-FIN-184, DBF-FIN-185, DBF-FIN-186, DBF-FIN-187, DBF-FIN-188, DBF-FIN-189, DBF-FIN-190, SCR-REQ-FIN-016 |
-| `REQ-FIN-027` | srs | US-FIN-013 | AC-FIN-029, DBF-FIN-072, DBF-FIN-136, DBF-FIN-137, DBF-FIN-138, DBF-FIN-139, DBF-FIN-140, DBF-FIN-141, DBF-FIN-142, DBF-FIN-143, DBF-FIN-144, DBF-FIN-145, DBF-FIN-146, DBF-FIN-147, DBF-FIN-148, DBF-FIN-149, DBF-FIN-150, DBF-FIN-151, DBF-FIN-152, DBF-FIN-153, DBF-FIN-154, DBF-FIN-155, DBF-FIN-159, DBF-FIN-160, DBF-FIN-161, DBF-FIN-162, DBF-FIN-163, SCR-REQ-FIN-008 |
-| `REQ-FIN-028` | srs | US-FIN-013 | AC-FIN-030, DBF-FIN-073, DBF-FIN-156, RULE-FIN-004, SCR-REQ-FIN-008 |
-| `REQ-FIN-029` | srs | US-FIN-013 | AC-FIN-031, RULE-FIN-009, SCR-REQ-FIN-008 |
-| `REQ-FIN-030` | srs | US-FIN-014 | AC-FIN-032, RULE-FIN-010, SCR-REQ-FIN-008 |
-| `REQ-FIN-031` | srs | US-FIN-014 | AC-FIN-033, DBF-FIN-009, RULE-FIN-011, SCR-REQ-FIN-008 |
-| `REQ-FIN-032` | srs | US-FIN-015 | AC-FIN-034, SCR-REQ-FIN-009, SCR-REQ-FIN-010, SCR-REQ-FIN-011, SCR-REQ-FIN-012 |
-| `REQ-FIN-033` | srs | US-FIN-016 | AC-FIN-035, SCR-REQ-FIN-013 |
-| `REQ-FIN-034` | srs | US-FIN-017 | AC-FIN-036, AC-FIN-037, DBF-FIN-074, SCR-REQ-FIN-009, SCR-REQ-FIN-010, SCR-REQ-FIN-011, SCR-REQ-FIN-012, SCR-REQ-FIN-013 |
+| `REQ-FIN-015` | srs | US-FIN-006 | AC-FIN-016, API-FIN-032, SCR-REQ-FIN-007 |
+| `REQ-FIN-016` | srs | US-FIN-007 | AC-FIN-017, API-FIN-021, API-FIN-022, API-FIN-023, API-FIN-024, API-FIN-025, DBF-FIN-075, DBF-FIN-094, DBF-FIN-095, DBF-FIN-096, DBF-FIN-097, DBF-FIN-098, DBF-FIN-099, DBF-FIN-100, DBF-FIN-101, DBF-FIN-102, DBF-FIN-103, DBF-FIN-104, DBF-FIN-105, DBF-FIN-106, DBF-FIN-107, DBF-FIN-108, DBF-FIN-109, DBF-FIN-110, DBF-FIN-111, DBF-FIN-112, DBF-FIN-113, DBF-FIN-114, RULE-FIN-013, SCR-REQ-FIN-005 |
+| `REQ-FIN-017` | srs | US-FIN-008 | AC-FIN-018, API-FIN-026, API-FIN-027, API-FIN-028, API-FIN-029, API-FIN-030, API-FIN-031, DBF-FIN-076, DBF-FIN-115, DBF-FIN-116, DBF-FIN-117, DBF-FIN-118, DBF-FIN-119, DBF-FIN-120, DBF-FIN-121, DBF-FIN-122, DBF-FIN-123, DBF-FIN-124, DBF-FIN-125, DBF-FIN-126, DBF-FIN-127, DBF-FIN-128, DBF-FIN-129, DBF-FIN-130, DBF-FIN-131, DBF-FIN-132, DBF-FIN-133, DBF-FIN-134, DBF-FIN-135, RULE-FIN-014, SCR-REQ-FIN-006 |
+| `REQ-FIN-018` | srs | US-FIN-009 | AC-FIN-019, AC-FIN-020, API-FIN-032, API-FIN-033, API-FIN-034, DBF-FIN-067, DBF-FIN-068, DBF-FIN-069, DBF-FIN-071, DBF-FIN-079, DBF-FIN-080, DBF-FIN-081, DBF-FIN-082, DBF-FIN-084, DBF-FIN-087, RULE-FIN-001, RULE-FIN-002, RULE-FIN-003, RULE-FIN-004, RULE-FIN-006, SCR-REQ-FIN-007 |
+| `REQ-FIN-019` | srs | US-FIN-009 | AC-FIN-021, API-FIN-032, DBF-FIN-088, RULE-FIN-002, SCR-REQ-FIN-007 |
+| `REQ-FIN-020` | srs | US-FIN-009, US-FIN-005 | AC-FIN-022, API-FIN-032, SCR-REQ-FIN-007 |
+| `REQ-FIN-021` | srs | US-FIN-010 | AC-FIN-023, API-FIN-039, DBF-FIN-157, DBF-FIN-158, SCR-REQ-FIN-008 |
+| `REQ-FIN-022` | srs | US-FIN-010 | AC-FIN-024, API-FIN-039, RULE-FIN-008, SCR-REQ-FIN-008 |
+| `REQ-FIN-023` | srs | US-FIN-011 | AC-FIN-025, API-FIN-035, DBF-FIN-077, DBF-FIN-078, RULE-FIN-006, RULE-FIN-007, SCR-REQ-FIN-007 |
+| `REQ-FIN-024` | srs | US-FIN-011 | AC-FIN-026, API-FIN-035, SCR-REQ-FIN-007 |
+| `REQ-FIN-025` | srs | US-FIN-012 | AC-FIN-027, API-FIN-047, API-FIN-048, API-FIN-049, API-FIN-050, API-FIN-051, API-FIN-052, API-FIN-053, API-FIN-054, API-FIN-055, API-FIN-057, DBF-FIN-164, DBF-FIN-165, DBF-FIN-166, DBF-FIN-167, DBF-FIN-168, DBF-FIN-169, DBF-FIN-170, DBF-FIN-171, DBF-FIN-172, DBF-FIN-173, DBF-FIN-174, DBF-FIN-175, DBF-FIN-176, DBF-FIN-177, DBF-FIN-178, DBF-FIN-179, DBF-FIN-180, DBF-FIN-181, DBF-FIN-182, DBF-FIN-183, SCR-REQ-FIN-014, SCR-REQ-FIN-015, SCR-REQ-FIN-016 |
+| `REQ-FIN-026` | srs | US-FIN-012, US-FIN-010 | AC-FIN-028, API-FIN-053, API-FIN-055, API-FIN-056, API-FIN-058, DBF-FIN-184, DBF-FIN-185, DBF-FIN-186, DBF-FIN-187, DBF-FIN-188, DBF-FIN-189, DBF-FIN-190, SCR-REQ-FIN-016 |
+| `REQ-FIN-027` | srs | US-FIN-013 | AC-FIN-029, API-FIN-036, API-FIN-037, API-FIN-038, API-FIN-041, DBF-FIN-072, DBF-FIN-136, DBF-FIN-137, DBF-FIN-138, DBF-FIN-139, DBF-FIN-140, DBF-FIN-141, DBF-FIN-142, DBF-FIN-143, DBF-FIN-144, DBF-FIN-145, DBF-FIN-146, DBF-FIN-147, DBF-FIN-148, DBF-FIN-149, DBF-FIN-150, DBF-FIN-151, DBF-FIN-152, DBF-FIN-153, DBF-FIN-154, DBF-FIN-155, DBF-FIN-159, DBF-FIN-160, DBF-FIN-161, DBF-FIN-162, DBF-FIN-163, SCR-REQ-FIN-008 |
+| `REQ-FIN-028` | srs | US-FIN-013 | AC-FIN-030, API-FIN-032, DBF-FIN-073, DBF-FIN-156, RULE-FIN-004, SCR-REQ-FIN-008 |
+| `REQ-FIN-029` | srs | US-FIN-013 | AC-FIN-031, API-FIN-039, RULE-FIN-009, SCR-REQ-FIN-008 |
+| `REQ-FIN-030` | srs | US-FIN-014 | AC-FIN-032, API-FIN-040, RULE-FIN-010, SCR-REQ-FIN-008 |
+| `REQ-FIN-031` | srs | US-FIN-014 | AC-FIN-033, API-FIN-040, DBF-FIN-009, RULE-FIN-011, SCR-REQ-FIN-008 |
+| `REQ-FIN-032` | srs | US-FIN-015 | AC-FIN-034, API-FIN-042, API-FIN-043, API-FIN-044, API-FIN-045, SCR-REQ-FIN-009, SCR-REQ-FIN-010, SCR-REQ-FIN-011, SCR-REQ-FIN-012 |
+| `REQ-FIN-033` | srs | US-FIN-016 | AC-FIN-035, API-FIN-046, SCR-REQ-FIN-013 |
+| `REQ-FIN-034` | srs | US-FIN-017 | AC-FIN-036, AC-FIN-037, API-FIN-034, API-FIN-042, API-FIN-043, API-FIN-044, API-FIN-045, API-FIN-046, DBF-FIN-074, SCR-REQ-FIN-009, SCR-REQ-FIN-010, SCR-REQ-FIN-011, SCR-REQ-FIN-012, SCR-REQ-FIN-013 |
 | `RULE-FIN-001` | srs | REQ-FIN-002, REQ-FIN-018 | — |
 | `RULE-FIN-002` | srs | REQ-FIN-019, REQ-FIN-018 | — |
 | `RULE-FIN-003` | srs | REQ-FIN-005, REQ-FIN-018 | — |
