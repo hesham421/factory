@@ -36,6 +36,7 @@
 | `AC-SEC-031` | srs | REQ-SEC-031 | — |
 | `AC-SEC-032` | srs | REQ-SEC-032 | — |
 | `AC-SEC-033` | srs | REQ-SEC-033 | — |
+| `ADR-SEC-001` | registry-db | — | — |
 | `ENT-SEC-001` | srs | — | — |
 | `ENT-SEC-002` | srs | — | — |
 | `ENT-SEC-003` | srs | — | — |
