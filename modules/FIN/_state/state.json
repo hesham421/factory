@@ -2,7 +2,7 @@
   "module": "FIN",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-10T10:50:52+00:00",
+  "generated_at": "2026-09-10T11:06:57+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -21,11 +21,15 @@
     ],
     "registry-srs": [
       1
+    ],
+    "db-script": [
+      1
+    ],
+    "registry-db": [
+      1
     ]
   },
   "missing": [
-    "db-script",
-    "registry-db",
     "backend-execution-plan",
     "registry-exec-be",
     "flow-diagram",
@@ -37,5 +41,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789037452.391812
+  "inputs_mtime": 1789038417.540577
 }
