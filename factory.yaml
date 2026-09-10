@@ -19,16 +19,19 @@ factory:
   active_profile: erp              # profiles/<id>.yaml ; override with GOV_PROFILE
 
 # ── Paths (relative to the repo root) ──────────────────────────────────────
+# `{profile_id}` is resolved at runtime to the active profile's own `identity.id`
+# (config.py FactoryConfig.paths) — every project-specific generated path nests
+# under that one live-profile-named folder; no project path is a literal here.
 paths:
   profiles: profiles
-  domain: project
-  platform: project
+  domain: "{profile_id}"
+  platform: "{profile_id}"
   engines: engines
   standalone: standalone
   shared: shared
   reviewers: reviewers
-  decisions: decisions
-  modules: modules
+  decisions: "{profile_id}/decisions"
+  modules: "{profile_id}/modules"
   commands: .claude/commands
   tools: governance-tools
   templates: governance-tools/templates

@@ -34,8 +34,11 @@ def _env(cfg: FactoryConfig) -> jinja2.Environment:
 
 
 def _ctx(cfg: FactoryConfig, **extra) -> dict:
+    # shallow copy so templates reading factory.paths.* see the {profile_id}-resolved
+    # values (cfg.paths), not the raw templated strings in cfg.data["paths"]
+    factory_data = dict(cfg.data, paths=cfg.paths)
     return dict(
-        factory=cfg.data, profile=cfg.profile.data, cfg=cfg,
+        factory=factory_data, profile=cfg.profile.data, cfg=cfg,
         stages=cfg.stages, standalone=cfg.standalone, marker=cfg.data["lint"]["generated_marker"],
         **extra,
     )

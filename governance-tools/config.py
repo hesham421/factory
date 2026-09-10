@@ -206,7 +206,13 @@ class FactoryConfig:
     @property
     def factory(self) -> dict:      return self.data["factory"]
     @property
-    def paths(self) -> dict:        return self.data["paths"]
+    def paths(self) -> dict:
+        """Raw `paths:` with every project-scoped value's `{profile_id}` token resolved
+        against the active profile's own identity — the one place that consolidates
+        `domain`/`platform`/`modules`/`decisions` under one live-profile-named folder."""
+        raw = self.data["paths"]
+        pid = self.profile.id
+        return {k: (v.replace("{profile_id}", pid) if isinstance(v, str) else v) for k, v in raw.items()}
     @property
     def naming(self) -> dict:       return self.data["naming"]
     @property
@@ -246,7 +252,10 @@ class FactoryConfig:
         return self.load_profile(self._profile_id)
 
     def profiles_dir(self) -> Path:
-        return self.root / self.paths["profiles"]
+        # raw, not self.paths: resolving self.paths loads self.profile, which loads
+        # via this method — "profiles" never carries {profile_id} so this is safe either
+        # way, but reading raw here breaks the cycle explicitly rather than by luck.
+        return self.root / self.data["paths"]["profiles"]
 
     def profile_schema(self) -> dict:
         return _load_yaml(self.profiles_dir() / _PROFILE_SCHEMA)

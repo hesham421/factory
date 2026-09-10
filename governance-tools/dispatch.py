@@ -84,7 +84,9 @@ def _engine_template(stage: Stage) -> Path:
 def render_engine(stage: Stage, mod: str, version: int, **extra) -> str:
     tpl = _engine_template(stage)
     env = jinja2.Environment(undefined=jinja2.ChainableUndefined, keep_trailing_newline=True)
-    ctx = dict(profile=CFG.profile.data, factory=CFG.data, stage=stage, mod=mod.upper(), version=version, **extra)
+    # shallow copy so `factory.paths.*` in ENGINE.md resolves {profile_id}, same as render.py._ctx
+    factory_data = dict(CFG.data, paths=CFG.paths)
+    ctx = dict(profile=CFG.profile.data, factory=factory_data, stage=stage, mod=mod.upper(), version=version, **extra)
     return env.from_string(tpl.read_text(encoding="utf-8")).render(**ctx)
 
 
