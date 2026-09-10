@@ -1,0 +1,42 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "profile": "erp",
+  "markers_schema_version": 2,
+  "root": "erp/modules/FIN",
+  "stages": {
+    "P0": "erp/modules/FIN/P0",
+    "P0.5": "erp/modules/FIN/P0_5",
+    "P1": "erp/modules/FIN/P1",
+    "P2": "erp/modules/FIN/P2",
+    "P3.1": "erp/modules/FIN/P3_1",
+    "P3.2": "erp/modules/FIN/P3_2",
+    "test-gen": "erp/modules/FIN/test_gen",
+    "api-verify": "erp/modules/FIN/api_verify"
+  },
+  "plans": {
+    "backend/exec": "erp/modules/FIN/P3_1/backend-execution-plan-fin.md",
+    "backend/test": "erp/modules/FIN/test_gen/backend-test-plan-fin.md",
+    "frontend/exec": "erp/modules/FIN/P3_2/frontend-execution-plan-fin.md",
+    "frontend/test": "erp/modules/FIN/test_gen/frontend-test-plan-fin.md"
+  },
+  "packages": {
+    "backend/exec": "erp/modules/FIN/packages/backend-execution",
+    "backend/test": "erp/modules/FIN/packages/backend-test",
+    "frontend/exec": "erp/modules/FIN/packages/frontend-execution",
+    "frontend/test": "erp/modules/FIN/packages/frontend-test"
+  },
+  "state_dir": "erp/modules/FIN/_state",
+  "inputs_dir": "erp/modules/FIN/_inputs",
+  "decisions_dir": "erp/decisions/FIN",
+  "status": {
+    "archived": false,
+    "split": {
+      "backend/exec": false,
+      "backend/test": false,
+      "frontend/exec": false,
+      "frontend/test": false
+    }
+  },
+  "created_at": "2026-09-10T16:17:52+00:00"
+}
