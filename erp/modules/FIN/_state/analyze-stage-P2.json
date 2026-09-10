@@ -1,0 +1,957 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:P2",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 118,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-002` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-003` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-004` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-005` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-006` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-007` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-008` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-009` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-010` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-011` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-012` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-015` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-016` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-017` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-018` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-019` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-020` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-021` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-024` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-025` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-026` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-027` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-028` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-029` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-030` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-031` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-032` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-035` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-036` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-037` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-038` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-039` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-040` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-041` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-042` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-043` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-044` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-045` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-046` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-047` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-048` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-049` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-052` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-053` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-054` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-055` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-056` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-057` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-058` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-059` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-062` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-063` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-066` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-067` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-068` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-069` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-070` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-071` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-072` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-073` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-076` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-077` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-078` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-079` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-080` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-081` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-082` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-083` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-084` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-085` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-086` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-087` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-090` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-091` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-092` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-093` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-094` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-095` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-096` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-099` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-100` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-101` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-102` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-103` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-104` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-105` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-106` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-107` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-110` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-111` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-112` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-113` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-114` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-115` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-116` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-117` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-118` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-119` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-120` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-123` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-124` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-125` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-126` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-127` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-128` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-131` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-132` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-133` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-134` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-135` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-136` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-137` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-140` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-141` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-142` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-143` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-144` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-FIN-145` defined in `db-script` but absent from `registry-db`",
+      "artifact": "db-script",
+      "line": 0
+    }
+  ]
+}
