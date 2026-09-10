@@ -3,14 +3,26 @@
 
 | ID | Defined in | Traces to | Referenced by |
 |---|---|---|---|
-| `POL-SEC-001` | business-policies | — | — |
-| `POL-SEC-002` | business-policies | — | — |
-| `POL-SEC-003` | business-policies | — | — |
-| `POL-SEC-004` | business-policies | — | — |
-| `POL-SEC-005` | business-policies | — | — |
-| `POL-SEC-006` | business-policies | — | — |
-| `POL-SEC-007` | business-policies | — | — |
-| `POL-SEC-008` | business-policies | — | — |
-| `POL-SEC-009` | business-policies | — | — |
-| `POL-SEC-010` | business-policies | — | — |
-| `POL-SEC-011` | business-policies | — | — |
+| `POL-SEC-001` | business-policies | — | US-SEC-005 |
+| `POL-SEC-002` | business-policies | — | US-SEC-005 |
+| `POL-SEC-003` | business-policies | — | US-SEC-002 |
+| `POL-SEC-004` | business-policies | — | US-SEC-001, US-SEC-003 |
+| `POL-SEC-005` | business-policies | — | US-SEC-007 |
+| `POL-SEC-006` | business-policies | — | US-SEC-008 |
+| `POL-SEC-007` | business-policies | — | US-SEC-008 |
+| `POL-SEC-008` | business-policies | — | US-SEC-004 |
+| `POL-SEC-009` | business-policies | — | US-SEC-010 |
+| `POL-SEC-010` | business-policies | — | US-SEC-009 |
+| `POL-SEC-011` | business-policies | — | US-SEC-009 |
+| `US-SEC-001` | prd | POL-SEC-004 | — |
+| `US-SEC-002` | prd | POL-SEC-003 | — |
+| `US-SEC-003` | prd | POL-SEC-004 | — |
+| `US-SEC-004` | prd | POL-SEC-008 | — |
+| `US-SEC-005` | prd | POL-SEC-001, POL-SEC-002 | — |
+| `US-SEC-006` | prd | — | — |
+| `US-SEC-007` | prd | POL-SEC-005 | — |
+| `US-SEC-008` | prd | POL-SEC-006, POL-SEC-007 | — |
+| `US-SEC-009` | prd | POL-SEC-010, POL-SEC-011 | — |
+| `US-SEC-010` | prd | POL-SEC-009 | — |
+| `US-SEC-011` | prd | — | — |
+| `US-SEC-012` | prd | — | — |

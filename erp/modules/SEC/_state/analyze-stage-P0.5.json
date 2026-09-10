@@ -1,0 +1,37 @@
+{
+  "module": "SEC",
+  "version": 1,
+  "scope": "stage:P0.5",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 3,
+    "MINOR": 0
+  },
+  "clean": true,
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-006` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 56
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-011` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 101
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-012` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 110
+    }
+  ]
+}
