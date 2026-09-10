@@ -774,6 +774,10 @@ Errors: `FIN-409-RULE-DUP`, `FIN-400-INVALID-LOOKUP`
 Orchestration: validate lookup → check uniqueness (QR-FIN-014) → persist (QR-FIN-013) → return
 Repository: QR-FIN-013, QR-FIN-014 · join NONE · READ_WRITE
 Security: screen FIN_RULES · `PERM_FIN_RULES_CREATE` · Localization: nameAr/nameEn required
+Precondition: this endpoint is only reachable once FIN's onboarding has completed —
+FIN registered as a module with its screens/actions into SEC (REQ-FIN-044) and FIN's 13
+lookup types, including ACCOUNTING_EVENT_TYPE, registered into MDL (REQ-FIN-045); both run
+once at deployment, not per request.
 <!-- API:API-FIN-010:END -->
 
 <!-- API:API-FIN-011:START traces=REQ-FIN-008,REQ-FIN-009,DBF-FIN-101,DBF-FIN-103,DBF-FIN-105,DBF-FIN-106,DBF-FIN-107 -->
