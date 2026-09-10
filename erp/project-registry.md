@@ -1,10 +1,10 @@
 # PROJECT REGISTRY — منصة تخطيط موارد المؤسسات (ERP Platform)
 ══════════════════════════════════════════════════════════════════
 Profile            : erp
-Registry Version   : 1.1.0
+Registry Version   : 1.2.0
 Domain Profile     : erp/domain-profile.md v1
-Last Updated       : 2026-09-10 by P3.1 (SEC v1 pass-1 completion)
-Modules registered : 9   Entity candidates : 13 (SEC)   Open items : 0
+Last Updated       : 2026-09-10 by P3.1 (MDL v1 pass-1 completion)
+Modules registered : 9   Entity candidates : 15 (13 SEC + 2 MDL)   Open items : 0
 ══════════════════════════════════════════════════════════════════
 
 ## SCHEMA COMPLIANCE MAP
@@ -34,6 +34,7 @@ Uncovered: none
 |---|---|---|
 | 1.0.0 | 2026-09-10 | Initial bootstrap from erp/domain-profile.md v1 (BOOTSTRAP event, see CHANGE/EVENT HISTORY) |
 | 1.1.0 | 2026-09-10 | SEC v1 registered a new module (pass-1 complete, gate APPROVE) — minor bump per RULE-2 |
+| 1.2.0 | 2026-09-10 | MDL v1 registered a new module (pass-1 complete, gate APPROVE) — minor bump per RULE-2 |
 
 ## CONVENTIONS & STEERING
 (copied verbatim from `erp/domain-profile.md` §7 — the authoritative source; this section
@@ -84,7 +85,7 @@ Entity kinds: master, transactional, lookup, config, security.
 | # | Code | Module | Bounded context | Category | Core/ext | Status | Source |
 |---|---|---|---|---|---|---|---|
 | 1 | SEC | Security | organization | Foundation | Core | pass-1 COMPLETE (v1, gate APPROVE) | domain-profile §4 row 1 |
-| 2 | MDL | Master Data Lookup | organization | Foundation | Core | CANDIDATE — this batch, second | domain-profile §4 row 2 |
+| 2 | MDL | Master Data Lookup | organization | Foundation | Core | pass-1 COMPLETE (v1, gate APPROVE) | domain-profile §4 row 2 |
 | 3 | FIN | Finance (General Ledger) | finance | Business — Tier 1 | Core | CANDIDATE — this batch, third | domain-profile §4 row 3 |
 | 4 | ORG | Organization | organization | Foundation | — | RESERVED — not this batch | domain-profile §4 row 4; profile |
 | 5 | PRC | Procurement | supply | Business — Tier 1 | — | RESERVED — not this batch | domain-profile §4 row 5; profile |
@@ -109,7 +110,9 @@ Entity kinds: master, transactional, lookup, config, security.
 | ENT-SEC-011 | AuditLogEntry | SEC | security | PRIVATE | REGISTERED |
 | ENT-SEC-012 | PasswordResetToken | SEC | security | PRIVATE | REGISTERED |
 | ENT-SEC-013 | SignupRequest | SEC | security | PRIVATE | REGISTERED |
-(Source: erp/modules/SEC/P1/registry-srs-sec.md, P1 completion)
+| ENT-MDL-001 | LookupType | MDL | master | SHARED (owner) | REGISTERED |
+| ENT-MDL-002 | LookupValue | MDL | lookup | SHARED (owner) | REGISTERED |
+(Source: erp/modules/SEC/P1/registry-srs-sec.md, erp/modules/MDL/P1/registry-srs-mdl.md)
 
 ## SHARED ENTITY DECLARATIONS
 | Entity | Owner ENT id | Owner module | Consumers so far |
@@ -118,17 +121,21 @@ Entity kinds: master, transactional, lookup, config, security.
 | ModuleRegistry | ENT-SEC-004 | SEC | every future module registers one row of itself here (API-SEC-018) |
 | ScreenRegistry | ENT-SEC-005 | SEC | every future module registers its screens here (API-SEC-019) |
 | ActionRegistry | ENT-SEC-006 | SEC | every future module registers its actions here (API-SEC-020) |
+| LookupType | ENT-MDL-001 | MDL | every future module registers its own lookup types here (API-MDL-002) |
+| LookupValue | ENT-MDL-002 | MDL | every future module reads active values by key here (API-MDL-011) |
 
 ## STRUCTURAL / IMPLEMENTATION REGISTRY
 | Module | Version | Tables | DBF range | API range | XM range |
 |---|---|---|---|---|---|
 | SEC | v1 | 13 (SEC_USER … SEC_SIGNUP_REQUEST) | DBF-SEC-001 … DBF-SEC-104 | API-SEC-001 … API-SEC-027 (QR-SEC-001…038) | none (ROOT) |
+| MDL | v1 | 2 (MDL_LOOKUP_TYPE, MDL_LOOKUP_VALUE) | DBF-MDL-001 … DBF-MDL-021 | API-MDL-001 … API-MDL-011 (QR-MDL-001…015) | XM-MDL-001 (SOFT-READ → SEC, ACTIVE) |
 
 ## CROSS-MODULE DEPENDENCY INDEX
 | Candidate ref | Kind | From module | To module | Consumes | Status | Evidence |
 |---|---|---|---|---|---|---|
 | XM-CAND-001 | HARD-FK | FIN | SEC | identity + module/screen/action grants + SoD (entry-creator ≠ period-close approver) | CANDIDATE — target SEC v1 now GATED (pass-1 APPROVE); ready for FIN's own P2 to assign the formal XM-FIN-* id | domain-profile §6 row "FIN \| SEC \| HARD-FK" |
-| XM-CAND-002 | HARD-FK | FIN | MDL | payment methods, accounting event types, account types, period states, journal types | CANDIDATE | domain-profile §6 row "FIN \| MDL \| HARD-FK" |
+| XM-CAND-002 | HARD-FK | FIN | MDL | payment methods, accounting event types, account types, period states, journal types | CANDIDATE — target MDL v1 now GATED (pass-1 APPROVE); ready for FIN's own P2 to assign the formal XM-FIN-* id | domain-profile §6 row "FIN \| MDL \| HARD-FK" |
+| XM-MDL-001 | SOFT-READ | MDL | SEC | ModuleRegistry (ENT-SEC-004) — validates a lookup type's owner module code | ACTIVE (assigned, not a candidate) | erp/modules/MDL/P2/db-script-mdl.md §2 |
 | XM-CAND-003 | SOFT/EVENT | FIN | Notifications (NOTIF, out of this batch) | period-close-awaiting notice, statement export — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
 | XM-CAND-004 | SOFT/EVENT | FIN | File Service (FILESVC, out of this batch) | statement/export file — optional only | CANDIDATE | domain-profile §6; general-accounting-system-plan-en.md §2.3 |
 | XM-CAND-005 | SOFT | SEC | Notifications (NOTIF, out of this batch) | password-reset message — optional only | CANDIDATE | domain-profile §6; security-module-plan-en.md §8 |
@@ -156,7 +163,7 @@ none — `domain-profile.md` §10 records no open item.
 | Module | Version | Last committed stage | Last gate verdict | Delivered tracks | Tag |
 |---|---|---|---|---|---|
 | SEC | v1 | P3.1 (pass-1 complete) | APPROVE (pass-1, 2026-09-10) | backend: split done, deliver BLOCKED (no repo linked) | — |
-| MDL | v1 | NOT STARTED | — | — | — |
+| MDL | v1 | P3.1 (pass-1 complete) | APPROVE (pass-1, 2026-09-10) | backend: split done, deliver BLOCKED (no repo linked) | — |
 | FIN | v1 | NOT STARTED | — | — | — |
 | ORG | — | NOT STARTED | — | — | — |
 | PRC | — | NOT STARTED | — | — | — |
@@ -177,4 +184,11 @@ none — `domain-profile.md` §10 records no open item.
 | 2026-09-10 | P3.1 | SEC | v1 | P3.1 completed: SEC — 27 API, 38 QR, ALIGN PASSED; ADR-SEC-002 (ACCEPTED) |
 | 2026-09-10 | gate:pass-1 | SEC | v1 | GATE pass-1: APPROVE (scores unambiguous 3, verifiable 3, complete 3, consistent 3, singular 3, feasible 3, traceable 2) |
 | 2026-09-10 | split | SEC | v1 | backend/exec split: 15 files, verify ok (39 checked) |
+| 2026-09-10 | P0 | MDL | v1 | P0 completed: MDL (platform-summary, module-registry-mdl, business-policies-mdl — 6 POL) |
+| 2026-09-10 | P0.5 | MDL | v1 | P0.5 completed: MDL — 5 stories; prd-approval APPROVED by ahmed.alsabonabi@gmail.com |
+| 2026-09-10 | P1 | MDL | v1 | P1 completed: MDL — 2 entities, 13 requirements, 13 AC, 4 rules, 2 screen requirements, 0 ADR |
+| 2026-09-10 | P2 | MDL | v1 | P2 completed: MDL — 2 tables, 21 DBF, 1 XM (XM-MDL-001, SOFT-READ → SEC) |
+| 2026-09-10 | P3.1 | MDL | v1 | P3.1 completed: MDL — 11 API, 15 QR, ALIGN PASSED, 0 new ADR |
+| 2026-09-10 | gate:pass-1 | MDL | v1 | GATE pass-1: APPROVE (scores unambiguous 3, verifiable 3, complete 3, consistent 3, singular 3, feasible 3, traceable 3) |
+| 2026-09-10 | split | MDL | v1 | backend/exec split: 11 files, verify ok (21 checked) |
 ══════════════════════════════════════════════════════════════════
