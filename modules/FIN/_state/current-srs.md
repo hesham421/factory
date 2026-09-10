@@ -3,7 +3,7 @@
 ══════════════════════════════════════════════════════════════════
 Module : FIN   Version : v1   Profile : erp
 Inputs : prd, domain-profile, project-registry (PRD approved 2026-09-10)
-Counts : ENT 13 · REQ 34 · AC 41 · RULE 14 · SCR-REQ 16 · ADR 3
+Counts : ENT 13 · REQ 34 · AC 37 · RULE 14 · SCR-REQ 16 · ADR 3
 ══════════════════════════════════════════════════════════════════
 
 # PART A — MODULE FOUNDATION
