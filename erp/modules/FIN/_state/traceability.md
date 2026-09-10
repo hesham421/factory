@@ -3,23 +3,42 @@
 
 | ID | Defined in | Traces to | Referenced by |
 |---|---|---|---|
-| `POL-FIN-001` | business-policies | — | — |
-| `POL-FIN-002` | business-policies | — | — |
-| `POL-FIN-003` | business-policies | — | — |
-| `POL-FIN-004` | business-policies | — | — |
-| `POL-FIN-005` | business-policies | — | — |
-| `POL-FIN-006` | business-policies | — | — |
-| `POL-FIN-007` | business-policies | — | — |
-| `POL-FIN-008` | business-policies | — | — |
-| `POL-FIN-009` | business-policies | — | — |
-| `POL-FIN-010` | business-policies | — | — |
-| `POL-FIN-011` | business-policies | — | — |
-| `POL-FIN-012` | business-policies | — | — |
-| `POL-FIN-013` | business-policies | — | — |
-| `POL-FIN-014` | business-policies | — | — |
-| `POL-FIN-015` | business-policies | — | — |
-| `POL-FIN-016` | business-policies | — | — |
-| `POL-FIN-017` | business-policies | — | — |
-| `POL-FIN-018` | business-policies | — | — |
-| `POL-FIN-019` | business-policies | — | — |
-| `POL-FIN-020` | business-policies | — | — |
+| `POL-FIN-001` | business-policies | — | US-FIN-004, US-FIN-005 |
+| `POL-FIN-002` | business-policies | — | US-FIN-001, US-FIN-014, US-FIN-015 |
+| `POL-FIN-003` | business-policies | — | US-FIN-001 |
+| `POL-FIN-004` | business-policies | — | US-FIN-010 |
+| `POL-FIN-005` | business-policies | — | US-FIN-003 |
+| `POL-FIN-006` | business-policies | — | US-FIN-003, US-FIN-007 |
+| `POL-FIN-007` | business-policies | — | US-FIN-009 |
+| `POL-FIN-008` | business-policies | — | US-FIN-013 |
+| `POL-FIN-009` | business-policies | — | US-FIN-012, US-FIN-013 |
+| `POL-FIN-010` | business-policies | — | US-FIN-010, US-FIN-014, US-FIN-015 |
+| `POL-FIN-011` | business-policies | — | US-FIN-002, US-FIN-012, US-FIN-016 |
+| `POL-FIN-012` | business-policies | — | US-FIN-004 |
+| `POL-FIN-013` | business-policies | — | US-FIN-008, US-FIN-019 |
+| `POL-FIN-014` | business-policies | — | US-FIN-003, US-FIN-004 |
+| `POL-FIN-015` | business-policies | — | US-FIN-017 |
+| `POL-FIN-016` | business-policies | — | US-FIN-011 |
+| `POL-FIN-017` | business-policies | — | US-FIN-018 |
+| `POL-FIN-018` | business-policies | — | US-FIN-005, US-FIN-006 |
+| `POL-FIN-019` | business-policies | — | US-FIN-011 |
+| `POL-FIN-020` | business-policies | — | US-FIN-004 |
+| `US-FIN-001` | prd | POL-FIN-002, POL-FIN-003 | — |
+| `US-FIN-002` | prd | POL-FIN-011 | — |
+| `US-FIN-003` | prd | POL-FIN-005, POL-FIN-006, POL-FIN-014 | — |
+| `US-FIN-004` | prd | POL-FIN-001, POL-FIN-012, POL-FIN-014, POL-FIN-020 | — |
+| `US-FIN-005` | prd | POL-FIN-001, POL-FIN-018 | — |
+| `US-FIN-006` | prd | POL-FIN-018 | — |
+| `US-FIN-007` | prd | POL-FIN-006 | — |
+| `US-FIN-008` | prd | POL-FIN-013 | — |
+| `US-FIN-009` | prd | POL-FIN-007 | — |
+| `US-FIN-010` | prd | POL-FIN-004, POL-FIN-010 | — |
+| `US-FIN-011` | prd | POL-FIN-016, POL-FIN-019 | — |
+| `US-FIN-012` | prd | POL-FIN-009, POL-FIN-011 | — |
+| `US-FIN-013` | prd | POL-FIN-008, POL-FIN-009 | — |
+| `US-FIN-014` | prd | POL-FIN-002, POL-FIN-010 | — |
+| `US-FIN-015` | prd | POL-FIN-002, POL-FIN-010 | — |
+| `US-FIN-016` | prd | POL-FIN-011 | — |
+| `US-FIN-017` | prd | POL-FIN-015 | — |
+| `US-FIN-018` | prd | POL-FIN-017 | — |
+| `US-FIN-019` | prd | POL-FIN-013 | — |
