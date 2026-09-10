@@ -1,7 +1,0 @@
-# ADR-FIN-006 — Intra-module joins permitted for search filters and SoD checks
-Status      : ACCEPTED
-Stage       : P3.1        Module: FIN        Version: v1
-Context     : The backend-execution-plan engine's join governance rule (P3.1 brief §5) requires a join to carry an ADR. Two query reference entries need a join across FIN's own tables, both intra-module (never crossing to another module — FIN declares zero XM): (1) API-FIN-033 (search journal entries) needs `fin_journal_entry_line` when the caller filters by `accountId`, since that column lives on the line table, not the header; (2) API-FIN-039 (approve period close) needs `fin_journal_entry` to evaluate RULE-FIN-008 (SoD), which reads `created_by` for every entry posted in the target period.
-Decision    : Permit both joins as ordinary intra-module repository joins (Spring Data `@Query`/JPQL), since the module boundary the join governance rule protects is the module boundary (no cross-module coupling introduced) — not join usage in general. The QR-FIN-033 and QR-FIN-039 entries state the join explicitly; no cross-module contract, XM record, or external call is involved.
-Consequences: Any future join that reaches outside `fin_*` tables still requires its own ADR under this same rule; this ADR does not blanket-approve cross-module joins. QR-FIN-046 (dimension report, `fin_journal_entry_line_dim` ↔ `fin_journal_entry_line`) is covered by this same reasoning and needs no separate ADR.
-traces      : API-FIN-033, API-FIN-039, API-FIN-046, QR-FIN-033, QR-FIN-039, QR-FIN-046, REQ-FIN-022, REQ-FIN-033

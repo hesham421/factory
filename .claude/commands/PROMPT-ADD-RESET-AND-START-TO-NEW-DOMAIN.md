@@ -33,6 +33,8 @@ Kept: governance-tools/, templates/, factory.yaml's own structure,
 Proceed? [y/N]
 ```
 
+Every item in that deletion list is **project-specific output**, not part of the tool's own template or mechanism — `domain-profile.md`, `project-registry.md`, and everything under `modules/*` (briefs, summaries, state files, whatever a given profile's Phase-2 run happens to produce) all vary per project and are regenerated fresh from a profile + the pipeline each time. None of them is shared, fixed, or reusable across projects, so none of them is a candidate for "keep just in case" — treat the whole `<project-path>/` generated-content bullet as unconditional and computed from whatever actually exists on disk under that path at runtime (same dynamic-scan rule as the other three bullets), not a fixed filename list — new file types a future profile's Phase-2 stage produces must be swept up by this same bullet without anyone updating this prompt or the code.
+
 **Step C — Delete**, exactly the scope confirmed in Step B. Nothing outside that explicit list — do not touch `_archive-v5/`, `history/`, `governance-tools/`, `templates/`, or the tests directory.
 
 **Step D — Reset `factory.yaml`'s own instance-specific values** (not its structure): clear `repos.<name>.checkout_env`/`checkout_default` back to placeholder/empty values — a fresh project has no consumer repos linked yet. Leave `paths:`, `lanes:`, `commands:`, `stages:` untouched — those are the tool's own mechanism, not project data.
@@ -45,7 +47,7 @@ Separately, while reading through this code: confirm whether profile selection (
 
 ## Constraints
 
-- No hardcoding: the list of files to delete in Step B/C must be computed by scanning the actual directory structure at runtime (`profiles/*.yaml`, `modules/*`, `decisions/*`), never a literal list of today's filenames — this must keep working correctly as new profiles/modules get added over a project's life.
+- No hardcoding: the list of files to delete in Step B/C must be computed by scanning the actual directory structure at runtime (`profiles/*.yaml`, `modules/*`, `decisions/*`, and everything currently under `<project-path>/`), never a literal list of today's filenames — this must keep working correctly as new profiles/modules get added, or as a project's Phase-2 stages start producing new kinds of generated files, over a project's life.
 - Never touch `_archive-v5/`, `history/`, `governance-tools/`, `templates/`, or anything under the tests directory.
 - The git-status safety check (Step A) is non-negotiable, including in `--yes`/non-interactive mode.
 - Cover this with a real test in `governance-tools/tests/` (using a `tmp_path` fixture repo, per the existing test conventions) — simulate a populated project state, run the reset, assert the exact kept/deleted set, and assert it refuses to run over uncommitted changes.
