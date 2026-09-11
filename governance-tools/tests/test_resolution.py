@@ -17,6 +17,8 @@ following — the single cause behind the PK-strategy, error-format and path def
 from __future__ import annotations
 
 import json
+import shutil
+from pathlib import Path
 
 import pytest
 
@@ -369,3 +371,52 @@ def test_the_delivered_tree_resolves_in_the_consumer_repo(orch_root, mod, tmp_pa
     assert (dest / index["decisions_dir"] / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)).exists()
     # and the place the consumer is asked to publish its api-docs actually exists
     assert (backend / index["publishes"]["api-docs"]).is_dir()
+
+
+# ── F4 — delivery provenance, and resolution IN the consumer ────────────────
+
+def test_delivery_is_stamped_and_verified_in_the_consumer(orch_root, mod, tmp_path, monkeypatch):
+    """The decisive case: `paths-resolve` and `refs-exist` both pass in the factory
+    and fail in the consumer, which is the only place they matter. A delivered tree
+    is also stamped with the toolchain that produced it, and one from a different
+    toolchain is replaced wholesale rather than merged into."""
+    from test_orchestrator import _consumer, _run_pass1
+    backend = _consumer(tmp_path, monkeypatch, "backend")
+    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
+    d = CFG.decisions_dir(mod)
+    d.mkdir(parents=True, exist_ok=True)
+    adr = CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)
+    (d / adr).write_text("# a decision the plan cites\n", encoding="utf-8")
+    # the plan cites it — in the factory the citation resolves, on disk, right here
+    plan = CFG.plan_path(mod, "backend", "exec", 1)
+    plan.write_text(plan.read_text(encoding="utf-8") + f"\nSee {an.CFG.make_id('ADR', mod, 1)}.\n", encoding="utf-8")
+    assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == gov.OK
+    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
+
+    dest = backend / CFG.fmt(CFG.repos["backend"]["deliver_to"], mod=mod)
+    index = json.loads((dest / CFG.paths["module"]["manifest_file"]).read_text())
+    assert index["toolchain"]["rules"] == an.rules_digest(), "the delivery says what produced it"
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
+
+    # 1. a cited decision record that never reached the consumer: passes in the
+    #    factory (the file is there), fails where it is read (it is not).
+    shutil.rmtree(dest / index["decisions_dir"])
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
+
+    # 2. an index carrying a factory-rooted path — exactly the shipped defect
+    gov.cmd_deliver("backend", mod, 1, push=False)
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
+    mf = dest / CFG.paths["module"]["manifest_file"]
+    bad = json.loads(mf.read_text())
+    bad["root"] = str(Path(CFG.paths["modules"]) / mod)        # resolves in the factory, nowhere else
+    mf.write_text(json.dumps(bad, indent=2))
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
+
+    # 3. a destination from a different toolchain is replaced, not merged into
+    stale = json.loads(mf.read_text())
+    stale["toolchain"] = {"revision": "v0-ancient", "rules": {}}
+    mf.write_text(json.dumps(stale, indent=2))
+    (dest / "left-behind-by-the-old-toolchain.md").write_text("stale\n", encoding="utf-8")
+    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
+    assert not (dest / "left-behind-by-the-old-toolchain.md").exists()
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK

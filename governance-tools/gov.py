@@ -510,6 +510,14 @@ def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
     if version > 1:
         dest = dest / CFG.fmt(CFG.naming["version_folder"], version=version)
     _git("checkout", "-B", branch, cwd=checkout)
+    prior = _delivered_toolchain(dest)
+    if dest.exists() and prior != toolchain_id():
+        # merging current output into a tree an older toolchain laid down leaves that
+        # toolchain's files in place — its index keys, its path shapes, its omissions.
+        # A delivery from a different toolchain replaces the module, it does not patch it.
+        _say(f"re-delivering {mod.upper()} wholesale: the destination was written by "
+             f"{(prior or {}).get('revision') or 'an unidentified toolchain'}")
+        shutil.rmtree(dest)
     delivered = []
     for plan, pkg in CFG.tracks[track]["packages"].items():
         src = CFG.packages_dir(mod, track, plan, version)
@@ -538,6 +546,23 @@ def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
             _say(f"  {k} = {v}")
         return BLOCKED
     return OK
+
+
+def toolchain_id() -> dict:
+    """Who produced a delivery. Two halves, because neither alone is enough:
+    `revision` is what a human reads (a git describe of the factory), `rules` is
+    what a machine compares (F2's content digests of the contract set, the checker
+    and the blocking policy) and needs no git at all. Artifacts delivered by an
+    older toolchain used to be indistinguishable from current ones — which is why
+    a delivered index still names factory-rooted paths that dangle for its reader."""
+    rev = _git("describe", "--always", "--dirty", "--tags", check=False)
+    return {"revision": rev.stdout.strip() if rev.returncode == 0 else "", "rules": an.rules_digest()}
+
+
+def _delivered_toolchain(dest: Path) -> dict | None:
+    from toolkit.common import read_json
+    index = read_json(dest / CFG.paths["module"]["manifest_file"])
+    return (index or {}).get("toolchain")
 
 
 def _deliver_decisions(mod: str, dest: Path) -> str | None:
@@ -580,6 +605,7 @@ def _delivered_index(track: str, mod: str, version: int, dest: Path, checkout: P
         "markers_schema_version": CFG.markers["schema_version"],
         "paths_relative_to": "the directory holding this file",
         "root": ".", "packages": packages, "plans": plans,
+        "toolchain": toolchain_id(),
         "generated_at": now_iso(),
     }
     decisions = _deliver_decisions(mod, dest)
@@ -640,6 +666,66 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str], i
         "gate": json.loads(gate_json.read_text()) if gate_json.exists() else None,
         "generated_at": now_iso(),
     }
+
+
+def cmd_verify_delivery(track: str, mod: str, version: int) -> int:
+    """Re-run the resolution checks AGAINST THE DELIVERED TREE, in the consumer repo.
+
+    This is the decisive one. `paths-resolve` and `refs-exist` both pass in the
+    factory, where every path and every cited file is at hand, and both fail in the
+    consumer, which is the only place they matter: a delivered index naming
+    factory-rooted paths dangles for the one reader it was written for, and cited
+    decision records an older delivery never copied are simply not there.
+
+    Which references to resolve is read from the contract set's own `refs-exist`
+    clauses, so this stays in step with the contracts instead of restating them.
+    """
+    from toolkit.common import read_json
+    checkout = CFG.repo_checkout(track)
+    if not (checkout / ".git").exists():
+        _say(f"BLOCKED: consumer checkout not found for `{track}`: {checkout} (link it in factory.yaml → repos)")
+        return BLOCKED
+    dest = checkout / CFG.fmt(CFG.repos[track]["deliver_to"], mod=mod)
+    if version > 1:
+        dest = dest / CFG.fmt(CFG.naming["version_folder"], version=version)
+    index = read_json(dest / CFG.paths["module"]["manifest_file"])
+    if index is None:
+        _say(f"BLOCKED: nothing delivered at {dest} — no {CFG.paths['module']['manifest_file']}")
+        return BLOCKED
+
+    findings: list[str] = []
+    here, current = index.get("toolchain"), toolchain_id()
+    if here != current:
+        findings.append(f"delivered by a different toolchain ({(here or {}).get('revision') or 'unidentified'} "
+                        f"≠ {current['revision'] or 'current'}) — re-deliver before trusting anything below")
+    # paths-resolve, against the consumer
+    for key, value in _dangling(index, dest, checkout):
+        findings.append(f"{CFG.paths['module']['manifest_file']} → `{key}` = `{value}` resolves to nothing in {checkout.name}")
+    state = read_json(dest / CFG.delivery["execution_state"]["file"])
+    for key, value in _dangling((state or {}).get("paths") or {}, dest, checkout):
+        findings.append(f"{CFG.delivery['execution_state']['file']} → `{key}` = `{value}` resolves to nothing in {checkout.name}")
+    # refs-exist, against the consumer: every clause of that check, with its own args
+    text = "\n".join(f.read_text(encoding="utf-8", errors="ignore") for f in sorted(dest.rglob("*.md")))
+    for c in rd.contracts_from_doc(CFG):
+        for cl in c.get("clauses", []):
+            if cl["check"] != "refs-exist":
+                continue
+            a = cl.get("args") or {}
+            folder = index.get(f"{a['dir']}_dir") or Path(CFG.paths[a["dir"]]).name
+            pattern = CFG.naming[a["file_pattern"]]
+            for rid in sorted({x for x in idmodel.find_ids(text)
+                               if idmodel.split_id(x) and idmodel.split_id(x)[0] == a["kind"]}):
+                _, rmod, seq = idmodel.split_id(rid)
+                if rmod != mod.upper():
+                    continue
+                if not (dest / folder / CFG.fmt(pattern, mod=rmod, seq=seq)).exists():
+                    findings.append(f"{cl['id']} ({cl['check']}): `{rid}` is cited in the delivered tree but "
+                                    f"{folder}/{CFG.fmt(pattern, mod=rmod, seq=seq)} is not there")
+    for f in sorted(set(findings)):
+        _say("  ", f)
+    _say(f"verify-delivery {track}/{mod.upper()} v{version} @ {checkout.name}: "
+         f"{len(set(findings))} finding(s) — {'OK' if not findings else 'BLOCKED'}")
+    return BLOCKED if findings else OK
 
 
 def cmd_analyze_all(scope: str) -> int:
@@ -948,6 +1034,7 @@ def main(argv: list[str] | None = None) -> int:
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
+    p = mv(sub.add_parser("verify-delivery")); p.add_argument("--track", required=True)
     mv(sub.add_parser("status"), version=False)
     p = mv(sub.add_parser("structure")); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("archive")); p.add_argument("--source", required=True); p.add_argument("--force", action="store_true"); p.add_argument("--dry-run", action="store_true")
@@ -994,6 +1081,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
     if a.cmd == "deliver":
         return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
+    if a.cmd == "verify-delivery":
+        return cmd_verify_delivery(a.track, a.module, _version(a.module, a.version))
     if a.cmd == "status":
         return cmd_status(a.module)
     if a.cmd == "structure":
