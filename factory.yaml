@@ -391,6 +391,7 @@ commands:
   - {id: bootstrap,     runs: "run-stage P-1",          args: "[--profile ID]"}
   - {id: analyze-pass1, runs: "run-pass 1",             args: "MOD [--version N|--new]"}
   - {id: analyze-pass2, runs: "run-pass 2",             args: "MOD --version N"}
+  - {id: reanalyze,     runs: "analyze --all-modules", args: "[--scope all|stage:ID|pass:N|gate:ID]"}   # sweep after a rules change
   - {id: gate,          runs: "gate",                   args: "<1|2> MOD --version N [--model …] [--effort …]"}
   - {id: micro-feature, runs: "version --new + run-pass 1 + run-pass 2 (delta)", args: "MOD \"<free text>\""}
   - {id: link-repos,    runs: "edit factory.yaml repos", args: ""}

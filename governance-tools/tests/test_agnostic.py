@@ -195,3 +195,102 @@ def test_toy_unknown_clause_severity_is_itself_a_finding(toy_policy, monkeypatch
     assert bad and bad[0].severity == "HALT", [str(f) for f in rep.findings]
     assert any("SEVERE" in s for s in rep.skipped)
     assert not rep.clean
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F2 — a verdict is invalidated when its inputs or its rules change
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_analyzable(toy_policy):
+    """A toy module with one artifact and a toy CONTRACT DOCUMENT of its own, so a
+    real report (real rules digests, real input digests) can be written and then
+    invalidated. Nothing about the ERP contract set is involved."""
+    import analyze as an
+    import render
+    toy_policy(TOY_SEVERITIES[:2])
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    ensure_structure(mod, 1)
+    stage = next(s for s in CFG.stages if any(a.artifact == "prd" for a in s.produces))
+    art = CFG.artifact_path(mod, stage.id, "prd", 1)
+    art.parent.mkdir(parents=True, exist_ok=True)
+    art.write_text("# toy prd\nbody\n", encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    doc.parent.mkdir(parents=True, exist_ok=True)
+    doc.write_text("---\n" + yaml.safe_dump({"contracts": [
+        {"id": "T1", "title": "toy", "owner": stage.id, "consumer": stage.id, "artifacts": ["prd"],
+         "clauses": [{"id": "T1.1", "check": "exists", "args": {"artifact": "prd"}, "severity": "HALT"}]},
+    ]}, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    return mod, art, an
+
+
+def test_toy_report_records_what_produced_it(toy_analyzable):
+    mod, art, an = toy_analyzable
+    rep = an.run(mod, 1, scope="all")
+    prov = rep.provenance
+    assert set(prov["rules"]) == {"contracts", "checker", "policy"}
+    assert all(prov["rules"].values()), "every rule digest resolves"
+    assert "prd" in prov["inputs"], "the artifact list is derived from what the run READ"
+    data = yaml.safe_load(an.report_json_path(mod, 1, "all").read_text(encoding="utf-8"))
+    assert data["provenance"]["rules"] == prov["rules"]
+    assert data["blocking"] == ["HALT", "WARN"] and "skipped" in data, "skipped survives into the JSON"
+    assert an.stale_reason(mod, 1, "all") is None, "a report just written is current"
+
+
+def test_toy_verdict_is_refused_when_an_input_changes(toy_analyzable):
+    mod, art, an = toy_analyzable
+    an.run(mod, 1, scope="all")
+    art.write_text("# toy prd\nbody, edited\n", encoding="utf-8")
+    assert "has changed" in (an.stale_reason(mod, 1, "all") or ""), "a source edit is caught before the digests"
+    import state as st
+    st.build_state(mod, 1)
+    reason = an.stale_reason(mod, 1, "all")
+    assert reason and "inputs changed" in reason and "prd" in reason, reason
+    rep, refused = an.verdict(mod, 1, "all", write=False)
+    assert refused == reason, "verdict() re-runs rather than trusting it"
+
+
+def test_toy_verdict_is_refused_when_the_policy_changes(toy_analyzable, toy_policy):
+    """Strengthening the rules must invalidate every prior PASS — the whole point:
+    all three modules held verdicts from a contract set that no longer existed."""
+    mod, art, an = toy_analyzable
+    an.run(mod, 1, scope="all")
+    assert an.stale_reason(mod, 1, "all") is None
+    toy_policy(TOY_SEVERITIES)                    # widen `blocking`; nothing else moves
+    reason = an.stale_reason(mod, 1, "all")
+    assert reason and "policy" in reason, reason
+
+
+def test_toy_contract_document_change_invalidates_every_verdict(toy_analyzable):
+    """The exact failure this fix exists for: the contract set grew from 73 checks
+    to 80 and not one stored PASS was invalidated."""
+    mod, art, an = toy_analyzable
+    import render
+    an.run(mod, 1, scope="all")
+    assert an.stale_reason(mod, 1, "all") is None
+    doc = render.contracts_path(CFG)
+    doc.write_text(doc.read_text(encoding="utf-8") + "\nan added clause would live here\n", encoding="utf-8")
+    reason = an.stale_reason(mod, 1, "all")
+    assert reason and "contracts" in reason, reason
+
+
+def test_toy_verdict_is_refused_when_an_unseen_artifact_appears(toy_analyzable):
+    mod, art, an = toy_analyzable
+    an.run(mod, 1, scope="all")
+    stage = next(s for s in CFG.stages if any(a.artifact == "srs" for a in s.produces))
+    p = CFG.artifact_path(mod, stage.id, "srs", 1)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# toy srs\n", encoding="utf-8")
+    import state as st
+    st.build_state(mod, 1)
+    reason = an.stale_reason(mod, 1, "all")
+    assert reason and "never saw" in reason, reason
+
+
+def test_toy_sweep_takes_its_module_list_from_state(toy_analyzable):
+    """`analyze --all-modules` reads the filesystem, never a list of names."""
+    mod, art, an = toy_analyzable
+    import gov
+    assert CFG.modules() == [mod], "only modules that actually exist"
+    assert gov.cmd_analyze_all("all") == gov.OK
+    assert an.stale_reason(mod, 1, "all") is None, "the sweep clears the backlog"

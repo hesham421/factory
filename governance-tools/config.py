@@ -362,6 +362,15 @@ class FactoryConfig:
     def module_root(self, mod: str) -> Path:
         return self.modules_root() / mod.upper()
 
+    def modules(self) -> list[str]:
+        """Every module the filesystem holds, in code order. The version authority is
+        the filesystem (versioning.authority), so the module set is too — a sweep over
+        "every module" never reads a list somebody has to remember to update."""
+        root = self.modules_root()
+        if not root.exists():
+            return []
+        return sorted(p.name for p in root.iterdir() if p.is_dir() and self.module_versions(p.name))
+
     def module_versions(self, mod: str) -> list[int]:
         """Filesystem is the version authority: base folder = v1 when it has any
         stage folder; vN subfolders = N. Non-stage service folders are ignored."""

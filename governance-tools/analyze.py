@@ -22,6 +22,7 @@ pipeline can gate on the JSON instead of reading a paragraph.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import unicodedata
@@ -37,7 +38,7 @@ from toolkit import markers as mk
 # (0 = most severe). Aliased because every clause function below takes the
 # severity it is charged with in a parameter named `sev`.
 from toolkit.common import (blocking_severities, blocks, counts_line, known_severity,
-                            now_iso, sev as sev_at_rank, severities, severity_rank)
+                            now_iso, read_json, sev as sev_at_rank, severities, severity_rank)
 
 
 @dataclass
@@ -62,6 +63,7 @@ class AnalyzeReport:
     contracts: list[str] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
+    provenance: dict = field(default_factory=dict)
 
     def count(self, severity: str) -> int:
         return sum(1 for f in self.findings if f.severity == severity)
@@ -91,6 +93,28 @@ class Ctx:
 
     def artifact(self, name: str) -> tuple[Stage, Artifact] | None:
         return self._arts.get(name)
+
+    def known_names(self) -> list[str]:
+        """Every name this context can resolve a text for — the stage artifacts, the
+        fetched inputs and the change manifest. Derived from the config, so no list
+        of artifact names is spelled anywhere."""
+        return list(self._arts) + list(CFG.inputs) + [self.change_manifest_name()]
+
+    def resolvable(self) -> list[str]:
+        """The names that actually have content right now (forces the reads)."""
+        return sorted(n for n in self.known_names() if self.text(n) is not None)
+
+    def consumed(self) -> dict[str, str]:
+        """Digest of every artifact this context has READ — derived from the cache,
+        never from a list of names somebody has to keep in step with the contracts.
+        A verdict is only about the bytes it was computed over."""
+        return {n: _sha(t) for n, t in sorted(self._texts.items()) if t is not None}
+
+    def digest_of(self, names) -> dict[str, str]:
+        """Digest exactly these names, reading whatever has not been read yet."""
+        for n in names:
+            self.text(n)
+        return {n: _sha(t) for n in names if (t := self._texts.get(n)) is not None}
 
     def text(self, name: str) -> str | None:
         if name not in self._texts:
@@ -747,6 +771,94 @@ CHECKS = {
 }
 
 
+# ── provenance — a verdict is only valid under the rules that produced it ────
+# A stored report used to be trusted for ever: strengthening a check invalidated
+# no prior PASS, so every verdict in this factory was produced by a contract set
+# that no longer exists. A report now records WHAT IT WAS PRODUCED BY, and a
+# reader that finds a mismatch re-runs instead of trusting it. `analyze` is fast
+# and pure, so when in doubt the safe answer is always: run it again.
+
+def _sha(data: str | bytes) -> str:
+    return hashlib.sha256(data.encode("utf-8") if isinstance(data, str) else data).hexdigest()
+
+
+def _file_sha(path: Path) -> str:
+    return _sha(path.read_bytes()) if path.exists() else ""
+
+
+def rules_digest() -> dict:
+    """The three things that decide a verdict independently of the artifacts:
+    the contract set, the checker that implements it, and the blocking policy.
+    Change any one and every stored verdict is about a rule set that is gone."""
+    return {
+        "contracts": _file_sha(render.contracts_path(CFG)),
+        "checker": _file_sha(Path(__file__).resolve()),
+        "policy": _sha(json.dumps(CFG.analyze, sort_keys=True)),
+    }
+
+
+def report_json_path(mod: str, version: int, scope: str) -> Path:
+    tag = scope.replace(":", "-")
+    md = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["analyze_report"], stage=tag)
+    return md.parent / f"analyze-{tag}.json"
+
+
+def stale_reason(mod: str, version: int, scope: str) -> str | None:
+    """Why the stored report for this scope may not be gated on — None when it may.
+
+    Cheap first (the rules digests), then the artifacts: a stored verdict whose
+    inputs have changed, or which never saw an artifact that now exists, is about
+    a module that no longer exists either."""
+    data = read_json(report_json_path(mod, version, scope))
+    if data is None:
+        return "no stored report"
+    prov = data.get("provenance") or {}
+    if not prov:
+        return "stored report carries no provenance (produced before provenance existed)"
+    now = rules_digest()
+    changed = [k for k, v in now.items() if prov.get("rules", {}).get(k) != v]
+    if changed:
+        return f"the {', '.join(changed)} changed since the verdict was produced"
+    if not st_mod.is_fresh(mod, version):
+        # the module's own files moved after the state the verdict was computed over
+        # was built — the digests below would compare a verdict against its own stale copy
+        return "the module has changed since its current state was built"
+    stored_inputs = prov.get("inputs") or {}
+    ctx = Ctx(mod, version)
+    live = ctx.digest_of(stored_inputs)
+    differing = sorted(n for n, sha in stored_inputs.items() if live.get(n) != sha)
+    if differing:
+        return f"inputs changed since the verdict was produced: {differing}"
+    appeared = sorted(set(ctx.resolvable()) - set(prov.get("resolvable") or []))
+    if appeared:
+        return f"artifacts exist now that the verdict never saw: {appeared}"
+    gone = sorted(set(prov.get("resolvable") or []) - set(ctx.resolvable()))
+    if gone:
+        return f"artifacts the verdict was computed over are gone: {gone}"
+    return None
+
+
+def verdict(mod: str, version: int, scope: str, write: bool = True) -> tuple[AnalyzeReport, str | None]:
+    """The report a gate may act on, plus why the stored one was refused (None when
+    it was accepted). The default is always to re-run — trusting a stored verdict is
+    the exception, and it has to earn it."""
+    reason = stale_reason(mod, version, scope)
+    if reason is None:
+        return load_report(report_json_path(mod, version, scope)), None
+    return run(mod, version, scope=scope, write=write), reason
+
+
+def load_report(path: Path) -> AnalyzeReport:
+    data = read_json(path) or {}
+    rep = AnalyzeReport(data.get("module", ""), int(data.get("version", 1)), data.get("scope", ""))
+    rep.contracts = list(data.get("contracts") or [])
+    rep.skipped = list(data.get("skipped") or [])
+    rep.provenance = data.get("provenance") or {}
+    rep.findings = [Finding(**{k: f[k] for k in ("severity", "clause", "check", "message", "artifact", "line") if k in f})
+                    for f in (data.get("findings") or [])]
+    return rep
+
+
 # ── selection & run ─────────────────────────────────────────────────────────
 
 def _owners(c: dict) -> list[str]:
@@ -848,6 +960,11 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
         unique.append(f)
     rep.findings = unique
     rep.findings.sort(key=lambda f: (severity_rank(f.severity), f.clause, f.artifact, f.line))
+    # `inputs` is what the clauses of THIS scope actually read (so a change to an
+    # artifact this scope never looks at does not invalidate it); `resolvable` is the
+    # whole set that existed, so an artifact appearing or vanishing is visible too.
+    rep.provenance = {"rules": rules_digest(), "resolvable": ctx.resolvable(),
+                      "inputs": ctx.consumed(), "at": now_iso()}
     if write:
         _write_report(rep)
     return rep
@@ -871,7 +988,11 @@ def _write_report(rep: AnalyzeReport) -> Path:
     if rep.skipped:
         lines += ["", "Skipped: " + "; ".join(rep.skipped)]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # `skipped` used to reach the prose and stop there, so a programmatic reader
+    # could not see that a clause never ran; `provenance` says what the verdict
+    # was produced by, so a reader can tell whether it still applies (F2).
     (path.parent / f"analyze-{tag}.json").write_text(json.dumps(
         {"module": rep.mod, "version": rep.version, "scope": rep.scope, "counts": c, "clean": rep.clean,
-         "findings": [f.__dict__ for f in rep.findings]}, indent=2), encoding="utf-8")
+         "blocking": sorted(blocking_severities()), "contracts": rep.contracts, "skipped": rep.skipped,
+         "findings": [f.__dict__ for f in rep.findings], "provenance": rep.provenance}, indent=2), encoding="utf-8")
     return path

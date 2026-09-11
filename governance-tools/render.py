@@ -157,8 +157,17 @@ def block_profile_summary(cfg):
     ], ["Fact", "Value"])
 
 
+_CONTRACTS_FILE = "ARTIFACT-CONTRACTS.md"       # the one filename this module must know
+
+
+def contracts_path(cfg: FactoryConfig) -> Path:
+    """The contract document itself — addressed here so no second reader (analyze's
+    provenance digest) has to spell the filename a second time."""
+    return cfg.dir("shared") / _CONTRACTS_FILE
+
+
 def contracts_from_doc(cfg: FactoryConfig) -> list[dict]:
-    path = cfg.dir("shared") / "ARTIFACT-CONTRACTS.md"
+    path = contracts_path(cfg)
     if not path.exists():
         return []
     m = _FRONTMATTER_RX.match(path.read_text(encoding="utf-8"))

@@ -309,7 +309,9 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     version = _version(mod, version)
     g = _gate_for_pass(pass_no)
     _prepare(mod, version)
-    rep = an.run(mod, version, scope=f"gate:{g['id']}")
+    rep, stale = an.verdict(mod, version, f"gate:{g['id']}")
+    if stale:
+        _say(f"stored verdict refused, re-analyzed: {stale}")
     c = rep.counts()
     _say(f"analyze gate:{g['id']} → {counts_line(c)}")
     if g.get("requires_analyze") == "clean" and not rep.clean:
@@ -572,7 +574,12 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str], i
                                "atoms": [b.id for b in ph.walk() if res.grammar.is_atom(b.kind)],
                                "traces": ph.all_traces()})
                 covered |= set(ph.all_traces())
-    analyze_json = CFG.state_dir(mod, version) / f"analyze-gate-{_gate_for_pass(CFG.tracks[track]['pass'])['id']}.json"
+    # the verdict that travels into the consumer is re-derived, never read off disk:
+    # a stored one produced under a contract set or a blocking policy that has since
+    # changed says nothing about the module being delivered (F2).
+    rep, stale = an.verdict(mod, version, f"gate:{_gate_for_pass(CFG.tracks[track]['pass'])['id']}")
+    if stale:
+        _say(f"re-analyzed before delivery — the stored verdict could not be trusted: {stale}")
     gate_json = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": CFG.tracks[track]["pass"]})
     gate_json = gate_json.with_suffix(".json")
     return {
@@ -583,10 +590,36 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str], i
                  | {k: index[k] for k in ("decisions_dir", "publishes") if k in index},
         "phases": phases,
         "traceability": {"covered_ids": sorted(covered), "orphan_ids": []},
-        "analyze": json.loads(analyze_json.read_text())["counts"] if analyze_json.exists() else None,
+        "analyze": rep.counts() | {"clean": rep.clean},
         "gate": json.loads(gate_json.read_text()) if gate_json.exists() else None,
         "generated_at": now_iso(),
     }
+
+
+def cmd_analyze_all(scope: str) -> int:
+    """Re-analyze every module at its current version.
+
+    The backlog a rules change creates is otherwise invisible and unbounded: the
+    checks got stricter, no module was re-analyzed, and every stored PASS stayed a
+    PASS. The module list comes from the filesystem (the version authority), so a
+    sweep never reads a list somebody has to remember to extend."""
+    mods = CFG.modules()
+    if not mods:
+        _say("no modules to analyze")
+        return OK
+    rc = OK
+    for m in mods:
+        v = CFG.current_version(m)
+        stale = an.stale_reason(m, v, scope)
+        rep = an.run(m, v, scope=scope)
+        c = rep.counts()
+        _say(f"{m} v{v} {scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}"
+             f"{'   (previous verdict was stale: ' + stale + ')' if stale else ''}")
+        for f in rep.findings:
+            _say("  ", f)
+        if not rep.clean:
+            rc = BLOCKED
+    return rc
 
 
 def cmd_status(mod: str) -> int:
@@ -598,9 +631,11 @@ def cmd_status(mod: str) -> int:
         have = [s.id for s in CFG.stages if all(CFG.artifact_path(mod, s.id, a.artifact, v).exists() for a in s.produces if not a.optional and not a.dir) and any(not a.dir for a in s.produces)]
         inputs = [n for n, spec in CFG.inputs.items() if (CFG.inputs_dir(mod, v) / CFG.fmt(spec["file"], mod=mod)).exists()]
         gates = [p.stem for p in (CFG.state_dir(mod, v) / "approvals").glob("*.json")] if (CFG.state_dir(mod, v) / "approvals").exists() else []
+        stale = an.stale_reason(mod, v, "all")
         pattern = CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": "*"}).replace(".md", ".json")
         gates += [p.stem for p in root.glob(pattern)]
-        _say(f"  v{v}: stages {have} · inputs {inputs} · gates {gates} · {tag} · state {'fresh' if st.is_fresh(mod, v) else 'stale'}")
+        _say(f"  v{v}: stages {have} · inputs {inputs} · gates {gates} · {tag} · state {'fresh' if st.is_fresh(mod, v) else 'stale'}"
+             f" · verdict {'current' if stale is None else 'STALE — ' + stale}")
     return OK
 
 
@@ -846,8 +881,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="gov.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    def mv(p, version=True):
-        p.add_argument("-m", "--module", required=True)
+    def mv(p, version=True, module=True):
+        p.add_argument("-m", "--module", required=module, default=None)
         if version:
             p.add_argument("-v", "--version", type=int)
         return p
@@ -860,7 +895,8 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("gate")); p.add_argument("pass_no"); p.add_argument("--complete", action="store_true"); p.add_argument("--result"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("approve")); p.add_argument("gate"); p.add_argument("--by", default=os.environ.get("USER", "human")); p.add_argument("--no-commit", action="store_true")
-    p = mv(sub.add_parser("analyze")); p.add_argument("--scope", default="all")
+    p = mv(sub.add_parser("analyze"), module=False); p.add_argument("--scope", default="all")
+    p.add_argument("--all-modules", action="store_true", help="re-analyze every module at its current version")
     mv(sub.add_parser("state"))
     p = mv(sub.add_parser("version"), version=False); p.add_argument("--new", action="store_true")
     mv(sub.add_parser("tag"))
@@ -889,6 +925,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "approve":
         return approve(a.gate, a.module, a.version, a.by, a.no_commit)
     if a.cmd == "analyze":
+        if a.all_modules:
+            return cmd_analyze_all(a.scope)
+        if not a.module:
+            _say("BLOCKED: analyze needs -m MOD (or --all-modules)")
+            return BLOCKED
         rep = an.run(a.module, a.version, scope=a.scope)
         c = rep.counts()
         _say(f"analyze {a.scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}")

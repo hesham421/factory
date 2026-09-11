@@ -91,6 +91,7 @@ Add a domain: `gov.py new-domain <id>` scaffolds `profiles/<id>.yaml` from `_sch
 | `/bootstrap [--profile ID]` | `gov.py run-stage P-1` |
 | `/analyze-pass1 MOD [--version N|--new]` | `gov.py run-pass 1` |
 | `/analyze-pass2 MOD --version N` | `gov.py run-pass 2` |
+| `/reanalyze [--scope all|stage:ID|pass:N|gate:ID]` | `gov.py analyze --all-modules` |
 | `/gate <1|2> MOD --version N [--model …] [--effort …]` | `gov.py gate` |
 | `/micro-feature MOD "<free text>"` | `gov.py version --new + run-pass 1 + run-pass 2 (delta)` |
 | `/link-repos ` | `gov.py edit factory.yaml repos` |
