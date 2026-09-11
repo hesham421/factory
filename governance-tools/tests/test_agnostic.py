@@ -705,3 +705,29 @@ def test_toy_surface_reference_resolves_when_the_target_defines_it(toy_surface):
 
     art.write_text(f"# toy prd\n\nReads the roster through /svc/{other.lower()}/roster ({api}).\n", encoding="utf-8")
     assert _surface_findings(mod, an) == [], "the target module defines the cited surface"
+
+
+def test_toy_surface_citation_may_wrap_to_the_next_line(toy_surface):
+    """Prose wraps. A sentence naming another module's endpoint often carries the
+    id on the next line, so a citation anywhere in the same paragraph counts."""
+    mod, art, an = toy_surface
+    other = [m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod][0]
+    api = CFG.make_id("API", other, 1)
+    _seed_other(other, api)
+    art.write_text(f"# toy prd\n\nReads the roster through /svc/{other.lower()}/roster,\n"
+                   f"the endpoint {api} publishes for consumers.\n", encoding="utf-8")
+    assert _surface_findings(mod, an) == []
+
+
+def test_toy_surface_citation_does_not_leak_across_table_rows(toy_surface):
+    """A table row is its own statement: an id in a neighbouring row says nothing
+    about this one, so the paragraph rule stops at the table."""
+    mod, art, an = toy_surface
+    other = [m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod][0]
+    api = CFG.make_id("API", other, 1)
+    _seed_other(other, api)
+    art.write_text(f"# toy prd\n\n| Source | Note |\n|---|---|\n"
+                   f"| {api} | the roster endpoint |\n"
+                   f"| /svc/{other.lower()}/roster | read here |\n", encoding="utf-8")
+    fs = _surface_findings(mod, an)
+    assert len(fs) == 1 and "cites no API" in fs[0].message

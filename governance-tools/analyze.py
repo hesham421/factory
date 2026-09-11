@@ -743,6 +743,27 @@ def _locator_rx(template: str, modules) -> re.Pattern:
     return re.compile("".join(out), re.IGNORECASE)
 
 
+def _prose_scopes(text: str):
+    """(line number, line, the text the line's citations may come from).
+
+    Prose wraps: a sentence naming another module's endpoint often carries the id
+    on the NEXT line. So a citation anywhere in the same paragraph counts. A table
+    is the exception — each row is its own statement, and an id in a neighbouring
+    row says nothing about this one — so there the scope is the row itself.
+    """
+    lines = text.splitlines()
+    start = 0
+    for i in range(len(lines) + 1):
+        if i < len(lines) and lines[i].strip():
+            continue
+        para = lines[start:i]
+        is_table = any(l.lstrip().startswith("|") for l in para)
+        joined = "\n".join(para)
+        for k, l in enumerate(para):
+            yield start + k + 1, l, (l if is_table else joined)
+        start = i + 1
+
+
 def _c_xref_surface(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     """A reference to another module's SURFACE, written as prose, must resolve in
     that module's own artifacts.
@@ -767,7 +788,7 @@ def _c_xref_surface(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         text = ctx.text(name)
         if text is None:
             continue
-        for n, ln in enumerate(text.splitlines(), 1):
+        for n, ln, scope_text in _prose_scopes(text):
             for m in rx.finditer(ln):
                 fmod = (m.groupdict().get("module") or "").upper()
                 if not fmod or fmod == ctx.mod or (fmod, name, m.group(0)) in seen:
@@ -775,7 +796,7 @@ def _c_xref_surface(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                 seen.add((fmod, name, m.group(0)))
                 if fmod not in cache:
                     cache[fmod] = _module_ids(fmod)
-                cited = {rid for rid in idmodel.find_ids(ln)
+                cited = {rid for rid in idmodel.find_ids(scope_text)
                          if (parts := idmodel.split_id(rid)) and parts[1] == fmod
                          and (not kinds or parts[0] in kinds)}
                 if cited & cache[fmod]:
