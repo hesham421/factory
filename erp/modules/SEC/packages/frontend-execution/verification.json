@@ -1,0 +1,13 @@
+{
+  "module": "SEC",
+  "track": "frontend",
+  "plan": "exec",
+  "version": 1,
+  "verify": "sha256",
+  "source": "erp/modules/SEC/P3_2/frontend-execution-plan-sec.md",
+  "checked": 42,
+  "missing": [],
+  "mismatched": [],
+  "ok": true,
+  "at": "2026-09-11T17:43:29+00:00"
+}

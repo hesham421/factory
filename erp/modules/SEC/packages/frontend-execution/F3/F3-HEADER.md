@@ -1,0 +1,9 @@
+<!-- source: PHASE:F3 — preamble before the first SUB -->
+<!-- traces: REQ-SEC-001, REQ-SEC-002, AC-SEC-001, AC-SEC-002, API-SEC-001, SCR-SEC-001, REQ-SEC-003, AC-SEC-003, API-SEC-002, SCR-SEC-002, REQ-SEC-006, REQ-SEC-007, REQ-SEC-008, REQ-SEC-029, AC-SEC-006, AC-SEC-007, AC-SEC-008, AC-SEC-029, API-SEC-003, API-SEC-004, SCR-SEC-003, REQ-SEC-004, REQ-SEC-005, REQ-SEC-009, REQ-SEC-010, REQ-SEC-011, REQ-SEC-031, AC-SEC-004, AC-SEC-005, AC-SEC-009, AC-SEC-010, AC-SEC-011, AC-SEC-031, API-SEC-005, API-SEC-006, API-SEC-007, API-SEC-008, API-SEC-009, API-SEC-010, API-SEC-011, SCR-SEC-004, REQ-SEC-012, REQ-SEC-013, REQ-SEC-014, REQ-SEC-015, REQ-SEC-020, REQ-SEC-030, AC-SEC-012, AC-SEC-013, AC-SEC-014, AC-SEC-015, AC-SEC-020, AC-SEC-030, API-SEC-012, API-SEC-013, API-SEC-014, API-SEC-015, API-SEC-016, API-SEC-017, SCR-SEC-005, REQ-SEC-016, REQ-SEC-017, REQ-SEC-018, REQ-SEC-019, AC-SEC-016, AC-SEC-017, AC-SEC-018, AC-SEC-019, API-SEC-018, API-SEC-019, API-SEC-020, API-SEC-021, SCR-SEC-006, REQ-SEC-022, REQ-SEC-023, AC-SEC-022, AC-SEC-023, API-SEC-022, SCR-SEC-007, REQ-SEC-024, REQ-SEC-025, REQ-SEC-026, AC-SEC-024, AC-SEC-025, AC-SEC-026, API-SEC-023, API-SEC-024, SCR-SEC-008, REQ-SEC-027, REQ-SEC-028, AC-SEC-027, AC-SEC-028, API-SEC-025, API-SEC-026, SCR-SEC-009, REQ-SEC-021, REQ-SEC-032, REQ-SEC-033, AC-SEC-021, AC-SEC-032, AC-SEC-033, API-SEC-027, SCR-SEC-010 -->
+## PHASE 3 — F3 — Forms & Validators
+
+One block per `RULE-*` enforced on a form, plus the field constraints the published DTOs
+state. No frontend-only validation the SRS does not state; every message is read from its
+catalog code, never hard-coded; the locale resolves session → browser → `ar`; and a caller
+without the write permission is answered by the server rather than by a pre-emptively
+disabled field (ADR-SEC-005). Schemas are written with `zod` + `react-hook-form`.
