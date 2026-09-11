@@ -7,7 +7,7 @@
 #   exists · no-questions · languages · ids-owned · ids-continue · traces · orphans
 #   · ears · registry-agree · markers · manifest · gate-approved
 #   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
-#   · verdict-agrees · forward-refs
+#   · verdict-agrees · forward-refs · xref-surface
 contracts:
   - id: C1
     title: domain profile → registry bootstrap
@@ -106,6 +106,7 @@ contracts:
       - {id: C7.12, check: xref-resolve,  args: {artifact: [backend-execution-plan, registry-exec-be]},                            severity: CRITICAL}
       - {id: C7.13, check: refs-exist,    args: {kind: ADR, dir: decisions, file_pattern: adr_file},                               severity: CRITICAL}
       - {id: C7.14, check: paths-resolve, args: {files: [manifest_file]},                                                          severity: CRITICAL}
+      - {id: C7.17, check: xref-surface,  args: {artifact: [backend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
       - {id: C7.16, check: forward-refs,  args: {spec: forward_columns, when: "profile.forward_columns"},                       severity: MAJOR}
       - {id: C7.15, check: verdict-agrees, args: {artifact: [backend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C8
@@ -134,6 +135,7 @@ contracts:
       - {id: C9.9, check: ids-owned,      args: {stage: P3.2},                                                               severity: CRITICAL}
       - {id: C9.10, check: no-questions,  args: {stage: P3.2},                                                               severity: CRITICAL}
       - {id: C9.11, check: ids-continue,  args: {stage: P3.2},                                                               severity: CRITICAL}
+      - {id: C9.13, check: xref-surface,  args: {artifact: [frontend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
       - {id: C9.12, check: verdict-agrees, args: {artifact: [frontend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C10
     title: acceptance criteria → test generation (standalone)
@@ -186,9 +188,9 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 16 |
+| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 17 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 3 |
-| `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 12 |
+| `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 13 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
@@ -376,6 +378,7 @@ these are mechanical clauses here and not a checklist line there.
 | `xref-resolve` | every id belonging to *another* module that the artifact cites is defined in that module's own artifacts; an unknown module code, or a module with no artifacts yet, is a finding of its own | `artifact`, `kinds?` |
 | `refs-exist` | every id of `kind` cited anywhere in the module has the file it is cited as, at `dir`/`<MOD>`/`naming[file_pattern]` | `kind`, `dir`, `file_pattern`, `per_module?` |
 | `paths-resolve` | every path-shaped string in each generated index (`files`, by `paths.module.*` key) resolves to something that exists, relative to the index's own directory | `files`, `required?` |
+| `xref-surface` | every reference to **another module's surface** written as prose resolves in that module's own artifacts. `locator` is a profile address holding the surface address template (e.g. the API base path); every `{module}` slot in it that names a declared module other than this one must be accompanied by a cited id of `kinds` that the target module really defines. `xref-resolve` sees id-shaped citations only, and prose is exactly how a module encodes a dependency it has no id for yet — so both modules pass, each having validated only itself. Resolved across the module set. | `artifact`, `locator`, `kinds?` |
 | `forward-refs` | every cell of a column the profile declares forward-referencing (`spec`, a profile address) either carries `factory.forward_reference.proposed_token` or holds a value that resolves in that row's `resolved_from` artifact. A stage that runs before the thing exists cannot state its name as fact; printed beside facts, a guess is read as a decision. Generalises past any one column: the artifact, the column header and the resolving artifact are all profile data. | `spec`, `when?` |
 | `verdict-agrees` | the verdict the artifact states **about itself** does not claim fewer findings than `gov.py analyze` produced for that artifact. The block name, the verdict label and the pass/fail wording are read from the profile address in `spec` — the checker knows none of them, and a profile that declares no self-check carries no such clause. Evaluated after every clause that produces findings. The orchestrator normally *writes* this line from the report (`gov.py` stamps it after analyze), so the check is the guard for anything still authored by hand. | `artifact`, `spec`, `when?` |
 

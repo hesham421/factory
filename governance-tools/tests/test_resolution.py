@@ -420,3 +420,21 @@ def test_delivery_is_stamped_and_verified_in_the_consumer(orch_root, mod, tmp_pa
     assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
     assert not (dest / "left-behind-by-the-old-toolchain.md").exists()
     assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
+
+
+def test_a_surface_reference_must_resolve_in_the_consumer_too(orch_root, mod, tmp_path, monkeypatch):
+    """F6b paired with F4: a plan consuming another module's surface needs that
+    module delivered beside it, or the reference resolves in the factory and
+    nowhere the implementer can read it."""
+    from test_orchestrator import _consumer, _run_pass1
+    backend = _consumer(tmp_path, monkeypatch, "backend")
+    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
+    other = next(m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod)
+    template = CFG.profile.get("stack.backend.api.base_path")
+    locator = template.replace("{module}", other.lower()).replace("{resource}", "things")
+    plan = CFG.plan_path(mod, "backend", "exec", 1)
+    plan.write_text(plan.read_text(encoding="utf-8") + f"\nReads through {locator}.\n", encoding="utf-8")
+    assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == gov.OK
+    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
+    # the other module is not delivered, so the reference dangles for its reader
+    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED

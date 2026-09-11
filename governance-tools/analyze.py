@@ -715,6 +715,79 @@ def _c_xref_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+def _locator_rx(template: str, modules) -> re.Pattern:
+    """A profile's surface locator template → the regex that finds an instance of it
+    naming a module. `{module}` captures a declared module code; every other `{…}`
+    slot matches one path segment. Nothing about the template's shape is assumed
+    beyond that: it is whatever the profile declares.
+    """
+    codes = "|".join(re.escape(m) for m in sorted(modules, key=len, reverse=True))
+    out, i = [], 0
+    while i < len(template):
+        m = re.compile(r"\{([a-zA-Z_]+)\}").match(template, i)
+        if m:
+            out.append(f"(?P<module>{codes})" if m.group(1).lower() == "module" else r"[^/\s?#`]+")
+            i = m.end()
+        else:
+            out.append(re.escape(template[i]))
+            i += 1
+    return re.compile("".join(out), re.IGNORECASE)
+
+
+def _c_xref_surface(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A reference to another module's SURFACE, written as prose, must resolve in
+    that module's own artifacts.
+
+    `xref-resolve` sees id-shaped citations only. A plan that says it will read data
+    through another module's endpoint, without an id for it, is invisible to that
+    check — and prose is exactly how a module encodes a dependency it has not been
+    given an id for yet. Both modules then pass, because each validates only itself.
+
+    The locator is the profile's own address template (`locator`), so this knows no
+    path, no verb and no module name; the resolution runs across the module set.
+    """
+    template = CFG.profile.get(c["locator"])
+    if not template:
+        return []
+    known = set(CFG.profile.vocabulary["module_prefixes"])
+    kinds = set(c.get("kinds") or [])
+    rx = _locator_rx(template, known)
+    cache: dict[str, set[str]] = {}
+    out, seen = [], set()
+    for name in (c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]):
+        text = ctx.text(name)
+        if text is None:
+            continue
+        for n, ln in enumerate(text.splitlines(), 1):
+            for m in rx.finditer(ln):
+                fmod = (m.groupdict().get("module") or "").upper()
+                if not fmod or fmod == ctx.mod or (fmod, name, m.group(0)) in seen:
+                    continue
+                seen.add((fmod, name, m.group(0)))
+                if fmod not in cache:
+                    cache[fmod] = _module_ids(fmod)
+                cited = {rid for rid in idmodel.find_ids(ln)
+                         if (parts := idmodel.split_id(rid)) and parts[1] == fmod
+                         and (not kinds or parts[0] in kinds)}
+                if cited & cache[fmod]:
+                    continue                    # the prose names a surface the target really defines
+                if not cache[fmod]:
+                    out.append(Finding(sev, "", "xref-surface",
+                                       f"`{m.group(0)}` consumes `{fmod}`'s surface, but `{fmod}` has no "
+                                       f"artifacts yet — the dependency cannot be resolved, and neither "
+                                       f"module's own checks can see it", name, n))
+                elif cited:
+                    out.append(Finding(sev, "", "xref-surface",
+                                       f"`{m.group(0)}` consumes `{fmod}`'s surface citing {sorted(cited)}, "
+                                       f"which `{fmod}` does not define", name, n))
+                else:
+                    out.append(Finding(sev, "", "xref-surface",
+                                       f"`{m.group(0)}` consumes `{fmod}`'s surface in prose but cites no "
+                                       f"{'/'.join(sorted(kinds)) or 'id'} of `{fmod}` — a dependency with no "
+                                       f"id resolves nowhere, and `{fmod}`'s own checks never see it", name, n))
+    return out
+
+
 def _c_refs_exist(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     """Every id of `kind` cited anywhere in the module must have the file it is
     cited as. A path repeated 30 times that resolves to nothing is not a reference."""
@@ -946,6 +1019,7 @@ CHECKS = {
     "value-agreement": _c_value_agreement, "code-format": _c_code_format, "data-source": _c_data_source,
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
+    "xref-surface": _c_xref_surface,
 }
 
 

@@ -604,3 +604,104 @@ def test_a_profile_with_no_forward_columns_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("forward_columns") is None
     assert an._c_forward_refs(an.Ctx(mod, 1), {"spec": "forward_columns"}, "WARN") == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F6b — a reference resolves where it is CONSUMED, not only where it is written
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_toy_locator_regex_is_built_from_the_profile_template(toy):
+    """The check reads the address template out of the profile; it knows no path
+    shape of its own. The toy's template looks nothing like the ERP one."""
+    import analyze as an
+    mods = set(CFG.profile.vocabulary["module_prefixes"])
+    rx = an._locator_rx(CFG.profile.get("stack.backend.api.base_path"), mods)
+    m = rx.search("call GET /v1/apt/slots for the calendar")
+    assert m is None or m.groupdict().get("module") is None, "the toy template has no {module} slot"
+    rx2 = an._locator_rx("/svc/{module}/{resource}", mods)
+    assert rx2.search("see /svc/BIL/invoices").group("module") == "BIL"
+    assert rx2.search("see /svc/bil/invoices").group("module") == "bil", "matched case-insensitively"
+    assert rx2.search("see /svc/nope/invoices") is None, "an undeclared module is not a locator"
+
+
+@pytest.fixture
+def toy_surface(toy_analyzable):
+    """The toy declares its own surface template and a plan that consumes another
+    toy module through it."""
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["backend"]["api"]["base_path"] = "/svc/{module}/{resource}"
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.4", "check": "xref-surface",
+         "args": {"artifact": ["prd"], "locator": "stack.backend.api.base_path", "kinds": ["API"]},
+         "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _surface_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "xref-surface"]
+
+
+def _seed_other(other: str, *api_ids: str) -> None:
+    """Give the target module real artifacts defining the given surface ids, so the
+    resolution is across the module SET rather than against an empty module."""
+    ensure_structure(other, 1)
+    stage = next(s for s in CFG.stages if any(a.artifact == "backend-execution-plan" for a in s.produces))
+    p = CFG.artifact_path(other, stage.id, "backend-execution-plan", 1)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("".join(f"<!-- API:{i}:START -->\nan endpoint\n<!-- API:{i}:END -->\n" for i in api_ids)
+                 or "# no surface\n", encoding="utf-8")
+
+
+def test_toy_prose_dependency_with_no_id_is_a_finding(toy_surface):
+    """The evidence case: a plan describing data obtained through another module's
+    read API, where the target defines no such endpoint. Both modules passed before,
+    because each validated only itself."""
+    mod, art, an = toy_surface
+    other = [m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod][0]
+    _seed_other(other, CFG.make_id("API", other, 1))
+    art.write_text(f"# toy prd\n\nReads the roster through /svc/{other.lower()}/roster once it exists.\n",
+                   encoding="utf-8")
+    fs = _surface_findings(mod, an)
+    assert len(fs) == 1 and other in fs[0].message and "resolves nowhere" in fs[0].message
+    assert fs[0].severity == "WARN" and fs[0].line == 3
+
+    # and a target module with no artifacts at all is its own, distinct finding
+    import shutil
+    shutil.rmtree(CFG.module_root(other))
+    fs = _surface_findings(mod, an)
+    assert len(fs) == 1 and "has no artifacts yet" in fs[0].message
+
+
+def test_toy_narrative_mention_of_another_module_is_not_a_finding(toy_surface):
+    """Naming another module in prose is not consuming its surface — only a line
+    carrying the profile's own address template is."""
+    mod, art, an = toy_surface
+    other = [m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod][0]
+    art.write_text(f"# toy prd\n\nThe next module to be generated is {other}, then the rest.\n", encoding="utf-8")
+    assert _surface_findings(mod, an) == []
+
+
+def test_toy_surface_reference_resolves_when_the_target_defines_it(toy_surface):
+    """Run across the module SET: the id is looked up in the other module's own
+    artifacts, not in this one's."""
+    mod, art, an = toy_surface
+    other = [m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod][0]
+    api, ghost = CFG.make_id("API", other, 1), CFG.make_id("API", other, 9)
+    # the target exists and defines api, but the plan cites an id it does not define
+    _seed_other(other, api)
+    art.write_text(f"# toy prd\n\nReads the roster through /svc/{other.lower()}/roster ({ghost}).\n", encoding="utf-8")
+    fs = _surface_findings(mod, an)
+    assert len(fs) == 1 and "does not define" in fs[0].message, [str(f) for f in fs]
+
+    art.write_text(f"# toy prd\n\nReads the roster through /svc/{other.lower()}/roster ({api}).\n", encoding="utf-8")
+    assert _surface_findings(mod, an) == [], "the target module defines the cited surface"

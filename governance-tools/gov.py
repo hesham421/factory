@@ -721,6 +721,26 @@ def cmd_verify_delivery(track: str, mod: str, version: int) -> int:
                 if not (dest / folder / CFG.fmt(pattern, mod=rmod, seq=seq)).exists():
                     findings.append(f"{cl['id']} ({cl['check']}): `{rid}` is cited in the delivered tree but "
                                     f"{folder}/{CFG.fmt(pattern, mod=rmod, seq=seq)} is not there")
+    # xref-surface, against the consumer: a plan that consumes another module's
+    # surface needs that module delivered beside it, or the reference resolves
+    # nowhere for the implementer who reads this tree (F6b paired with F4).
+    for c in rd.contracts_from_doc(CFG):
+        for cl in c.get("clauses", []):
+            if cl["check"] != "xref-surface":
+                continue
+            template = CFG.profile.get((cl.get("args") or {})["locator"])
+            if not template:
+                continue
+            rx = an._locator_rx(template, set(CFG.profile.vocabulary["module_prefixes"]))
+            for m in rx.finditer(text):
+                fmod = (m.groupdict().get("module") or "").upper()
+                if not fmod or fmod == mod.upper():
+                    continue
+                sibling = checkout / CFG.fmt(CFG.repos[track]["deliver_to"], mod=fmod)
+                if not (sibling / CFG.paths["module"]["manifest_file"]).exists():
+                    findings.append(f"{cl['id']} ({cl['check']}): the delivered tree consumes `{m.group(0)}` "
+                                    f"but `{fmod}` is not delivered in {checkout.name} — the reference "
+                                    f"resolves in the factory and nowhere the implementer can read it")
     for f in sorted(set(findings)):
         _say("  ", f)
     _say(f"verify-delivery {track}/{mod.upper()} v{version} @ {checkout.name}: "
