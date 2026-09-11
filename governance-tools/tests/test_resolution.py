@@ -438,3 +438,22 @@ def test_a_surface_reference_must_resolve_in_the_consumer_too(orch_root, mod, tm
     assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
     # the other module is not delivered, so the reference dangles for its reader
     assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
+
+
+def test_a_registry_may_record_what_the_module_consumes(module):
+    """A registry records both what the module OWNS and what it CONSUMES. A
+    consumed entity is another module's to define; demanding it be redefined
+    locally would make every cross-module registry row a finding. `xref-resolve`
+    resolves those, against their owner."""
+    import render
+    args = next((cl["args"] for c in render.contracts_from_doc(CFG.reload())
+                 for cl in c.get("clauses", [])
+                 if cl["check"] == "registry-agree" and cl["args"].get("kinds")), None)
+    assert args, "no registry-agree clause with kinds declared"
+    reg = _artifact(module, CFG.id_atoms()[args["kinds"][0]]["owner"], args["registry"])
+    before = an._c_registry_agree(_ctx(module), args, "CRITICAL")
+    other = next(m for m in CFG.profile.vocabulary["module_prefixes"] if m != module)
+    foreign = CFG.make_id(args["kinds"][0], other, 1)
+    reg.write_text(reg.read_text(encoding="utf-8") + f"\n| consumed | {foreign} | {other} | read |\n", encoding="utf-8")
+    assert an._c_registry_agree(_ctx(module), args, "CRITICAL") == before, \
+        f"a consumed id of {other} must not be demanded of {module}'s own artifact"

@@ -420,12 +420,21 @@ def _c_registry_agree(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     if missing:
         return [Finding(sev, "", "registry-agree", f"artifact `{n}` missing", n) for n in missing]
     kinds = set(c.get("kinds", []))
+
+    def mine(x: str) -> bool:
+        """This module's own id. A registry also records what the module CONSUMES —
+        ids another module defines — and those are that module's to define, not this
+        one's: resolving them here would demand every foreign entity be redefined
+        locally. `xref-resolve` is what resolves them, against their owner."""
+        parts = idmodel.split_id(x)
+        return bool(parts) and parts[0] in kinds and parts[1] == ctx.mod
+
     in_art: set[str] = set()
     for n, art in texts.items():
-        in_art |= {x for x in (idmodel.defined_ids(art) | idmodel.marker_ids(art) | (idmodel.referenced_ids(art) if n in CFG.inputs else set())) if idmodel.split_id(x)[0] in kinds}
+        in_art |= {x for x in (idmodel.defined_ids(art) | idmodel.marker_ids(art) | (idmodel.referenced_ids(art) if n in CFG.inputs else set())) if mine(x)}
     label = "+".join(names)
     c = dict(c, artifact=label)
-    in_reg = {x for x in idmodel.referenced_ids(reg) if idmodel.split_id(x)[0] in kinds}
+    in_reg = {x for x in idmodel.referenced_ids(reg) if mine(x)}
     direction = c.get("direction", "both")
     if direction in ("both", "artifact→registry"):
         for x in sorted(in_art - in_reg):
