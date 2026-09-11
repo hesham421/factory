@@ -18,6 +18,7 @@
   "plans": {
     "backend/exec": "P3_1/backend-execution-plan-sec.md",
     "backend/test": "test_gen/backend-test-plan-sec.md",
+    "frontend/exec": "P3_2/frontend-execution-plan-sec.md",
     "frontend/test": "test_gen/frontend-test-plan-sec.md"
   },
   "packages": {

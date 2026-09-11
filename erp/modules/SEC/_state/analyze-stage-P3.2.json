@@ -1,0 +1,75 @@
+{
+  "module": "SEC",
+  "version": 1,
+  "scope": "stage:P3.2",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C9",
+    "C12"
+  ],
+  "skipped": [],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "1b5259070f48bdd0db3a24419d63f7d98cb8d3ce2f5b009e41770e2e47f89e23",
+      "checker": "89a25bcf88c712db227b897fdb811ac4717e27b34c022696ca566dbf06232a2d",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "api-docs",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "f622cbbf15a046331f24f819f7bb2fe14c724a720f09f235ae3de68adb9fe43c",
+      "backend-execution-plan": "c934cc6823e5bb8a2d7e85c468f72d3a87ab17f9b3fa3a0e7d6e1bf08b94ade6",
+      "backend-test-plan": "22cd268bcf01b35c3a1741bd93aa287bd272047a287fcf500d476ada8be8c68e",
+      "business-policies": "aa84e4fa34c5d3e1b7ef71e2055bdd4b81980bcf4a1b53f81351cd120566d35a",
+      "db-script": "4ebf14c9d44b51e764aa87b0a567bb82e0ca0788a750eba5e3b7bf4288d4f640",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "bd35bf8c96e78ba10900b7d1f6ced85c14530e9ec828bb455b8db25b7da06794",
+      "frontend-execution-plan": "50d4aa6f43ea7418cb2c06b623d9de571afa98dfb2d1746679bc17112458a96f",
+      "frontend-test-plan": "e447bcec7e8144b0e958a85d93a12505a01a524af2ed36a7cadc137284696566",
+      "module-registry": "fdee1eb1c5a9ae0be45579eddf863b41859474f9c1b75f2df76d06c830c9cbdc",
+      "platform-summary": "ef423becc4481e307d98de8960f8416cb02212571d518daa3f2015c4ddf6a44e",
+      "prd": "dc418b01290699f190912e9824a28e60285ab5d1c76f1e95baa234677601a59d",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "2d115ca2ad26a9df6a7d7ffbdfaef181b5189d4f2c637047790cba90a92425d1",
+      "registry-exec-be": "91e753058a5dd1a4548522c17010c10e5573db7a2bf3b565db8f11a277ede044",
+      "registry-exec-fe": "b47c1d8537aae3101444956483d0347e8bbe8c8908c5ec3f65b6581a88a6a7c4",
+      "registry-srs": "735121f843b9ea9b8ac8ccfbcf2955273204e67d4959077606b37df59088f167",
+      "srs": "df71297b2100d39251ca128fb27eec9a24fb3ee3eb7d90d05e642f33876fa0cb",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "fe360a9c38baf2785c213cffdd24b06f9e68738419dd21fa96c66b588070f78c",
+      "ui-ux-spec": "2eb646d3d48f2d86e08f83a0beb3f27384b576c961f3a013a047045957f9a319"
+    },
+    "at": "2026-09-11T15:41:26+00:00"
+  }
+}
