@@ -223,6 +223,7 @@ RULE-{{ mod }}-[SEQ] — [short name]
   Statement  : The system shall [prevent / require / validate …] when [condition]
   Message    : {% if langs.require_all %}{% for l in langs.all %}{{ l }}: [text]{% if not loop.last %} · {% endif %}{% endfor %}{% else %}[text]{% endif %}   (business language, not a literal translation)
   Traces     : REQ-{{ mod }}-[SEQ] [, …]                     (≥ 1, mandatory)
+  Data source: ENT-{{ mod }}-[SEQ].[field] [, …]             (mandatory — see below)
   Source     : [policy id / story / DEFAULT / ADR]
   Test-Hint  : [optional, one line of business intent for test-gen; omit if obvious]
 ```
@@ -231,6 +232,30 @@ Rules: a RULE formalises a constraint that a REQ needs; it never introduces beha
 absent from every REQ. Database errors never reach users — every constraint that can
 fail has a RULE with a message. Rules are defined once (A5) and referenced by ID from
 every screen block.
+
+**`Data source` — where the data the check READS comes from (mandatory).** `Scope` says
+which entities the rule *guards*; `Data source` says which declared fields the rule
+*reads to decide*. Every field named here is an `ENT-{{ mod }}-[SEQ].[field]` that A3
+actually declares (the next stage binds each one to a column, so a field A3 never
+declares can never be read at runtime).
+
+A rule whose statement leans on data this module does not declare — "a
+{{ '{' }}module|admin|externally{{ '}' }}-declared X", "a configured Y", "a registered pair" — has two honest
+outcomes, and no third:
+
+```
+  Data source: ENT-{{ mod }}-[SEQ].[field]        ← the declaration surface exists: name it,
+                                                    and A3 carries the field / A6 the lookup
+  Data source: DEFERRED — no declaration surface in this version ([what would be needed])
+```
+
+A `DEFERRED` rule is still written, still traced and still counted, but it is marked
+unenforceable *here* — the next stages do not mint an error code, an enforcement query or
+an enforcing endpoint for it, and test-gen does not derive a test case whose precondition
+no API of this version can establish. Emitting such a rule as if it were enforceable
+produces a guard that compiles, an error code that is registered, and a check that can
+never fire. `gov.py analyze` resolves this mechanically (`data-source`): a rule with
+neither a resolvable `Data source` nor the deferral marker is a finding, not a pass.
 
 ---
 
@@ -449,6 +474,7 @@ DOES NOT  : {% for atom, spec in atoms.items() if spec.owner != stage.id and spe
 ## 13 — Self-check before emitting (ISO/IEC/IEEE 29148 attributes + structure)
 
 Quality attributes scored at the pass gate (`factory.review.rubric`):
+- [ ] Every RULE carries a `Data source` that either names `ENT-{{ mod }}-[SEQ].[field]` values A3 declares, or is the explicit `DEFERRED — no declaration surface in this version` marker (§5).
 {% for r in factory.review.rubric %}- [ ] **{{ r }}** — {% if r == 'unambiguous' %}one reading per REQ / AC / RULE; no "etc.", "as appropriate", "fast"{% elif r == 'verifiable' %}every REQ has ≥ 1 Given/When/Then AC; every RULE has a message{% elif r == 'complete' %}every story covered; A1–A8, every B1–B5, STANDALONE present; no placeholder left{% elif r == 'consistent' %}vocabulary = STEERING block; names = registry; no REQ contradicts a policy or another REQ{% elif r == 'singular' %}one behaviour per REQ; one path per AC{% elif r == 'feasible' %}no requirement depends on an undefined entity, unavailable module or forbidden mechanism{% elif r == 'traceable' %}REQ→{{ owner('US') }}, AC→REQ, RULE→REQ, SCR-REQ→REQ all present; no orphan, no dangling id{% else %}per shared/QUALITY-RUBRIC.md{% endif %}
 {% endfor %}
 Structural checks:

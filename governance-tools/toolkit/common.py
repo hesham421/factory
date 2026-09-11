@@ -9,6 +9,7 @@ enforces it.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -24,12 +25,26 @@ def now_iso() -> str:
 
 
 def rel(path: Path) -> str:
-    """Path relative to the factory root (portable in manifests); absolute
-    string when the path lives outside the root (tests, --output overrides)."""
+    """Path relative to the factory root; absolute string when the path lives
+    outside the root (tests, --output overrides)."""
     try:
         return str(Path(path).resolve().relative_to(CFG.root))
     except ValueError:
         return str(path)
+
+
+def rel_to(path: Path, base: Path) -> str:
+    """Path relative to `base` — the form a generated index must emit.
+
+    An index that spells its own repo-relative prefix ("<project>/modules/<MOD>/…")
+    resolves only in the repository that produced it: the same tree delivered into a
+    consumer repo sits under a different prefix and every path in it dangles. Relative
+    to the index's own directory, the same string resolves in both.
+    """
+    p, b = Path(path).resolve(), Path(base).resolve()
+    if p == b:
+        return "."
+    return os.path.relpath(p, b).replace(os.sep, "/")
 
 
 def read_json(path: Path, default: Any = None) -> Any:

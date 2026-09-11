@@ -59,8 +59,16 @@ $types:
 stack:                                      # REQUIRED — every technology fact lives here
   db:
     dialects: "list[str]"                   # e.g. [postgresql16] ; first = target
-    naming?: "{flag_suffix?: str, audit_fields?: list[str], pk_pattern?: str}"
-    syntax_map?: "map[str, map[str, str]]"  # type → dialect → syntax
+    pk_generation?: "(identity|sequence)"   # HOW primary keys are generated — a PROFILE decision,
+                                             # never a dialect default. `identity` = the dialect's identity
+                                             # clause (syntax_map.identity); `sequence` = one named sequence
+                                             # per table (syntax_map.sequence + naming.sequence_pattern) with
+                                             # the PK column declared as syntax_map.pk. A profile whose target
+                                             # database already holds tables built on named sequences declares
+                                             # `sequence`; a greenfield one may prefer `identity`.
+    naming?: "{flag_suffix?: str, audit_fields?: list[str], pk_pattern?: str, sequence_pattern?: str}"
+    syntax_map?: "map[str, map[str, str]]"  # type → dialect → syntax ; the rows `identity`, `sequence`
+                                             # and `pk` are read by the pk_generation rule above
   backend:
     framework: "str"                        # e.g. spring-boot-java
     api:
@@ -69,6 +77,9 @@ stack:                                      # REQUIRED — every technology fact
       envelope?: "str"                      # response wrapper name
       paging?: "str"                        # e.g. Page<T>
       error_envelope?: "str"
+      error_code_format?: "str"             # SHAPE of a runtime error code, as a template over the tokens
+                                             # {MOD} {http} {SLUG} {seq} — the plan states this format and
+                                             # every catalog code it emits must match it (analyze: code-format)
     layers?: "list[str]"                    # controller, service, mapper, domain, repository …
   frontend:
     framework: "str"

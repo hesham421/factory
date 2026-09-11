@@ -28,7 +28,8 @@ from pathlib import Path
 from config import CFG
 
 from .common import (flat_plan, markers_schema_version, module_stages, now_iso,
-                     plan_key, plan_path_or_none, read_json, rel, track_plans, write_json)
+                     plan_key, plan_path_or_none, read_json, rel, rel_to, track_plans,
+                     write_json)
 
 
 def _manifest_path(mod: str, version: int | None) -> Path:
@@ -66,30 +67,43 @@ def ensure_structure(mod: str, version: int | None = None, dry_run: bool = False
     return created
 
 
-def build_manifest(mod: str, version: int | None = None) -> dict:
+def build_manifest(mod: str, version: int | None = None, base: Path | None = None) -> dict:
+    """The module version's index.
+
+    Every path is written relative to `base` — the directory the manifest itself
+    lives in (the version root by default). A manifest that spells its own
+    repo-relative prefix resolves only in the repository that produced it; the same
+    tree delivered into a consumer repo sits under a different prefix and every path
+    in it dangles. `deliver` passes the delivered root as `base` for the same reason.
+
+    A plan file that has not been written yet is OMITTED rather than emitted as a
+    path to nothing: `status.split` already says which plans exist.
+    """
     mod = mod.upper()
     version = CFG.current_version(mod) if version is None else int(version)
     root = CFG.version_root(mod, version)
+    base = root if base is None else base
     plans, packages, split = {}, {}, {}
     for track, plan in track_plans():
         key = plan_key(track, plan)
         p = plan_path_or_none(mod, track, plan, version)
-        if p is not None:
-            plans[key] = rel(p)
-        packages[key] = rel(CFG.packages_dir(mod, track, plan, version))
+        if p is not None and p.exists():
+            plans[key] = rel_to(p, base)
+        packages[key] = rel_to(CFG.packages_dir(mod, track, plan, version), base)
         split[key] = False
     return {
         "module": mod,
         "version": version,
         "profile": CFG.profile_id,
         "markers_schema_version": markers_schema_version(),
-        "root": rel(root),
-        "stages": {s.id: rel(root / s.folder) for s in module_stages()},
+        "paths_relative_to": "the directory holding this file",
+        "root": rel_to(root, base),
+        "stages": {s.id: rel_to(root / s.folder, base) for s in module_stages()},
         "plans": plans,
         "packages": packages,
-        "state_dir": rel(CFG.state_dir(mod, version)),
-        "inputs_dir": rel(CFG.inputs_dir(mod, version)),
-        "decisions_dir": rel(CFG.decisions_dir(mod)),
+        "state_dir": rel_to(CFG.state_dir(mod, version), base),
+        "inputs_dir": rel_to(CFG.inputs_dir(mod, version), base),
+        "decisions_dir": rel_to(CFG.decisions_dir(mod), base),
         "status": {"archived": False, "split": split},
     }
 

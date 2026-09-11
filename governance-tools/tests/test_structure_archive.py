@@ -56,11 +56,25 @@ def test_manifest_contents(factory_root, mod):
     assert m["markers_schema_version"] == CFG.markers["schema_version"]
     assert set(m["stages"]) == {s.id for s in module_stages()}
     keys = {plan_key(t, p) for t, p in track_plans()}
-    assert set(m["packages"]) == keys and set(m["plans"]) == keys
+    assert set(m["packages"]) == keys
+    # a plan file nobody has written yet is OMITTED, never emitted as a path to nothing
+    assert m["plans"] == {}
     assert m["status"] == {"archived": False, "split": {k: False for k in keys}}
-    for v in list(m["stages"].values()) + list(m["packages"].values()) + list(m["plans"].values()):
-        assert not v.startswith("/"), "manifest paths are repo-relative"
-        assert (factory_root / v).exists() or v.endswith(".md")
+
+
+def test_manifest_paths_resolve_from_the_manifests_own_directory(factory_root, mod):
+    """Every emitted path resolves relative to the manifest itself, so the tree
+    still indexes itself after it is delivered under a different prefix."""
+    ensure_structure(mod, 1)
+    base = CFG.version_root(mod, 1)
+    m = load_manifest(mod, 1)
+    assert m["root"] == "." and m["paths_relative_to"]
+    for key in ("stages", "packages", "plans"):
+        for v in m[key].values():
+            assert not v.startswith("/") and not v.startswith(str(CFG.profile.id) + "/")
+            assert (base / v).exists(), f"{key} → {v} does not resolve under {base}"
+    for key in ("state_dir", "inputs_dir", "decisions_dir"):
+        assert (base / m[key]).exists(), f"{key} → {m[key]} does not resolve under {base}"
 
 
 def test_structure_dry_run_creates_nothing(factory_root, mod):

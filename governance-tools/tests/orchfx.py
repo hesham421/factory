@@ -12,6 +12,8 @@ from pathlib import Path
 from config import CFG
 
 _AR = "نص عربي"     # any Arabic-script token — languages.require_all needs every script present
+RULE_FIELD = "code"   # the ENT field the fixture's rule reads (and the db-script binds)
+COLUMNS = {1: "main_code", 2: "created_at"}   # DBF seq → physical column, as the db-script declares it
 
 
 def _lang_tag() -> str:
@@ -96,7 +98,9 @@ def srs(mod: str, n_req: int = 2, start: int = 1) -> str:
                 "  Given  : a valid form", "  When   : the user submits", f"  Then   : the record is stored{_lang_tag()}", ""]
     out += ["## A2 — Entities", f"### {mid('ENT', mod, 1)} — main entity{_lang_tag()}", "  Kind: master", ""]
     out += ["## A5 — Business rules", f"### {mid('RULE', mod, 1)} — rule 1{_lang_tag()}",
-            "  Statement  : The system shall reject duplicates.", f"  Traces     : {mid('REQ', mod, 1)}", ""]
+            "  Statement  : The system shall reject duplicates.", f"  Traces     : {mid('REQ', mod, 1)}",
+            # every rule says where the data its check READS comes from (C5.12 / C6.9)
+            f"  Data source: {mid('ENT', mod, 1)}.{RULE_FIELD}", ""]
     out += ["# PART B", f"## {mid('SCR-REQ', mod, 1)} — main screen{_lang_tag()}",
             f"  Entities     : {mid('ENT', mod, 1)}", f"  Traces       : {', '.join(mid('REQ', mod, i) for i in range(start, start + n_req))}", ""]
     return "\n".join(out)
@@ -114,12 +118,21 @@ def registry_srs(mod: str, n_req: int = 2, end: int | None = None) -> str:
 
 
 def db_script(mod: str) -> str:
+    """The structural truth, including the field registry and the column comments —
+    the two places a DBF's physical name is declared (value-agreement reads them)."""
+    table = f"{mod}_MAIN"
     return "\n".join([
         f"# DB script — {mod}{_lang_tag()}", "",
+        "## Field registry", "| DBF id | Column | Type | Traces |", "|---|---|---|---|",
+        f"| {mid('DBF', mod, 1)} | {COLUMNS[1]} | text | {mid('ENT', mod, 1)}.{RULE_FIELD} |",
+        f"| {mid('DBF', mod, 2)} | {COLUMNS[2]} | timestamp | {mid('ENT', mod, 1)}.label |", "",
         f"### {mid('DBF', mod, 1)} — main table{_lang_tag()}",
-        f"  Traces     : {mid('REQ', mod, 1)}, {mid('ENT', mod, 1)}", "",
+        # the field RULE-1 reads, bound to a column here — what C6.9 resolves
+        f"  Traces     : {mid('REQ', mod, 1)}, {mid('ENT', mod, 1)}.{RULE_FIELD}", "",
         f"### {mid('DBF', mod, 2)} — audit columns{_lang_tag()}",
         f"  Traces     : {mid('REQ', mod, 2)}, {mid('ENT', mod, 1)}", "",
+        f"COMMENT ON COLUMN {table}.{COLUMNS[1]} IS '{mid('DBF', mod, 1)}';",
+        f"COMMENT ON COLUMN {table}.{COLUMNS[2]} IS '{mid('DBF', mod, 2)}';", "",
         f"### {mid('XM', mod, 1)} — lookup dependency{_lang_tag()}",
         f"  Kind       : SOFT-READ", f"  Traces     : {mid('REQ', mod, 1)}", ""])
 

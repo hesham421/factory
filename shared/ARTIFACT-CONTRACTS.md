@@ -6,6 +6,7 @@
 # Clause `check` vocabulary (defined in §13 of this file, keep it small):
 #   exists · no-questions · languages · ids-owned · ids-continue · traces · orphans
 #   · ears · registry-agree · markers · manifest · gate-approved
+#   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
 contracts:
   - id: C1
     title: domain profile → registry bootstrap
@@ -68,6 +69,7 @@ contracts:
       - {id: C5.9, check: no-questions,   args: {stage: P1},                                                      severity: CRITICAL}
       - {id: C5.10, check: languages,     args: {stage: P1},                                                      severity: MAJOR}
       - {id: C5.11, check: ids-continue,  args: {stage: P1},                                                      severity: CRITICAL}
+      - {id: C5.12, check: data-source,   args: {kind: RULE, label: "Data source", resolves_to: [ENT], deferral: DEFERRED}, severity: CRITICAL}
   - id: C6
     title: SRS + database → backend execution plan
     owner: [P1, P2]
@@ -82,6 +84,7 @@ contracts:
       - {id: C6.6, check: orphans,        args: {kind: ENT, referenced_by: [DBF], min: 1},                          severity: MAJOR}
       - {id: C6.7, check: no-questions,   args: {stage: P2},                                                       severity: CRITICAL}
       - {id: C6.8, check: ids-continue,   args: {stage: P2},                                                       severity: CRITICAL}
+      - {id: C6.9, check: data-source,    args: {kind: RULE, label: "Data source", resolves_to: [ENT], deferral: DEFERRED, bound_in: db-script}, severity: CRITICAL}
   - id: C7
     title: backend execution plan → split / deliver
     owner: P3.1
@@ -97,6 +100,11 @@ contracts:
       - {id: C7.7, check: ids-owned,      args: {stage: P3.1},                                                                  severity: CRITICAL}
       - {id: C7.8, check: no-questions,   args: {stage: P3.1},                                                                  severity: CRITICAL}
       - {id: C7.9, check: ids-continue,   args: {stage: P3.1},                                                                  severity: CRITICAL}
+      - {id: C7.10, check: value-agreement, args: {kind: DBF, binding: db-script, against: [backend-execution-plan]},              severity: CRITICAL}
+      - {id: C7.11, check: code-format,   args: {artifact: [backend-execution-plan], format: stack.backend.api.error_code_format}, severity: MAJOR}
+      - {id: C7.12, check: xref-resolve,  args: {artifact: [backend-execution-plan, registry-exec-be]},                            severity: CRITICAL}
+      - {id: C7.13, check: refs-exist,    args: {kind: ADR, dir: decisions, file_pattern: adr_file},                               severity: CRITICAL}
+      - {id: C7.14, check: paths-resolve, args: {files: [manifest_file]},                                                          severity: CRITICAL}
   - id: C8
     title: real API docs (consumer repo input) → frontend
     owner: api-docs
@@ -172,9 +180,9 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C2` | project registry → inception | `P-1` | `P0` | `project-registry` | 3 |
 | `C3` | inception → PRD | `P0` | `P0.5` | `platform-summary`, `module-registry`, `business-policies` | 7 |
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
-| `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 11 |
-| `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 8 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 9 |
+| `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
+| `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
+| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 14 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 3 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 11 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
@@ -245,8 +253,15 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | Consumer | `P2` (and every later stage: the SRS is the functional ceiling) |
 | What crosses | `srs` + `registry-srs`: `REQ` (one EARS pattern each, `factory.ids.ears.patterns`) tracing to `US`; `AC` (Given / When / Then) tracing to `REQ`, ≥1 per `REQ`; `ENT` with kind from `vocabulary.entity_kinds`; `RULE` tracing to `REQ`; screen inventory |
 | What does not cross | column names, types, DDL, endpoints, UX layout, technology — the SRS says *what*, never *how* |
-| Clauses | C5.1 exists · C5.2 every `REQ` matches an EARS pattern · C5.3 `REQ` → `US` · C5.4 every `REQ` has ≥1 `AC` · C5.5 `AC` → `REQ` · C5.6 `RULE` → `REQ` · C5.7 only `stages[P1].owns_ids` defined · C5.8 srs ↔ registry-srs agree · C5.9 no questions · C5.10 languages · C5.11 sequences continue the previous version |
-| Violation | C5.1/C5.2/C5.4/C5.7/C5.9/C5.11 CRITICAL; the rest MAJOR |
+| Clauses | C5.1 exists · C5.2 every `REQ` matches an EARS pattern · C5.3 `REQ` → `US` · C5.4 every `REQ` has ≥1 `AC` · C5.5 `AC` → `REQ` · C5.6 `RULE` → `REQ` · C5.7 only `stages[P1].owns_ids` defined · C5.8 srs ↔ registry-srs agree · C5.9 no questions · C5.10 languages · C5.11 sequences continue the previous version · C5.12 every `RULE` declares a `Data source` — the `ENT.field` values the check **reads**, or the explicit `DEFERRED` marker |
+| Violation | C5.1/C5.2/C5.4/C5.7/C5.9/C5.11/C5.12 CRITICAL; the rest MAJOR |
+
+`RULE` → `REQ` (C5.6) says the rule is *wanted*; C5.12 says it is *enforceable*. A rule
+whose statement leans on data no entity declares ("a module-declared X", "a configured Y")
+passes every shape check — it has a trace, it gets an error code, it gets an enforcing
+endpoint — and can never fire, because nothing in the module can record the value it reads.
+`DEFERRED — no declaration surface in this version` is a truthful output; a silently
+unenforceable rule is not.
 
 ## C6 — SRS + database → backend execution plan
 
@@ -256,8 +271,8 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | Consumer | `P3.1` |
 | What crosses | `db-script` + `registry-db`: `DBF` tracing to `REQ`/`ENT`; `XM` tracing to `REQ` with type and state per [XM-PROTOCOL.md](XM-PROTOCOL.md); shared-entity references by the owner's `ENT`; plus the SRS set of C5 |
 | What does not cross | into the plan: column names, DB types, table names — the plan binds by `DBF` ID only; into `db-script`: business rules (cited by `RULE`), endpoints |
-| Clauses | C6.1 exists · C6.2 `DBF` → `REQ`/`ENT` · C6.3 `XM` → `REQ` · C6.4 only `stages[P2].owns_ids` defined · C6.5 db-script ↔ registry-db agree · C6.6 every `ENT` has ≥1 `DBF` · C6.7 no questions · C6.8 sequences continue |
-| Violation | C6.1/C6.4/C6.7/C6.8 CRITICAL; the rest MAJOR |
+| Clauses | C6.1 exists · C6.2 `DBF` → `REQ`/`ENT` · C6.3 `XM` → `REQ` · C6.4 only `stages[P2].owns_ids` defined · C6.5 db-script ↔ registry-db agree · C6.6 every `ENT` has ≥1 `DBF` · C6.7 no questions · C6.8 sequences continue · C6.9 every `RULE`'s `Data source` field is bound to a column by the db-script (or is `DEFERRED`) |
+| Violation | C6.1/C6.4/C6.7/C6.8/C6.9 CRITICAL; the rest MAJOR |
 
 ## C7 — backend execution plan → split / deliver
 
@@ -267,8 +282,16 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | Consumer | `gov.py split` / `deliver` (tools lane); the pass-1 gate reads it first |
 | What crosses | `backend-execution-plan` wrapped in markers per [MARKER-PROTOCOL.md](MARKER-PROTOCOL.md) — every `PHASE`/`SUB`/`API`/`XM` block carries `traces=`; `API` → `REQ` + `DBF`; `XM` blocks mirror `registry-db` entries with execution state; `registry-exec-be` with `API`/`QR` |
 | What does not cross | DDL or column definitions (bound by `DBF`), test cases (standalone `test-gen`), any content for the frontend track |
-| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 plan `XM` set == registry-db `XM` set · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue |
-| Violation | C7.1/C7.7/C7.8/C7.9 CRITICAL; the rest MAJOR |
+| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 plan `XM` set == registry-db `XM` set · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves |
+| Violation | C7.1/C7.7/C7.8/C7.9/C7.10/C7.12/C7.13/C7.14 CRITICAL; the rest MAJOR |
+
+C7.1–C7.9 check that references are *shaped* right. C7.10–C7.14 check that they
+**resolve**: that two artifacts agree on a value, that a declared format describes the
+values actually emitted, that a cited file exists, that a cross-module dependency is on
+something the target module really produces, and that a generated path points at something.
+Every defect a shape-only pass has ever let through this interface was of the second kind,
+and the plan's own prose self-check (`ALIGN`) reported PASSED for all of them — which is why
+these are mechanical clauses here and not a checklist line there.
 
 ## C8 — real API docs (consumer-repo input) → frontend
 
@@ -343,6 +366,12 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | `markers` | the toolkit parser reports no structural or semantic error for the artifact under `track`/`plan` (`factory.markers` + `profile.tracks`) | `artifact`, `track`, `plan` |
 | `manifest` | the change manifest is well-formed and consistent with the previous state (see C12.2) | `artifact` |
 | `gate-approved` | the orchestrator holds an approval record for `gate` for this module version | `gate` |
+| `value-agreement` | for every id of `kind`, the physical name (column / object) that `binding` declares for it and the one each artifact in `against` names for it are the same string; an artifact that names none for that id is skipped | `kind`, `binding`, `against`, `require_binding?` |
+| `code-format` | every runtime code the artifact emits is an instance of the format at the profile address `format`, and the artifact declares no *other* format string for those codes (a declaration maintained as free text drifts from its values) | `artifact`, `format`, `require_declaration?` |
+| `data-source` | every record of `kind` carries a `label:` line naming where the data its check **reads** comes from — ≥1 id of `resolves_to` (and, with `bound_in`, every `ID.field` it names is bound to a field there) — or the explicit `deferral` marker | `kind`, `label`, `resolves_to`, `deferral?`, `bound_in?` |
+| `xref-resolve` | every id belonging to *another* module that the artifact cites is defined in that module's own artifacts; an unknown module code, or a module with no artifacts yet, is a finding of its own | `artifact`, `kinds?` |
+| `refs-exist` | every id of `kind` cited anywhere in the module has the file it is cited as, at `dir`/`<MOD>`/`naming[file_pattern]` | `kind`, `dir`, `file_pattern`, `per_module?` |
+| `paths-resolve` | every path-shaped string in each generated index (`files`, by `paths.module.*` key) resolves to something that exists, relative to the index's own directory | `files`, `required?` |
 
 Severity semantics are `factory.review` + `factory.gates[*].requires_analyze`:
 a gate opens only with zero CRITICAL; MAJOR findings return REVISE; MINOR

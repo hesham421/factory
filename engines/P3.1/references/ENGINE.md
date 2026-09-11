@@ -16,6 +16,8 @@
 {%- set state_dir = factory.paths.module.state_dir -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set plan_art = st.produces | selectattr('plan', 'defined') | first -%}
+{%- set pkgen = db.pk_generation | default('identity') -%}
+{%- set seqpat = (db.naming or {}).get('sequence_pattern') -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
@@ -93,6 +95,9 @@ NO-INVENTION RULE
     flag suffix   : {{ db.naming.flag_suffix | default('(profile.stack.db.naming.flag_suffix — not declared)') }}
     audit fields  : {{ db.naming.audit_fields | default([]) | join(', ') or '(profile.stack.db.naming.audit_fields — not declared)' }}
     PK pattern    : {{ db.naming.pk_pattern | default('(profile.stack.db.naming.pk_pattern — not declared)') }}
+    PK generation : `{{ pkgen }}` (profile.stack.db.pk_generation){% if pkgen == 'sequence' %} — one named sequence per table,
+                    pattern {% if seqpat %}`{{ seqpat }}`{% else %}profile.stack.db.naming.sequence_pattern (not declared){% endif %}; the PK column is a plain
+                    `{{ (db.syntax_map or {}).get('pk', {}).get(db.dialects[0], 'profile.stack.db.syntax_map.pk — not declared') }}` column with no identity clause{% endif %}
     target dialect: {{ db.dialects[0] }}{% if db.dialects | length > 1 %} (also kept: {{ db.dialects[1:] | join(', ') }}){% endif %}
 ```
 
@@ -117,7 +122,8 @@ BUSINESS CODE format per master entity — rule: {{ conv.get('numbering') }}
 {% endif -%}
 ── FROM db-script ────────────────────────────────────────────────────────
 TABLES        ENT → exact table name
-PK GENERATION exact object the db-script declares per table (identity clause / sequence / trigger — as written for {{ db.dialects[0] }})
+PK GENERATION exact object the db-script declares per table — strategy `{{ pkgen }}`: {% if pkgen == 'sequence' %}the sequence
+              NAME as the db-script's BLOCK 1 spells it (one per table){% else %}the identity clause as written for {{ db.dialects[0] }}{% endif %}
 COLUMNS       exact column name │ DBF-{{ MOD }}-<seq> │ declared type │ null │ default
 CONSTRAINTS   exact FK / UNIQUE / CHECK constraint names ; INDEXES exact names
 XM            XM-{{ MOD }}-<seq> │ kind (HARD-FK | SOFT-READ …) │ local column │ target module.table │ status
@@ -133,7 +139,7 @@ Any row that cannot be filled → §2A.3.
 
 | Binding | Rule | Forbidden → Required |
 |---|---|---|
-| PK generation | every PK reference names the exact object from the db-script | "auto-generated" → the exact identity/sequence clause as declared |
+| PK generation | every PK reference names the exact object from the db-script — strategy `{{ pkgen }}`{% if pkgen == 'sequence' %}, so the BINDINGS line of R2 carries the **sequence name** (the implementer reads it, never derives it){% endif %} | "auto-generated" → {% if pkgen == 'sequence' %}the exact sequence name per table{% else %}the exact identity clause as declared{% endif %} |
 | Column names | every field reference cites the exact column + `DBF-*`; the implementer maps property → column through the DB Alignment Manifest (§4) | a camelCase invention → `DBF-*` lookup |
 | Rule text | every RULE cited in a phase carries its full statement, trigger and message in every language ({{ langs.all | join(', ') }}) — the plan is self-contained | "applies RULE-… see SRS" → full text inline |
 {% if conv.get('lookups') -%}
@@ -287,7 +293,8 @@ kind is `XM`.
 - Error signalling: `{{ api.error_envelope | default('profile.stack.backend.api.error_envelope') }}`; every catalog row is registered in every place the framework needs (declare the list once here).
 - Transaction scope defaults; search contract (request shape, allowed sort fields, paging `{{ api.paging | default('per profile') }}`).
 - Audit fields {% if (db.naming or {}).get('audit_fields') %}(`{{ db.naming.audit_fields | join('`, `') }}`) {% endif %}are framework-filled — never in create/update requests, never set by mappers or services.
-- Type mapping {{ db.dialects[0] }} → language types, stated once as a table (from `profile.stack.db.syntax_map` rows) — a deviation needs an ADR.
+- Type mapping {{ db.dialects[0] }} → language types, stated once as a table (from `profile.stack.db.syntax_map` rows, PK column type included) — a deviation needs an ADR. The table states column types only; the PK-generation clause is not a type (§2A).
+- Runtime error-code format: {% if api.error_code_format %}`{{ api.error_code_format }}` (profile.stack.backend.api.error_code_format) — state this string verbatim and make **every** Error Catalog row (§7) an instance of it; the declared format and the emitted codes come from this one profile value, never from free text{% else %}state the exact shape of the codes §7 emits, derived from the catalog itself — never a shape no catalog row obeys{% endif %}.
 {% if conv.get('lookups') %}- Lookup values: {{ conv.get('lookups') }}.
 {% endif -%}
 {% if conv.get('numbering') %}- Numbering: {{ conv.get('numbering') }}.
@@ -301,7 +308,7 @@ If nothing module-specific applies, write "Standard configuration — no module-
 **R2 — Data + domain.** One entity block per `ENT-*`, every value bound (§2A):
 ```
 ### ENT-{{ MOD }}-<seq> — <exact name>      kind: <{{ profile.vocabulary.entity_kinds | join('|') }}>
-BINDINGS   table <exact> · PK <column, DBF> · PK generation <exact object> · db-script version
+BINDINGS   table <exact> · PK <column, DBF> · PK generation `{{ pkgen }}` → {% if pkgen == 'sequence' %}sequence <exact name from the db-script BLOCK 1>{% else %}<exact identity clause>{% endif %} · db-script version
 {% if conv.get('numbering') %}BUSINESS CODE property · column (DBF) · format <exact> · uniqueness constraint <exact name> · generation source
 {% endif -%}
 DEFAULT FIELDS per kind (profile.conventions.entity_defaults): {% for kind, fields in (conv.get('entity_defaults') or {}).items() %}{{ kind }} → {{ fields | join(', ') }}{% if not loop.last %}; {% endif %}{% else %}none declared{% endfor %}
@@ -334,7 +341,10 @@ Security     : screen · permission name{% if sec %} (`{{ sec.permission_pattern
 Localization : every message in {{ langs.all | join(' + ') }}; every name field per language
 <!-- API:API-{{ MOD }}-<seq>:END -->
 ```
-Completeness rules: every RULE in Validations ↔ a catalog row (RULE-ERR-CARRY); infrastructure
+Completeness rules: a RULE whose SRS `Data source` is DEFERRED is **not** enforced here — it is
+listed once in the entity block as `DEFERRED (no declaration surface in v{{ ver }})` with no catalog
+row, no QR and no enforcing endpoint, because the data its check would read has no column to read
+from; every other RULE in Validations ↔ a catalog row (RULE-ERR-CARRY); infrastructure
 errors (not found, forbidden, server) are catalog rows with RULE = `PLATFORM-STD` and an ADR;
 repository deviations (eager fetch, compound update, native query) need an ADR. Business code
 (if any) is excluded from create/update bodies and always present in responses. No hard-coded
@@ -353,12 +363,17 @@ from the db-script register:
 <!-- XM:XM-{{ MOD }}-<seq>:START traces=REQ-{{ MOD }}-<seq> -->
 ### XM-{{ MOD }}-<seq> — <dependency>
 Target        : module · entity (ENT of the owner) · classification (HARD-FK | SOFT-READ | EVENT | READ-ONLY)
-Interface     : DB foreign key | REST call (<instance of {{ api.base_path }} on the target>) | message
+Interface     : DB foreign key | REST call — cite the TARGET module's own `{{ 'API' }}-<TARGET>-<seq>` id **and**
+                its path (an instance of {{ api.base_path }} on the target); an endpoint that the target
+                module's API registry does not define may not be named here (`gov.py analyze` →
+                `xref-resolve` resolves every foreign id against that module's registry). If the
+                endpoint does not exist yet, the row is DEFERRED with the unblock condition — never a
+                prose promise such as "through the target's read APIs" | message
 Contract      : data required · fallback if absent · retry / timeout / idempotency
 Blocks        : DBF-* / API-* blocked while DEFERRED · unblock condition · deferred strategy
 <!-- XM:XM-{{ MOD }}-<seq>:END -->
 ```
-Summary table first (XM │ classification │ target │ interface │ status). Inbound
+Summary table first (XM │ classification │ target │ interface │ target `API-*` (REST rows) │ status). Inbound
 dependencies from future consumers use `XM-INBOUND-STUB-<n>` notation (consumer, entity
 exposed, "assigned by the consumer"), never `TODO`. Lifecycle and RXE handling:
 shared/XM-PROTOCOL.md — the factory ends at DELIVERED; CLOSED belongs to the consumer repo.
@@ -400,8 +415,11 @@ code (runtime value per envelope) │ RULE-* (or PLATFORM-STD + ADR) │ API-* �
   language → `PENDING ADR-<id>`, never invented.
 - Downstream consumers (frontend plan, test-gen, api-verify) cite the **code**; they never
   reproduce message text.
-- The runtime code format (as the framework serialises it) is stated once in R1 so that
-  api-verify can assert on it.
+- The runtime code format (as the framework serialises it) is stated once in R1{% if api.error_code_format %} as
+  `{{ api.error_code_format }}`{% endif %} so that api-verify can assert on it. The declaration and the rows are the
+  same fact: a code that is not an instance of the declared format, or a declared format
+  no row obeys, is a finding (`gov.py analyze` → `code-format`), never a convention to
+  inherit into the next module.
 
 ## 8. Security
 
@@ -414,22 +432,41 @@ Review check: `profile.review.extra_checks` rows whose stage is `{{ stage.id }}`
 {% endfor %}
 ## 9. Alignment self-check (ALIGN)
 
-Validates the plan **against itself and its bindings** — the cross-artifact check is
-`gov.py analyze` at the gate. Runs automatically after the last content phase; a ✗ is fixed
-in the plan before the run ends (the fix is an ADR if it was a choice).
+Validates the plan **against itself and its bindings**. Runs automatically after the last
+content phase; a ✗ is fixed in the plan before the run ends (the fix is an ADR if it was a
+choice).
+
+ALIGN is the *prose* half of the check and it is not the authority. The mechanical half is
+`gov.py analyze`, which resolves — across artifacts, and across modules — exactly the things
+a prose pass reads past:
+
+| Mechanical check | What it resolves |
+|---|---|
+| `value-agreement` | the physical column a `DBF-*` names in this plan is character-identical to the one the db-script declares for it (registry row, `CREATE TABLE`, `COMMENT ON`) |
+| `code-format` | every Error Catalog code is an instance of the format R1 declares{% if api.error_code_format %} (`{{ api.error_code_format }}`){% endif %} |
+| `data-source` | every `RULE-*` this plan turns into a runtime check has a declared source for the data the check *reads* — or an explicit deferral |
+| `xref-resolve` | every id of another module cited here is defined in that module's own registry |
+| `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
+| `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
+
+Write ALIGN so that a ✗ is **stated**, with the fix that was applied. `RESULT PASSED ✓ —
+0 findings` is only truthful when the run actually had none: a self-check that always prints
+PASSED transfers false confidence downstream and is worse than no self-check. When a row
+below cannot be confirmed from the inputs, that row is a finding, not a silent ✓.
 
 ```
 ALIGN — {{ MOD }} v{{ ver }}
 TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
-BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
+BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
 MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM
 QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
-API (R3)          every RULE in Validations has a catalog row │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
-CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB
+API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
+RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
+CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every REST row names a target-module `API-*` id that the target module's registry actually defines
 SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix{% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared
 DECISIONS         every non-obvious inference is an ADR in decisions/{{ MOD }}/ │ no BLOCKED ADR left unsurfaced
-RESULT            PASSED ✓ / list of ✗ (each with the fix applied)
+RESULT            PASSED ✓ (only with zero findings) / the list of ✗, each with the fix applied
 ```
 Coverage tables (ENT/DBF → phases → QR → XM; RULE → API → catalog code; XM → status → blocks
 → workaround) close the section.

@@ -471,9 +471,11 @@ def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
                 shutil.rmtree(tgt)
             shutil.copytree(src, tgt)
             delivered.append(pkg)
+    index = _delivered_index(track, mod, version, dest, checkout)
+    write_json(dest / CFG.paths["module"]["manifest_file"], index)
     state_file = dest / CFG.delivery["execution_state"]["file"]
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    write_json(state_file, _execution_state(track, mod, version, delivered))
+    write_json(state_file, _execution_state(track, mod, version, delivered, index))
     _git("add", "-A", "--", str(dest.relative_to(checkout)), cwd=checkout)
     if _git("diff", "--cached", "--quiet", cwd=checkout, check=False).returncode != 0:
         _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory", "commit", "-q", "-m",
@@ -481,10 +483,83 @@ def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
     if push:
         _git("push", "-u", "origin", branch, cwd=checkout)
     _say(f"delivered {delivered} + {state_file.name} to {checkout.name}:{branch}")
+    dangling = _dangling(index, dest, checkout)
+    if dangling:
+        _say("WARNING: the delivered index names paths that do not exist in the consumer repo:")
+        for k, v in dangling:
+            _say(f"  {k} = {v}")
+        return BLOCKED
     return OK
 
 
-def _execution_state(track: str, mod: str, version: int, delivered: list[str]) -> dict:
+def _deliver_decisions(mod: str, dest: Path) -> str | None:
+    """Copy the module's decision records INTO the delivered tree.
+
+    The plans cite them by path; a decisions folder that lives only in the factory
+    makes every one of those citations dangle for the implementer who reads the
+    delivered tree — the one reader they were written for.
+    """
+    src = CFG.decisions_dir(mod)
+    files = sorted(p for p in src.glob("*.md")) if src.exists() else []
+    if not files:
+        return None
+    name = Path(CFG.paths["decisions"]).name
+    tgt = dest / name
+    if tgt.exists():
+        shutil.rmtree(tgt)
+    tgt.mkdir(parents=True, exist_ok=True)
+    for f in files:
+        shutil.copy2(f, tgt / f.name)
+    return name
+
+
+def _delivered_index(track: str, mod: str, version: int, dest: Path, checkout: Path) -> dict:
+    """The delivered tree's own index — every path relative to `dest`, so it resolves
+    in the consumer repo. `execution-state.json` takes its path fields from THIS dict
+    rather than computing its own: two generated files cannot disagree about where a
+    plan lives when only one of them decides.
+    """
+    pkg_root = CFG.paths["module"]["packages_dir"]
+    packages, plans = {}, {}
+    for plan, pkg in CFG.tracks[track]["packages"].items():
+        tgt = dest / pkg_root / pkg
+        if tgt.exists() and any(f.is_file() and f.name != ".gitkeep" for f in tgt.rglob("*")):
+            key = f"{track}/{plan}"
+            packages[key] = f"{pkg_root}/{pkg}"
+            plans[key] = f"{pkg_root}/{pkg}"          # a delivered plan IS its split package
+    index = {
+        "module": mod.upper(), "version": version, "track": track, "profile": CFG.profile_id,
+        "markers_schema_version": CFG.markers["schema_version"],
+        "paths_relative_to": "the directory holding this file",
+        "root": ".", "packages": packages, "plans": plans,
+        "generated_at": now_iso(),
+    }
+    decisions = _deliver_decisions(mod, dest)
+    if decisions:
+        index["decisions_dir"] = decisions
+    for name, spec in CFG.repos[track].get("publishes", {}).items():
+        target = checkout / CFG.fmt(spec, mod=mod)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        gk = target.parent / ".gitkeep"
+        if not any(target.parent.iterdir()):
+            gk.touch()
+        index.setdefault("publishes", {})[name] = str(Path(CFG.fmt(spec, mod=mod)).parent).replace("\\", "/")
+    return index
+
+
+def _dangling(index: dict, dest: Path, checkout: Path) -> list[tuple[str, str]]:
+    """Every path the delivered index emits must exist. `publishes` paths are
+    relative to the consumer repo root (that is where the consumer writes them);
+    everything else is relative to the delivered tree."""
+    out = []
+    for key, value in an._walk_paths(index):
+        base = checkout if key.startswith("publishes") else dest
+        if not (base / value).exists():
+            out.append((key, value))
+    return out
+
+
+def _execution_state(track: str, mod: str, version: int, delivered: list[str], index: dict) -> dict:
     from toolkit import markers as mk
     phases = []
     covered: set[str] = set()
@@ -493,7 +568,8 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str]) -
         if p and p.exists():
             res = mk.parse_structure(p.read_text(encoding="utf-8"), track, plan)
             for ph in res.phases():
-                phases.append({"key": ph.id, "plan": plan, "atoms": [b.id for b in ph.walk() if res.grammar.is_atom(b.kind)],
+                phases.append({"key": ph.id, "plan": plan, "package": index["packages"].get(f"{track}/{plan}"),
+                               "atoms": [b.id for b in ph.walk() if res.grammar.is_atom(b.kind)],
                                "traces": ph.all_traces()})
                 covered |= set(ph.all_traces())
     analyze_json = CFG.state_dir(mod, version) / f"analyze-gate-{_gate_for_pass(CFG.tracks[track]['pass'])['id']}.json"
@@ -501,7 +577,11 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str]) -
     gate_json = gate_json.with_suffix(".json")
     return {
         "module": mod.upper(), "version": version, "track": track, "profile": CFG.profile_id,
-        "markers_schema_version": CFG.markers["schema_version"], "packages": delivered, "phases": phases,
+        "markers_schema_version": CFG.markers["schema_version"], "packages": delivered,
+        # paths come from the delivered index, never computed a second time here
+        "paths": {k: index[k] for k in ("paths_relative_to", "root", "packages", "plans") if k in index}
+                 | {k: index[k] for k in ("decisions_dir", "publishes") if k in index},
+        "phases": phases,
         "traceability": {"covered_ids": sorted(covered), "orphan_ids": []},
         "analyze": json.loads(analyze_json.read_text())["counts"] if analyze_json.exists() else None,
         "gate": json.loads(gate_json.read_text()) if gate_json.exists() else None,

@@ -6,8 +6,18 @@ Implements every clause of shared/ARTIFACT-CONTRACTS.md (front-matter
 Clause vocabulary (§13 of that file):
   exists · no-questions · languages · ids-owned · ids-continue · traces · orphans
   · ears · registry-agree · markers · manifest · gate-approved
+  · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
+
+The first group checks that a reference is SHAPED right; the second that it
+RESOLVES — that two artifacts agree on a value, that a declared format describes
+the values actually emitted, that a cited file exists, that an id of another
+module is defined in that module, that a generated path points at something, and
+that a rule has a source for the data it reads. A check that only ever passes is
+worse than no check: it transfers false confidence to whoever reads the report.
+
 A gate cannot open with a CRITICAL. The report is written to
-`paths.module.analyze_report` inside `_state/`.
+`paths.module.analyze_report` inside `_state/`, prose and JSON side by side, so a
+pipeline can gate on the JSON instead of reading a paragraph.
 """
 from __future__ import annotations
 
@@ -437,11 +447,297 @@ def _c_gate_approved(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return []
 
 
+# ── resolution checks — a reference is not "present", it RESOLVES ────────────
+# Everything below answers a question the shape-only clauses above cannot:
+# do two artifacts AGREE on a value, does a cited path/file EXIST, does an id of
+# ANOTHER module resolve in that module's own registry, does a generated rule
+# have a source for the data it reads. Nothing here spells a stage id, phase key
+# or ID prefix — every one arrives through the clause's `args` (C1/C2).
+
+# A physical identifier as the target dialects write one: lower snake_case with at
+# least one separator (`granted_at`), never a property name (`grantedAt`), a type
+# (`TIMESTAMPTZ`), a table (`SEC_USER`) or a bare word (`now`). Read from its whole
+# dotted chain, so a table qualifier keeps its column (`SEC_USER.granted_at`) while a
+# config address (`profile.conventions.entity_defaults.lookup`) yields nothing.
+_CHAIN = re.compile(r"(?<![A-Za-z0-9_.])([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)")
+_SNAKE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$")
+
+
+def _physical_names(line: str) -> set[str]:
+    out: set[str] = set()
+    for m in _CHAIN.finditer(line):
+        parts = m.group(1).split(".")
+        if len(parts) == 1 and _SNAKE.match(parts[0]):
+            out.add(parts[0])                                  # a bare column
+        elif len(parts) == 2 and _SNAKE.match(parts[1]) and parts[0].upper() == parts[0]:
+            out.add(parts[1])                                  # TABLE.column
+    return out
+
+
+def _binding_lines(text: str, prefix: str) -> dict[str, set[str]]:
+    """id → every physical name that appears on a line binding exactly that one id.
+
+    A line naming two ids of the kind (a `traces=` list, an API's DBF list) binds
+    none of them and is skipped; a line with no physical name binds nothing.
+    """
+    rx = CFG.id_regex(prefix)
+    out: dict[str, set[str]] = {}
+    for ln in text.splitlines():
+        ids = {m.group(0) for m in rx.finditer(ln)}
+        if len(ids) != 1:
+            continue
+        names = _physical_names(ln)
+        if names:
+            out.setdefault(ids.pop(), set()).update(names)
+    return out
+
+
+def _c_value_agreement(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Two artifacts that both name the physical object behind an id must name the
+    SAME one. `binding` is the artifact that declares it; `against` the ones that
+    must agree. A transcription slip in one of them is invisible to every
+    shape-only check — this is the dictionary comparison that sees it."""
+    prefix = c["kind"]
+    truth_name = c["binding"]
+    truth_text = ctx.text(truth_name)
+    if truth_text is None:
+        return [Finding(sev, "", "value-agreement", f"binding artifact `{truth_name}` missing", truth_name)]
+    truth = _binding_lines(truth_text, prefix)
+    out = []
+    for name in (c["against"] if isinstance(c["against"], list) else [c["against"]]):
+        t = ctx.text(name)
+        if t is None:
+            continue
+        for rid, names in _binding_lines(t, prefix).items():
+            declared = truth.get(rid)
+            if not declared:
+                if c.get("require_binding"):
+                    out.append(Finding("MAJOR", "", "value-agreement",
+                                       f"`{rid}` names {sorted(names)} here but `{truth_name}` binds it to no physical name", name))
+                continue
+            if not (names & declared):
+                out.append(Finding(sev, "", "value-agreement",
+                                   f"`{rid}` is {sorted(names)} in `{name}` but {sorted(declared)} in `{truth_name}` — one of them is a transcription slip",
+                                   name))
+    return out
+
+
+def _fmt_regex(fmt: str, mod: str) -> re.Pattern:
+    """A declared code format → the regex its instances must match. Tokens:
+    {MOD} module code · {http} HTTP status · {SLUG} SCREAMING-KEBAB · {seq} sequence;
+    `[ … ]` wraps an optional half."""
+    w = int(CFG.ids["seq_width"])
+    tokens = {"{MOD}": re.escape(mod), "{http}": r"[1-5]\d{2}", "{SLUG}": r"[A-Z0-9]+(?:-[A-Z0-9]+)*", "{seq}": rf"\d{{{w}}}"}
+    parts, i = [], 0
+    while i < len(fmt):
+        for tok, rx in tokens.items():
+            if fmt.startswith(tok, i):
+                parts.append(rx)
+                i += len(tok)
+                break
+        else:
+            parts.append({"[": "(?:", "]": ")?"}.get(fmt[i], re.escape(fmt[i])))
+            i += 1
+    return re.compile("^" + "".join(parts) + "$")
+
+
+_BACKTICKED = re.compile(r"`([^`\n]{1,80})`")
+
+
+def _c_code_format(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """The format an artifact DECLARES and the values it EMITS are one fact.
+    A declared shape no emitted value obeys is a stale generalisation that a
+    downstream verifier built from that sentence would reject every real value of."""
+    fmt = CFG.profile.get(c["format"])
+    if not fmt:
+        return []
+    out, mod = [], ctx.mod
+    declared = {fmt, fmt.replace("{MOD}", mod)}
+    rx = _fmt_regex(fmt, mod)
+    idrx = CFG.id_regex()
+    value_rx = re.compile(rf"(?<![A-Za-z0-9_-]){re.escape(mod)}-\d[A-Z0-9-]*(?![A-Za-z0-9_-])")
+    for name in (c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]):
+        t = ctx.text(name)
+        if t is None:
+            continue
+        stated = False
+        for n, ln in enumerate(t.splitlines(), 1):
+            for m in _BACKTICKED.finditer(ln):
+                lit = m.group(1)
+                if lit in declared:
+                    stated = True
+                    continue
+                # a declaration is a code-shaped literal carrying a placeholder
+                if lit.startswith(mod + "-") and ("<" in lit or "{" in lit):
+                    out.append(Finding(sev, "", "code-format",
+                                       f"declares the code format `{lit}` but `{c['format']}` is `{fmt}` — "
+                                       f"a format string maintained as free text drifts from the values it describes", name, n))
+            for m in value_rx.finditer(ln):
+                val = m.group(0)
+                if idrx.fullmatch(val) or not rx.match(val):
+                    if idrx.fullmatch(val):
+                        continue
+                    out.append(Finding(sev, "", "code-format",
+                                       f"`{val}` is not an instance of the declared format `{fmt}`", name, n))
+        if not stated and c.get("require_declaration", True):
+            out.append(Finding("MINOR", "", "code-format",
+                               f"does not state the declared code format `{fmt}` (`{c['format']}`)", name))
+    return out
+
+
+def _c_data_source(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A rule the plan turns into a runtime check must say where the data the
+    check READS comes from. An error-catalog row and an enforcing endpoint prove
+    nothing: without a declaration surface the guard compiles and never fires."""
+    label = c["label"]
+    label_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(label) + r"\s*\**\s*:\s*(.+)$", re.I)
+    deferral = c.get("deferral")
+    resolves = set(c.get("resolves_to") or [])
+    bound_text = ctx.text(c["bound_in"]) if c.get("bound_in") else None
+    out = []
+    for r in ctx.records_of(c["kind"]):
+        line = next((m.group(1).strip() for ln in r.text.splitlines() if (m := label_rx.match(ln))), None)
+        if line is None:
+            out.append(Finding(sev, "", "data-source",
+                               f"`{r.id}` declares no `{label}` — the data its check reads has no stated origin", "", r.line))
+            continue
+        if deferral and deferral in line:
+            continue
+        cited = [x for x in idmodel.find_ids(line) if idmodel.split_id(x) and idmodel.split_id(x)[0] in resolves]
+        if not cited:
+            out.append(Finding(sev, "", "data-source",
+                               f"`{r.id}` has `{label}: {line[:60]}` which resolves to no {sorted(resolves)} — "
+                               f"state the declared field it reads, or mark it `{deferral}`", "", r.line))
+            continue
+        if bound_text is not None:
+            for ref in re.findall(r"(" + "|".join(re.escape(x) for x in cited) + r")\.([A-Za-z_][A-Za-z0-9_]*)", line):
+                qualified = f"{ref[0]}.{ref[1]}"
+                if qualified not in bound_text:
+                    out.append(Finding(sev, "", "data-source",
+                                       f"`{r.id}` reads `{qualified}`, which `{c['bound_in']}` binds to no field — "
+                                       f"the check can never fire", "", r.line))
+    return out
+
+
+def _module_ids(mod: str) -> set[str]:
+    """Every id the module `mod` defines or registers, across its current version."""
+    out: set[str] = set()
+    try:
+        version = CFG.current_version(mod)
+    except Exception:
+        return out
+    for s in CFG.all_stages():
+        for a in s.produces:
+            if a.dir:
+                continue
+            p = CFG.artifact_path(mod, s.id, a.artifact, version)
+            if not p.exists():
+                continue
+            text = p.read_text(encoding="utf-8")
+            out |= idmodel.defined_ids(text) | idmodel.marker_ids(text)
+            if a.registry:
+                out |= idmodel.referenced_ids(text)
+    return out
+
+
+def _c_xref_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A plan that names another module's id is depending on that module's output.
+    Each module's own analyze validates only its own artifacts, so a dependency on
+    an endpoint the target never generates passes both — unless it is resolved here."""
+    known = set(CFG.profile.vocabulary["module_prefixes"])
+    kinds = set(c.get("kinds") or [])
+    cache: dict[str, set[str]] = {}
+    out, seen = [], set()
+    for name in (c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]):
+        t = ctx.text(name)
+        if t is None:
+            continue
+        for n, ln in enumerate(t.splitlines(), 1):
+            for rid in idmodel.find_ids(ln):
+                parts = idmodel.split_id(rid)
+                if not parts:
+                    continue
+                prefix, fmod, _ = parts
+                if fmod == ctx.mod or (kinds and prefix not in kinds) or (rid, name) in seen:
+                    continue
+                seen.add((rid, name))
+                if fmod not in known:
+                    out.append(Finding(sev, "", "xref-resolve",
+                                       f"`{rid}` names module `{fmod}`, which the profile's module registry does not declare", name, n))
+                    continue
+                if fmod not in cache:
+                    cache[fmod] = _module_ids(fmod)
+                if not cache[fmod]:
+                    out.append(Finding("MAJOR", "", "xref-resolve",
+                                       f"`{rid}` is a contract with `{fmod}`, whose artifacts do not exist yet — "
+                                       f"the dependency cannot be resolved", name, n))
+                elif rid not in cache[fmod]:
+                    out.append(Finding(sev, "", "xref-resolve",
+                                       f"`{rid}` is cited here but `{fmod}` defines no such id — "
+                                       f"this plan depends on something the target module never produced", name, n))
+    return out
+
+
+def _c_refs_exist(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Every id of `kind` cited anywhere in the module must have the file it is
+    cited as. A path repeated 30 times that resolves to nothing is not a reference."""
+    prefix, out = c["kind"], []
+    directory = CFG.dir(c["dir"]) / ctx.mod if c.get("per_module", True) else CFG.dir(c["dir"])
+    pattern = CFG.naming[c["file_pattern"]]
+    for name, t in ctx.all_texts().items():
+        for rid in sorted({x for x in idmodel.find_ids(t) if idmodel.split_id(x) and idmodel.split_id(x)[0] == prefix}):
+            _, mod, seq = idmodel.split_id(rid)
+            if mod != ctx.mod:
+                continue
+            f = directory / CFG.fmt(pattern, mod=mod, seq=seq)
+            if not f.exists():
+                out.append(Finding(sev, "", "refs-exist",
+                                   f"`{rid}` is cited in `{name}` but {f.relative_to(CFG.root)} does not exist", name))
+    return sorted({(f.message, f.artifact): f for f in out}.values(), key=lambda f: f.message)
+
+
+def _c_paths_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Every path a generated index emits must resolve against the tree it is
+    written into. A path that resolves in the factory and nowhere else is a
+    dangling pointer for every consumer of the delivered tree."""
+    from toolkit.common import read_json
+    out = []
+    base = CFG.version_root(ctx.mod, ctx.version)
+    for fname in (c["files"] if isinstance(c["files"], list) else [c["files"]]):
+        path = base / CFG.paths["module"][fname] if fname in CFG.paths["module"] else base / fname
+        data = read_json(path)
+        if data is None:
+            if c.get("required", True):
+                out.append(Finding(sev, "", "paths-resolve", f"{path.name} is missing", fname))
+            continue
+        for key, value in _walk_paths(data):
+            if not (base / value).exists():
+                out.append(Finding(sev, "", "paths-resolve",
+                                   f"{path.name} → `{key}` = `{value}` resolves to nothing under {base.relative_to(CFG.root)}", fname))
+    return out
+
+
+def _walk_paths(node, key: str = "") -> list[tuple[str, str]]:
+    """Every string in a generated index that is shaped like a path."""
+    out: list[tuple[str, str]] = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            out += _walk_paths(v, f"{key}.{k}" if key else str(k))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            out += _walk_paths(v, f"{key}[{i}]")
+    elif isinstance(node, str) and node and ("/" in node or node.endswith(".md") or node.endswith(".json") or node == "."):
+        out.append((key, node))
+    return out
+
+
 CHECKS = {
     "exists": _c_exists, "no-questions": _c_no_questions, "languages": _c_languages,
     "ids-owned": _c_ids_owned, "ids-continue": _c_ids_continue, "traces": _c_traces,
     "orphans": _c_orphans, "ears": _c_ears, "registry-agree": _c_registry_agree,
     "markers": _c_markers, "manifest": _c_manifest, "gate-approved": _c_gate_approved,
+    "value-agreement": _c_value_agreement, "code-format": _c_code_format, "data-source": _c_data_source,
+    "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
 }
 
 
@@ -505,7 +801,12 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
         for cl in c.get("clauses", []):
             fn = CHECKS.get(cl["check"])
             if fn is None:
+                # a clause naming a check nobody implements would otherwise make the
+                # contract look enforced while enforcing nothing — that is a finding.
                 rep.skipped.append(f"{cl['id']}: unknown check {cl['check']}")
+                rep.findings.append(Finding("MAJOR", cl["id"], cl["check"],
+                                            f"contract clause names a check `gov.py analyze` does not implement — "
+                                            f"this clause enforces nothing"))
                 continue
             args = dict(cl.get("args") or {})
             if not ctx.when(args.pop("when", None)):
@@ -517,6 +818,18 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
             for f in fs:
                 f.clause = f.clause or cl["id"]
             rep.findings += fs
+    # the same defect reached through two clauses (an interface re-checked with a
+    # stronger argument downstream) is ONE finding — reported under the first clause
+    # that names it, so the count is a count of defects, not of clauses.
+    seen: set[tuple] = set()
+    unique = []
+    for f in rep.findings:
+        key = (f.severity, f.check, f.artifact, f.line, f.message)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(f)
+    rep.findings = unique
     rep.findings.sort(key=lambda f: (SEV[f.severity], f.clause, f.artifact, f.line))
     if write:
         _write_report(rep)

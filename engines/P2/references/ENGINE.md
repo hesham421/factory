@@ -5,6 +5,8 @@
 {%- set dialect = db.dialects[0] -%}
 {%- set naming = db.naming or {} -%}
 {%- set smap = db.syntax_map or {} -%}
+{%- set pkgen = db.pk_generation | default('identity') -%}
+{%- set seqpat = naming.sequence_pattern -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set idp = factory.ids.pattern -%}
 {%- set amb = factory.ambiguity -%}
@@ -112,7 +114,8 @@ TABLE NAMES     : [module code]_[entity abbreviation] — module code from the d
                   there is no "deleted" column: deactivation, not deletion
 {% endif %}INDEXES         : IDX_[TABLE]_[COLUMN] (composite: IDX_[TABLE]_[ABBR1]_[ABBR2])
 CONSTRAINTS     : PK_[TABLE] · UQ_[TABLE]_[COL] · CHK_[TABLE]_[COL]
-SEQUENCES       : SEQ_[TABLE] (only when the dialect syntax uses sequences — §4)
+SEQUENCES       : {% if seqpat %}`{{ seqpat }}` (profile.stack.db.naming.sequence_pattern){% else %}(profile.stack.db.naming.sequence_pattern — not declared){% endif %} — emitted only when
+                  profile.stack.db.pk_generation is `sequence` (§4)
 
 NO-COLUMN-INVENTION (CRITICAL)
   Every column is (1) an SRS field, or (2) a profile default for the entity's kind,
@@ -131,20 +134,36 @@ Each table block, in order:
   COMMENT ON TABLE + COMMENT ON COLUMN for every column (the comment cites the DBF id)
   PRIMARY KEY · UNIQUE (from RULEs) · CHECK (from RULEs / status values)
   FK constraints — inline only when intra-module; XM FKs per §6/§7
-PK GENERATION
-  identity syntax for {{ dialect }}: {{ syn('identity') }}
-  — when the syntax_map declares `identity`, use it; otherwise create SEQ_[TABLE] and
-  let the application populate the key. NEVER a trigger for PK population; NEVER a
-  default that calls a sequence on the PK column.
+PK GENERATION — profile.stack.db.pk_generation = `{{ pkgen }}` (a PROFILE decision, never a
+  dialect default; the same database may not carry two PK strategies)
+{% if pkgen == 'sequence' %}  Strategy `sequence`: BLOCK 1 carries ONE sequence per table, named by
+  {% if seqpat %}`{{ seqpat }}`{% else %}profile.stack.db.naming.sequence_pattern (not declared — declare it before emitting){% endif %}, emitted with the {{ dialect }} syntax from
+  profile.stack.db.syntax_map.sequence:
+      {{ syn('sequence') }}
+  ({name} = the sequence name; use this row verbatim — never another dialect's spelling
+  of the cache/cycle clauses.)
+  The PK column is declared as a plain `{{ syn('pk') }} NOT NULL` column (syntax_map.pk) and
+  carries NO identity clause and NO sequence DEFAULT. The application populates the key
+  from the named sequence; the sequence name is carried into the plan by {{ owner('API') }}.
+  `{{ syn('identity') }}` must not appear anywhere in the script.
+{% else %}  Strategy `identity`: the PK column carries the {{ dialect }} identity clause from
+  profile.stack.db.syntax_map.identity:
+      {{ syn('identity') }}
+  BLOCK 1 stays empty (state "none: every PK uses the identity clause") unless the SRS
+  needs a sequence for something other than a PK.
+{% endif %}  NEVER a trigger for PK population; NEVER a default that calls a sequence on the PK column.
 ```
 
 ### 4.1 Datatype governance (profile.stack.db.syntax_map → {{ dialect }})
 
 | Logical type (SRS) | {{ dialect }} syntax |
 |---|---|
-{% for t in smap %}| {{ t }} | {{ syn(t) }} |
+{% for t in smap if t not in ['identity', 'sequence'] %}| {{ t }} | {{ syn(t) }} |
 {% endfor %}{% if not smap %}| (profile declares no syntax_map) | state each type once in the script header and use it consistently |
 {% endif %}
+(`identity` and `sequence` are not column types — they are the PK-generation clauses of
+§4, selected by `profile.stack.db.pk_generation`, and are listed there only.)
+
 Rules: only the syntaxes above (or one stated once in the script header for a logical
 type the map lacks); `n` / `p,s` are filled from the SRS field definition; a
 deviation carries a governance note citing the SRS field that requires it; the other
@@ -255,7 +274,7 @@ Copy-and-run against a clean schema of {{ dialect }} without editing. Not docume
 a deployable. Mandatory block order (guarantees zero dependency errors):
 
 ```
-BLOCK 1   SEQUENCES (only if §4 PK generation or the SRS needs them)
+BLOCK 1   SEQUENCES {% if pkgen == 'sequence' %}— MANDATORY: one per table (§4), count == table count{% else %}(only if the SRS needs one; PK generation uses the identity clause){% endif %}
 BLOCK 2   PARENT TABLES (no FK dependencies; lookup/reference tables DDL only)
 BLOCK 3   CHILD TABLES (intra-module FK targets already created; chain A → B → C)
 BLOCK 4   COMMENTS (table + every column; each column comment cites its DBF id)
@@ -288,6 +307,10 @@ profile.stack.db.syntax_map; the rules below hold for any dialect)
 ```
 SYNTAX        □ S-1 … S-8 hold for every statement
               □ every type appears in §4.1 (or is declared once in the header)
+PK STRATEGY   □ every PK follows profile.stack.db.pk_generation (`{{ pkgen }}`) — {% if pkgen == 'sequence' %}one
+                {% if seqpat %}`{{ seqpat }}`{% else %}sequence{% endif %} per table in BLOCK 1, PK columns plain `{{ syn('pk') }} NOT NULL`,
+                and `{{ syn('identity') }}` nowhere in the script{% else %}the identity clause on every
+                PK column and no PK sequence{% endif %}
 ORDER         □ sequences first (if any) · parents before children · PK before FK ·
                 lookup DDL before lookup INSERTs · COMMIT after the last INSERT of a block
 COMPLETENESS  □ every SRS entity has a table · every SRS field a column (DBF) ·
@@ -367,6 +390,7 @@ DOES NOT  : {% for atom, spec in atoms.items() if spec.owner != stage.id and spe
 - [ ] Every cross-module reference is exactly one FK class (§6) and, unless intra-module, an XM row traced to REQ + SRS A8.
 - [ ] Every DEFERRED XM has its column, its comment and its commented patch block; no live cross-module FK.
 - [ ] Script block order 1–11 respected; §7.2 checklist passed; script is copy-and-run for {{ dialect }}.
+- [ ] PK generation matches `profile.stack.db.pk_generation` = `{{ pkgen }}` for **every** table (§4) — no second strategy anywhere.
 - [ ] Every RULE that maps to a constraint is present (UNIQUE / CHECK) and named per §3.
 - [ ] Every DEFAULT / ADR listed under Decisions applied; no BLOCKED ADR unless the pass stopped.
 - [ ] No question raised; sequences continuous{% if version is defined and version and version > 1 %}; continued from v{{ version - 1 }} current state; the script is a migration{% endif %}.
