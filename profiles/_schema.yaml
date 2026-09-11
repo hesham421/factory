@@ -57,15 +57,30 @@ $types:
                                              # more than one module (a cross-module TC phase)
 
 stack:                                      # REQUIRED — every technology fact lives here
+# ── Stated choices (F5a) ───────────────────────────────────────────────────
+# Every key below has MORE THAN ONE valid answer and is restated in a generated
+# artifact. Each is therefore REQUIRED, never optional with an engine-side default:
+# a default nobody chose is indistinguishable downstream from a decision that was
+# made, and the implementer inherits it with no way to tell which it was. A profile
+# that omits one is a lint finding (C5-profile, "required key missing"), and the
+# engine emits the profile's answer — it encodes no answer of its own.
   db:
-    dialects: "list[str]"                   # e.g. [postgresql16] ; first = target
-    pk_generation?: "(identity|sequence)"   # HOW primary keys are generated — a PROFILE decision,
+    dialects: "list[str]"                   # every dialect whose syntax rows are kept
+    target_dialect: "str"                   # WHICH of `dialects` the generated script targets — must be
+                                             # one of them. Taking the first element was a silent default:
+                                             # a profile listing two dialects has a real choice, and the
+                                             # generated DDL restates the answer in every type it emits.
+    pk_generation: "(identity|sequence)"    # HOW primary keys are generated — a PROFILE decision,
                                              # never a dialect default. `identity` = the dialect's identity
                                              # clause (syntax_map.identity); `sequence` = one named sequence
                                              # per table (syntax_map.sequence + naming.sequence_pattern) with
                                              # the PK column declared as syntax_map.pk. A profile whose target
                                              # database already holds tables built on named sequences declares
                                              # `sequence`; a greenfield one may prefer `identity`.
+    delete_semantics: "(soft|hard)"         # WHAT a delete does — restated at every delete endpoint. It used
+                                             # to be inferred from whether `naming.flag_suffix` happened to be
+                                             # declared: a semantic decision derived from an unrelated naming
+                                             # key is the same defect one step further removed.
     naming?: "{flag_suffix?: str, audit_fields?: list[str], pk_pattern?: str, sequence_pattern?: str}"
     syntax_map?: "map[str, map[str, str]]"  # type → dialect → syntax ; the rows `identity`, `sequence`
                                              # and `pk` are read by the pk_generation rule above

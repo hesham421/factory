@@ -16,7 +16,7 @@
 {%- set state_dir = factory.paths.module.state_dir -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set plan_art = st.produces | selectattr('plan', 'defined') | first -%}
-{%- set pkgen = db.pk_generation | default('identity') -%}
+{%- set pkgen = db.pk_generation -%}{#- REQUIRED: no engine-side default (F5a) -#}
 {%- set seqpat = (db.naming or {}).get('sequence_pattern') -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sc = profile.self_check | default({}) -%}
@@ -98,8 +98,8 @@ NO-INVENTION RULE
     PK pattern    : {{ db.naming.pk_pattern | default('(profile.stack.db.naming.pk_pattern — not declared)') }}
     PK generation : `{{ pkgen }}` (profile.stack.db.pk_generation){% if pkgen == 'sequence' %} — one named sequence per table,
                     pattern {% if seqpat %}`{{ seqpat }}`{% else %}profile.stack.db.naming.sequence_pattern (not declared){% endif %}; the PK column is a plain
-                    `{{ (db.syntax_map or {}).get('pk', {}).get(db.dialects[0], 'profile.stack.db.syntax_map.pk — not declared') }}` column with no identity clause{% endif %}
-    target dialect: {{ db.dialects[0] }}{% if db.dialects | length > 1 %} (also kept: {{ db.dialects[1:] | join(', ') }}){% endif %}
+                    `{{ (db.syntax_map or {}).get('pk', {}).get(db.target_dialect, 'profile.stack.db.syntax_map.pk — not declared') }}` column with no identity clause{% endif %}
+    target dialect: {{ db.target_dialect }} (profile.stack.db.target_dialect){% if db.dialects | length > 1 %} — syntax rows also kept for {{ db.dialects | reject('equalto', db.target_dialect) | join(', ') }}{% endif %}
 ```
 
 ### 2A.1 Pre-generation extraction table
@@ -124,7 +124,7 @@ BUSINESS CODE format per master entity — rule: {{ conv.get('numbering') }}
 ── FROM db-script ────────────────────────────────────────────────────────
 TABLES        ENT → exact table name
 PK GENERATION exact object the db-script declares per table — strategy `{{ pkgen }}`: {% if pkgen == 'sequence' %}the sequence
-              NAME as the db-script's BLOCK 1 spells it (one per table){% else %}the identity clause as written for {{ db.dialects[0] }}{% endif %}
+              NAME as the db-script's BLOCK 1 spells it (one per table){% else %}the identity clause as written for {{ db.target_dialect }}{% endif %}
 COLUMNS       exact column name │ DBF-{{ MOD }}-<seq> │ declared type │ null │ default
 CONSTRAINTS   exact FK / UNIQUE / CHECK constraint names ; INDEXES exact names
 XM            XM-{{ MOD }}-<seq> │ kind (HARD-FK | SOFT-READ …) │ local column │ target module.table │ status
@@ -168,7 +168,7 @@ The plan opens with an index — one table per element family, every row bound f
 
 ```
 EXECUTION PLAN INDEX — {{ MOD }} v{{ ver }} — {{ plan_art.file.replace('{mod}', MOD | lower) }}
-Profile: {{ profile.identity.id }} · dialect: {{ db.dialects[0] }} · framework: profile.stack.backend.framework
+Profile: {{ profile.identity.id }} · dialect: {{ db.target_dialect }} · framework: profile.stack.backend.framework
 Open ADRs: <n> — decisions/{{ MOD }}/
 
 ENTITY REGISTRY   ENT-*  │ name │ table │ business code (if any) │ operations
@@ -235,7 +235,7 @@ Standard operation defaults (apply unless a QR entry overrides them):
 | FIND_BY_CRITERIA | read-only; filters + allowed sort fields declared per search; empty result → success with empty content, **never** "not found" |
 | SAVE | read-write; PK and audit fields system-set; {% if conv.get('numbering') %}business code from the numbering rule ({{ conv.get('numbering') }}){% else %}business code as the SRS states{% endif %} |
 | UPDATE | read-write; immutable fields (PK, business code, audit) excluded from the request |
-| `{{ api.verbs.DELETE | default('DELETE') }}` | usage check first (can-delete / can-deactivate); blocked → catalog error; allowed → {% if (db.naming or {}).get('flag_suffix') %}flip the active flag (suffix `{{ db.naming.flag_suffix }}`){% else %}apply the deletion semantics the SRS states{% endif %}; hard delete only where the SRS mandates it |
+| `{{ api.verbs.DELETE | default('DELETE') }}` | usage check first (can-delete / can-deactivate); blocked → catalog error; allowed → `{{ db.delete_semantics }}` per profile.stack.db.delete_semantics{% if db.delete_semantics == 'soft' and (db.naming or {}).get('flag_suffix') %} — flip the active flag (suffix `{{ db.naming.flag_suffix }}`){% endif %}; the other semantics only where the SRS mandates it |
 | EXISTS | read-only uniqueness check; excludes the current PK on update |
 
 Join governance: single-table responses never join; {% if conv.get('lookups') %}display names of lookup values are **never** joined — the backend returns the stored code and the frontend resolves the label ({{ conv.get('lookups') }}); {% endif %}parent data or cross-entity filters require a join **and** an ADR; cross-entity aggregation may need a native query — say why.
@@ -294,7 +294,7 @@ kind is `XM`.
 - Error signalling: `{{ api.error_envelope | default('profile.stack.backend.api.error_envelope') }}`; every catalog row is registered in every place the framework needs (declare the list once here).
 - Transaction scope defaults; search contract (request shape, allowed sort fields, paging `{{ api.paging | default('per profile') }}`).
 - Audit fields {% if (db.naming or {}).get('audit_fields') %}(`{{ db.naming.audit_fields | join('`, `') }}`) {% endif %}are framework-filled — never in create/update requests, never set by mappers or services.
-- Type mapping {{ db.dialects[0] }} → language types, stated once as a table (from `profile.stack.db.syntax_map` rows, PK column type included) — a deviation needs an ADR. The table states column types only; the PK-generation clause is not a type (§2A).
+- Type mapping {{ db.target_dialect }} → language types, stated once as a table (from `profile.stack.db.syntax_map` rows, PK column type included) — a deviation needs an ADR. The table states column types only; the PK-generation clause is not a type (§2A).
 - Runtime error-code format: {% if api.error_code_format %}`{{ api.error_code_format }}` (profile.stack.backend.api.error_code_format) — state this string verbatim and make **every** Error Catalog row (§7) an instance of it; the declared format and the emitted codes come from this one profile value, never from free text{% else %}state the exact shape of the codes §7 emits, derived from the catalog itself — never a shape no catalog row obeys{% endif %}.
 {% if conv.get('lookups') %}- Lookup values: {{ conv.get('lookups') }}.
 {% endif -%}
@@ -313,7 +313,7 @@ BINDINGS   table <exact> · PK <column, DBF> · PK generation `{{ pkgen }}` → 
 {% if conv.get('numbering') %}BUSINESS CODE property · column (DBF) · format <exact> · uniqueness constraint <exact name> · generation source
 {% endif -%}
 DEFAULT FIELDS per kind (profile.conventions.entity_defaults): {% for kind, fields in (conv.get('entity_defaults') or {}).items() %}{{ kind }} → {{ fields | join(', ') }}{% if not loop.last %}; {% endif %}{% else %}none declared{% endfor %}
-FIELDS     DBF-* │ property │ column (exact) │ type ({{ db.dialects[0] }}) │ null │ read-only │ constraint │ label per language ({{ langs.all | join('/') }})
+FIELDS     DBF-* │ property │ column (exact) │ type ({{ db.target_dialect }}) │ null │ read-only │ constraint │ label per language ({{ langs.all | join('/') }})
 DTO MEMBERSHIP  create-request excludes / update-request excludes / response includes (PK, business code, audit, flag stated explicitly)
 {% if conv.get('lookups') %}LOOKUP FIELDS  property │ column (DBF) │ exact lookup key │ endpoint (base path {{ api.base_path }}) — stores the code, never a numeric FK
 {% endif -%}

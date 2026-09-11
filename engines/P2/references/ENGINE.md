@@ -2,10 +2,10 @@
 {%- set langs = profile.languages -%}
 {%- set conv = profile.conventions or {} -%}
 {%- set db = profile.stack.db -%}
-{%- set dialect = db.dialects[0] -%}
+{%- set dialect = db.target_dialect -%}{#- REQUIRED: stated, not the list's first element -#}
 {%- set naming = db.naming or {} -%}
 {%- set smap = db.syntax_map or {} -%}
-{%- set pkgen = db.pk_generation | default('identity') -%}
+{%- set pkgen = db.pk_generation -%}{#- REQUIRED: no engine-side default (F5a) -#}
 {%- set seqpat = naming.sequence_pattern -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set idp = factory.ids.pattern -%}
@@ -25,7 +25,7 @@ Lane          : {{ stage.lane }}
 Inputs        : {{ stage.inputs | join(', ') }}
 Produces      : {% for a in stage.produces %}{{ a.file }}{% if a.registry %} (registry){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
 Owns IDs      : {{ stage.owns_ids | join(', ') }}   → `{{ idp }}` (seq width {{ factory.ids.seq_width }})
-Dialect       : {{ dialect }}   (profile.stack.db.dialects[0]; syntax from profile.stack.db.syntax_map)
+Dialect       : {{ dialect }}   (profile.stack.db.target_dialect; syntax from profile.stack.db.syntax_map)
 Next          : {{ stage.next }}
 Module        : {{ mod }}   Version: {{ version }}
 Profile       : {{ profile.identity.id }} — {{ profile.identity.display }}

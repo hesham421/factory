@@ -44,7 +44,11 @@ TOY = {
         }},
     },
     "stack": {
-        "db": {"dialects": ["sqlite3"]},
+        # F5a — the toy states the OPPOSITE answer to the ERP profile for every
+        # stated choice. An engine that still carried a default of its own would
+        # emit the ERP answer here and the assertions below would catch it.
+        "db": {"dialects": ["sqlite3", "duckdb"], "target_dialect": "duckdb",
+               "pk_generation": "identity", "delete_semantics": "hard"},
         "backend": {"framework": "fastapi-python", "api": {"base_path": "/v1/{resource}", "verbs": {"GET": "read", "POST": "create"}}},
         "frontend": {"framework": "vue-ts"},
         "testing": {"manifest": False},
@@ -402,3 +406,63 @@ def test_a_profile_with_no_self_check_is_served_unchanged(toy_analyzable):
     assert an._c_verdict_agrees(an.Ctx(mod, 1), {"artifact": ["prd"], "spec": "self_check"}, "HALT") == []
     stage = next(s for s in CFG.stages if any(a.artifact == "prd" for a in s.produces))
     assert gov._stamp_verdict(stage, mod, 1, an.AnalyzeReport(mod, 1, "all")) == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F5a — a dialect default never silently becomes a project decision
+# ════════════════════════════════════════════════════════════════════════════
+
+# every key the schema marks as a stated choice — the addresses, not their answers
+STATED_CHOICES = ["stack.db.target_dialect", "stack.db.pk_generation", "stack.db.delete_semantics"]
+
+
+def test_a_profile_that_omits_a_stated_choice_is_a_lint_finding(toy):
+    """Not a silent default — a finding. Each of these has a real alternative and
+    is restated in a generated artifact, so an unstated one reaches the implementer
+    as indistinguishable from a decision that was made."""
+    for address in STATED_CHOICES:
+        data = yaml.safe_load(yaml.safe_dump(TOY))
+        node, leaf = data, address.split(".")
+        for part in leaf[:-1]:
+            node = node[part]
+        node.pop(leaf[-1])
+        path = toy.root / CFG.paths["profiles"] / "omitted.yaml"
+        data["identity"]["id"] = "omitted"
+        path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+        fs = lint.validate_profile(toy, toy.load_profile("omitted"))
+        assert any(address.split(".")[-1] in f.path and "required" in f.message for f in fs), \
+            f"omitting {address} must be a finding, not a default"
+
+
+def test_a_target_dialect_outside_the_declared_list_is_a_finding(toy):
+    data = yaml.safe_load(yaml.safe_dump(TOY))
+    data["identity"]["id"] = "wrongtarget"
+    data["stack"]["db"]["target_dialect"] = "a-dialect-nobody-kept-rows-for"
+    (toy.root / CFG.paths["profiles"] / "wrongtarget.yaml").write_text(
+        yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    fs = lint.validate_profile(toy, toy.load_profile("wrongtarget"))
+    assert any("target_dialect" in f.path for f in fs)
+
+
+def test_the_engines_emit_the_toy_answer_not_a_default(toy):
+    """The decisive one: the engine carries no answer of its own. Under the toy
+    profile every stated choice renders the TOY's value — the opposite of the ERP
+    profile's in all three cases — and no ERP value appears in the brief at all."""
+    import shutil
+    import dispatch as dp
+    from conftest import REAL_ROOT
+    shutil.copytree(REAL_ROOT / "engines", toy.root / "engines")
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    for sid in ("P2", "P3.1"):
+        out = dp.render_engine(CFG.stage(sid), mod, 1)
+        assert "{{" not in out and "{%" not in out, "the brief still holds unrendered template syntax"
+        assert TOY["stack"]["db"]["target_dialect"] in out, f"{sid} does not emit the toy's target dialect"
+        # no dialect of the OTHER profile on disk may appear — read from it, never typed
+        other = toy.load_profile(toy.data["factory"]["active_profile"])
+        for d in other.get("stack.db.dialects") or []:
+            assert d not in out, f"{sid} leaks a dialect belonging to profile {other.id}"
+        pkgen = TOY["stack"]["db"]["pk_generation"]
+        assert f"pk_generation = `{pkgen}`" in out or f"strategy `{pkgen}`" in out, \
+            f"{sid} does not emit the toy's pk_generation"
+    sem = TOY["stack"]["db"]["delete_semantics"]
+    assert f"`{sem}` per profile.stack.db.delete_semantics" in dp.render_engine(CFG.stage("P3.1"), mod, 1)

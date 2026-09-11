@@ -167,6 +167,13 @@ def validate_profile(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
     for f in profile.knowledge_files:
         if not (cfg.root / f).exists():
             out.append(Finding(sev(1), "C5-profile", f, 0, "knowledge file does not exist"))
+    # F5a: a stated choice must be a choice among what the profile itself declares —
+    # a target dialect nobody kept syntax rows for is as silent as no target at all.
+    dialects = profile.get("stack.db.dialects") or []
+    target = profile.get("stack.db.target_dialect")
+    if target and dialects and target not in dialects:
+        out.append(Finding(sev(1), "C5-profile", f"{profile.id}.stack.db.target_dialect", 0,
+                           f"{target!r} is not one of stack.db.dialects {dialects}"))
     core_atoms = set(cfg.ids["atoms"])
     for atom in profile.extra_ids:
         if atom in core_atoms:

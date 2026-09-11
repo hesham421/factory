@@ -88,7 +88,9 @@ tracks:
 
 stack:
   db:
-    dialects: [postgresql16, oracle19c]      # first = target; both syntax rows kept
+    dialects: [postgresql16, oracle19c]      # both syntax rows kept
+    target_dialect: postgresql16             # stated, not inferred from the list order
+    delete_semantics: soft                   # deactivate via the active flag; hard delete only where the SRS mandates it
     pk_generation: sequence                  # this ERP targets a database whose already-applied
                                              # migrations build every PK on a named sequence; a second
                                              # strategy cannot be introduced beside them (see naming.
