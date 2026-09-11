@@ -264,6 +264,7 @@ Then the system shows the types grouped under their respective owner module head
 Scope      : ENT-MDL-001
 Trigger    : on create (lookup type)
 Statement  : The system shall reject a lookup type registration whose owner module code has no ModuleRegistry row in SEC.
+Data source: ENT-MDL-001.ownerModuleCode — validated against SEC's module registry through XM-MDL-001 (SOFT-READ, application layer)
 Message    : ar: "الوحدة المالكة غير مسجّلة في وحدة الأمان" · en: "The owning module is not registered in the Security module"
 Traces     : REQ-MDL-002
 Source     : lookup-module-plan-en.md §3
@@ -272,6 +273,7 @@ Source     : lookup-module-plan-en.md §3
 Scope      : ENT-MDL-002
 Trigger    : on create (lookup value)
 Statement  : The system shall reject a lookup value whose code already exists under the same lookup type.
+Data source: ENT-MDL-002.code, ENT-MDL-002.lookupTypeId
 Message    : ar: "هذا الرمز مستخدم بالفعل ضمن هذا النوع" · en: "This code is already used within this type"
 Traces     : REQ-MDL-007
 Source     : lookup-module-plan-en.md §6
@@ -280,6 +282,7 @@ Source     : lookup-module-plan-en.md §6
 Scope      : ENT-MDL-001
 Trigger    : on update (lookup type)
 Statement  : The system shall prevent editing a lookup type's key after creation.
+Data source: ENT-MDL-001.key
 Message    : ar: "لا يمكن تعديل مفتاح نوع اللوكب بعد إنشائه" · en: "A lookup type's key cannot be changed after creation"
 Traces     : REQ-MDL-003
 Source     : lookup-module-plan-en.md §3 (the key is what every consumer already cites)
@@ -288,6 +291,7 @@ Source     : lookup-module-plan-en.md §3 (the key is what every consumer alread
 Scope      : ENT-MDL-001
 Trigger    : on evaluate (consumer read, REQ-MDL-011)
 Statement  : While a lookup type is inactive, the system shall exclude its values from consumer reads.
+Data source: ENT-MDL-001.isActiveFl
 Message    : ar: "هذا النوع معطّل حاليًا" · en: "This lookup type is currently inactive"
 Traces     : REQ-MDL-004, REQ-MDL-011
 Source     : lookup-module-plan-en.md §3

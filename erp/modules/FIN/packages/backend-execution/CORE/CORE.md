@@ -9,7 +9,7 @@ Domain-behaviour placement: entity methods for single-entity invariants (e.g.
 or multi-table rule (RULE-FIN-001, 003, 006-012, 014-016 all read beyond one row).
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`; runtime code
-format `FIN-<3-digit>`.
+format `FIN-{http}[-{SLUG}]`.
 
 **Transaction scope**: `READ_ONLY` for every `FIND_*`/`EXISTS`/`AGGREGATE` QR; `READ_WRITE`
 for every `SAVE`/`UPDATE` QR. The build→validate→post sequence (QR-FIN-024/025 through

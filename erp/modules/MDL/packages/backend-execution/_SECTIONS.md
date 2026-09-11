@@ -184,7 +184,7 @@ schemas).
 
 ## Error Catalog — MDL v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `MDL-<3-digit>`.
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `MDL-{http}[-{SLUG}]`.
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -214,7 +214,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR; no join for a 
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD (citing SEC's ADR-SEC-002 convention); create/update requests exclude PK/audit/immutable fields
 CROSS-MODULE      ✓ 1 XM from db-script, 1 placed (XM-MDL-001), 0 mismatched; ACTIVE status correctly reflects SEC's already-gated state; inbound stub uses XM-INBOUND-STUB-2 notation
 SECURITY (R7)     ✓ both secured APIs' screens declare PERM_*; ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
-CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-<3-digit>`), type mapping (incl. the stated sort_order→Integer deviation) all declared
+CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-{http}[-{SLUG}]`), type mapping (incl. the stated sort_order→Integer deviation) all declared
 DECISIONS         ✓ 0 new ADR this stage; SEC's ADR-SEC-002 convention correctly cited, not re-derived
 RESULT            PASSED ✓ — 0 findings
 ```

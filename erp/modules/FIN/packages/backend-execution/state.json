@@ -6,7 +6,7 @@
   "profile": "erp",
   "markers_schema_version": 2,
   "source": "erp/modules/FIN/P3_1/backend-execution-plan-fin.md",
-  "split_at": "2026-09-10T16:44:46+00:00",
+  "split_at": "2026-09-11T11:58:39+00:00",
   "strict": false,
   "files": [
     "erp/modules/FIN/packages/backend-execution/CORE/CORE.md",

@@ -901,6 +901,7 @@ Then the system navigates statement line → trial balance row → account ledge
 Scope      : ENT-FIN-001
 Trigger    : on update (isLeafFl)
 Statement  : The system shall prevent an account with any child account from being marked as accepting direct posting.
+Data source: ENT-FIN-001.parentAccountId, ENT-FIN-001.isLeafFl
 Message    : ar: "لا يمكن لحساب له حسابات فرعية أن يقبل ترحيلاً مباشرًا" · en: "An account with sub-accounts cannot accept direct posting"
 Traces     : REQ-FIN-002
 Source     : general-accounting-system-plan-en.md §4.2
@@ -909,6 +910,7 @@ Source     : general-accounting-system-plan-en.md §4.2
 Scope      : ENT-FIN-003
 Trigger    : on create (dimension value)
 Statement  : The system shall reject a dimension value whose code already exists under the same dimension.
+Data source: ENT-FIN-003.code, ENT-FIN-003.dimensionId
 Message    : ar: "هذا الرمز مستخدم بالفعل ضمن هذا البُعد" · en: "This code is already used within this dimension"
 Traces     : REQ-FIN-006
 Source     : general-accounting-system-plan-en.md §4.2
@@ -917,6 +919,7 @@ Source     : general-accounting-system-plan-en.md §4.2
 Scope      : ENT-FIN-010, ENT-FIN-014
 Trigger    : on create/update (rule line or allocation target set)
 Statement  : The system shall require exactly one line or target marked as the remainder whenever any sibling line or target uses percentage distribution.
+Data source: ENT-FIN-010.isRemainderFl, ENT-FIN-010.distributionTypeCode, ENT-FIN-014.isRemainderFl, ENT-FIN-014.distributionTypeCode
 Message    : ar: "يلزم تحديد سطر باقٍ واحد بالضبط عند وجود توزيع نسبي" · en: "Exactly one remainder line is required when any percentage distribution is present"
 Traces     : REQ-FIN-009
 Source     : general-accounting-system-plan-en.md §6.3, §12.6
@@ -925,6 +928,7 @@ Source     : general-accounting-system-plan-en.md §6.3, §12.6
 Scope      : ENT-FIN-004
 Trigger    : on create (event-sourced entry)
 Statement  : The system shall reject building an entry for an event reference that has already produced a posted entry.
+Data source: ENT-FIN-004.eventReference, ENT-FIN-004.statusCode
 Message    : ar: "تم بالفعل ترحيل قيد لهذا المرجع" · en: "An entry for this event reference has already been posted"
 Traces     : REQ-FIN-011
 Source     : general-accounting-system-plan-en.md §12.12
@@ -933,6 +937,7 @@ Source     : general-accounting-system-plan-en.md §12.12
 Scope      : ENT-FIN-009
 Trigger    : on create (event-sourced entry)
 Statement  : The system shall reject building an entry for an event whose type has no active rule.
+Data source: ENT-FIN-009.eventTypeCode, ENT-FIN-009.isActiveFl
 Message    : ar: "لا توجد قاعدة نشطة لهذا النوع من الأحداث" · en: "No active rule exists for this event type"
 Traces     : REQ-FIN-013
 Source     : general-accounting-system-plan-en.md §6.1
@@ -941,6 +946,7 @@ Source     : general-accounting-system-plan-en.md §6.1
 Scope      : ENT-FIN-004, ENT-FIN-005
 Trigger    : on post (any source)
 Statement  : The system shall reject posting an entry whose total debits do not equal its total credits to the smallest currency unit.
+Data source: ENT-FIN-005.amount, ENT-FIN-005.directionCode
 Message    : ar: "القيد غير متوازن — إجمالي المدين لا يساوي إجمالي الدائن" · en: "The entry is unbalanced — total debits do not equal total credits"
 Traces     : REQ-FIN-018
 Source     : general-accounting-system-plan-en.md §12.1
@@ -949,6 +955,7 @@ Source     : general-accounting-system-plan-en.md §12.1
 Scope      : ENT-FIN-001, ENT-FIN-005
 Trigger    : on post (any source)
 Statement  : The system shall reject posting a line targeting an account that is not a leaf, not active, or not marked as accepting direct posting.
+Data source: ENT-FIN-001.isLeafFl, ENT-FIN-001.isActiveFl, ENT-FIN-005.accountId
 Message    : ar: "الحساب المستهدف لا يقبل ترحيلاً مباشرًا" · en: "The target account does not accept direct posting"
 Traces     : REQ-FIN-019
 Source     : general-accounting-system-plan-en.md §12.3
@@ -957,6 +964,7 @@ Source     : general-accounting-system-plan-en.md §12.3
 Scope      : ENT-FIN-004, ENT-FIN-008
 Trigger    : on post (any source)
 Statement  : The system shall reject posting an entry whose period is not Open at that moment.
+Data source: ENT-FIN-004.periodId, ENT-FIN-008.statusCode
 Message    : ar: "الفترة المستهدفة غير مفتوحة" · en: "The target period is not open"
 Traces     : REQ-FIN-020
 Source     : general-accounting-system-plan-en.md §12.4
@@ -965,6 +973,7 @@ Source     : general-accounting-system-plan-en.md §12.4
 Scope      : ENT-FIN-006
 Trigger    : on post (any source)
 Statement  : The system shall reject posting a line whose cited dimension value does not belong to its stated dimension or is inactive.
+Data source: ENT-FIN-006.dimensionId, ENT-FIN-006.dimensionValueId, ENT-FIN-003.dimensionId, ENT-FIN-003.isActiveFl
 Message    : ar: "قيمة البُعد غير صالحة" · en: "The dimension value is invalid"
 Traces     : REQ-FIN-021
 Source     : general-accounting-system-plan-en.md §8.1
@@ -973,6 +982,7 @@ Source     : general-accounting-system-plan-en.md §8.1
 Scope      : ENT-FIN-005, ENT-FIN-010, ENT-FIN-014
 Trigger    : on build (compound/percentage distribution — rule engine or allocation)
 Statement  : The system shall compute the remainder line's amount as the total minus the sum of every other line, after every percentage line rounds to the smallest currency unit; the remainder line is never itself computed as a percentage.
+Data source: ENT-FIN-005.amount, ENT-FIN-005.isRemainderFl, ENT-FIN-010.distributionTypeCode, ENT-FIN-014.distributionValue
 Message    : ar: "سطر الباقي يُحسب كفرق، لا كنسبة" · en: "The remainder line is computed as a difference, never as a percentage"
 Traces     : REQ-FIN-012, REQ-FIN-026
 Source     : general-accounting-system-plan-en.md §6.3, §12.6
@@ -981,6 +991,7 @@ Source     : general-accounting-system-plan-en.md §6.3, §12.6
 Scope      : ENT-FIN-004, ENT-FIN-005
 Trigger    : on reverse
 Statement  : The system shall build the reversal entry with the same lines as the original, each with the opposite direction and the same amount, and link both entries to each other.
+Data source: ENT-FIN-005.amount, ENT-FIN-005.directionCode, ENT-FIN-004.originalEntryId, ENT-FIN-004.reversalEntryId
 Message    : ar: "قيد العكس يطابق الأصل بعكس الاتجاه" · en: "The reversal entry mirrors the original with opposite direction"
 Traces     : REQ-FIN-028
 Source     : general-accounting-system-plan-en.md §12.7, §9
@@ -989,6 +1000,7 @@ Source     : general-accounting-system-plan-en.md §12.7, §9
 Scope      : ENT-FIN-004, ENT-FIN-008
 Trigger    : on reverse
 Statement  : The system shall post the reversal into the current open period when the original entry's own period is no longer Open.
+Data source: ENT-FIN-004.periodId, ENT-FIN-008.statusCode
 Message    : ar: "سيُرحَّل قيد العكس في الفترة المفتوحة الحالية" · en: "The reversal will post into the current open period"
 Traces     : REQ-FIN-029
 Source     : general-accounting-system-plan-en.md §9
@@ -997,6 +1009,7 @@ Source     : general-accounting-system-plan-en.md §9
 Scope      : ENT-FIN-004
 Trigger    : on reverse
 Statement  : The system shall reject a reverse action on an entry that is not POSTED.
+Data source: ENT-FIN-004.statusCode
 Message    : ar: "لا يمكن عكس قيد غير مُرحَّل" · en: "A non-posted entry cannot be reversed"
 Traces     : REQ-FIN-030
 Source     : general-accounting-system-plan-en.md §9
@@ -1005,6 +1018,7 @@ Source     : general-accounting-system-plan-en.md §9
 Scope      : ENT-FIN-008
 Trigger    : on update (period status)
 Statement  : The system shall reject any attempt to reopen a Hard Closed period.
+Data source: ENT-FIN-008.statusCode
 Message    : ar: "الفترة مغلقة إغلاقًا صارمًا ولا يمكن إعادة فتحها" · en: "The period is hard-closed and cannot be reopened"
 Traces     : REQ-FIN-035
 Source     : general-accounting-system-plan-en.md §10.2
@@ -1013,6 +1027,7 @@ Source     : general-accounting-system-plan-en.md §10.2
 Scope      : ENT-FIN-008
 Trigger    : on evaluate (period-close-approval action)
 Statement  : The system shall require the period-close-approval action to be gated by a permission distinct from the journal-entry-creation permission, enforced through the Security module.
+Data source: DEFERRED — the permission matrix is the Security module's declaration surface; FIN declares no permission entity in this version, so the separation is enforced there and has no FIN-side field to read
 Message    : ar: "صلاحية اعتماد الإغلاق منفصلة عن صلاحية إنشاء القيود" · en: "The close-approval permission is separate from the entry-creation permission"
 Traces     : REQ-FIN-038
 Source     : general-accounting-system-plan-en.md §2.2, §8.2, §10.3
@@ -1021,6 +1036,7 @@ Source     : general-accounting-system-plan-en.md §2.2, §8.2, §10.3
 Scope      : ENT-FIN-004, ENT-FIN-005
 Trigger    : on evaluate (any edit/delete attempt)
 Statement  : The system shall reject any edit or delete attempt on a POSTED entry or its lines; correction is only through a reversal (REQ-FIN-028).
+Data source: ENT-FIN-004.statusCode, ENT-FIN-005.journalEntryId
 Message    : ar: "القيد المُرحَّل مقفل؛ التصحيح فقط عبر العكس" · en: "A posted entry is locked; correction is only through a reversal"
 Traces     : REQ-FIN-016, REQ-FIN-017
 Source     : general-accounting-system-plan-en.md §8.3, §12.13

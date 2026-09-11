@@ -4,18 +4,68 @@
   "scope": "gate:pass-1",
   "counts": {
     "CRITICAL": 0,
-    "MAJOR": 1,
+    "MAJOR": 0,
     "MINOR": 0
   },
   "clean": true,
-  "findings": [
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-SEC-004` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    }
-  ]
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "C12"
+  ],
+  "skipped": [],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "1ebb15dc0d5dfe62b587e6f9d6ab662acc0070d5c82ec6324b683714373d5509",
+      "checker": "89a25bcf88c712db227b897fdb811ac4717e27b34c022696ca566dbf06232a2d",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest"
+    ],
+    "inputs": {
+      "backend-execution-plan": "4b1cf575a2c1e5961db824a2c1576884fd9432e09187fb49b6b105ef642b85fc",
+      "backend-test-plan": "20e6964e3a68c9592c79225a33ad5177ad6196656a059cb2f064b9c54b20f744",
+      "business-policies": "a24f602bf4a6d363ef4ae9707c7ad02d2613f675262ec0643d52b6e19ae07610",
+      "db-script": "5bc170fbb831b6272f68586bda6a9c7556198800b6c2588205b789fd92373073",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "frontend-test-plan": "d587391f651ae04cfbc7d8c4527a2713fac789e71d40b796aa7d842f8c30c13d",
+      "module-registry": "00c50cdcb36d25d8d01b1ffe59601983321f5185c2cfbe8e273b393ad29462fd",
+      "platform-summary": "f34badb101d03d55af07076d04fee4c2647627707292b246f7bc78c449dfc649",
+      "prd": "1d14a3ab6d7e190f06748a56be0cd23d633f82ef3b2f802f31badbc54be24d58",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "b792b9be98c201f759cc76b14551d9e748ec48dc539b7ee103e03d5d63a831f8",
+      "registry-exec-be": "2b1aa474e2a1c341deb92e04e93bab97af750f277fcac4950d0f19cba431b8e7",
+      "registry-srs": "2ca257f9002cc2cccf8a74c8f4c5608b56a54166fd02efe04dddd12e622661bb",
+      "srs": "dcf6f7903805b8cb816c2033d4df0fdb723ccbdd617eaf70f550c2a830b45acf",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "aad86ad6fedd4ead5c5f4b26d11d0a7dadb0cd38c4652e097dc8f3c2002dd8b3"
+    },
+    "at": "2026-09-11T11:58:38+00:00"
+  }
 }

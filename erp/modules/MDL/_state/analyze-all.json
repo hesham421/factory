@@ -1,0 +1,219 @@
+{
+  "module": "MDL",
+  "version": 1,
+  "scope": "all",
+  "counts": {
+    "CRITICAL": 7,
+    "MAJOR": 10,
+    "MINOR": 1
+  },
+  "clean": false,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "C8",
+    "C9",
+    "C10",
+    "C12"
+  ],
+  "skipped": [],
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-MDL-001` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 263
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-MDL-002` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 271
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-MDL-003` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 279
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-MDL-004` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 287
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C7.15",
+      "check": "verdict-agrees",
+      "message": "`backend-execution-plan` claims 0 findings but `gov.py analyze` produced 7 for it \u2014 the artifact the implementer reads contradicts the report beside it. Correct line: `BLOCKED \u2717 \u2014 7 findings`",
+      "artifact": "backend-execution-plan",
+      "line": 559
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C8.1",
+      "check": "exists",
+      "message": "`api-docs` is missing or empty",
+      "artifact": "api-docs",
+      "line": 0
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C9.1",
+      "check": "markers",
+      "message": "`frontend-execution-plan` missing",
+      "artifact": "frontend-execution-plan",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C5.8",
+      "check": "registry-agree",
+      "message": "`ENT-SEC-004` registered in `registry-srs` but not defined in `srs`",
+      "artifact": "registry-srs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `MDL-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 178
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `MDL-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 527
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `MDL-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 557
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` states 9 value(s) as fact ('(query params)', 'LookupTypeCreateRequest', 'LookupTypeUpdateRequest'\u2026) but this stage cannot resolve any of them: `api-docs` does not exist yet. Each is a guess printed beside facts, which reads as a decision \u2014 mark them `(proposed)` and let the stage that can resolve them fill them in. Lines 454, 455, 456, 458, 459 \u2026",
+      "artifact": "backend-execution-plan",
+      "line": 454
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` states 11 value(s) as fact ('Page\\\\<LookupTypeResponse\\\\>', 'LookupTypeResponse', 'LookupTypeResponse'\u2026) but this stage cannot resolve any of them: `api-docs` does not exist yet. Each is a guess printed beside facts, which reads as a decision \u2014 mark them `(proposed)` and let the stage that can resolve them fill them in. Lines 454, 455, 456, 457, 458 \u2026",
+      "artifact": "backend-execution-plan",
+      "line": 454
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.17",
+      "check": "xref-surface",
+      "message": "`/api/v1/sec/registry` consumes `SEC`'s surface in prose but cites no API of `SEC` \u2014 a dependency with no id resolves nowhere, and `SEC`'s own checks never see it",
+      "artifact": "backend-execution-plan",
+      "line": 209
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C8.2",
+      "check": "registry-agree",
+      "message": "artifact `api-docs` missing",
+      "artifact": "api-docs",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C9.2",
+      "check": "traces",
+      "message": "`frontend-execution-plan` missing",
+      "artifact": "frontend-execution-plan",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C9.8",
+      "check": "registry-agree",
+      "message": "registry `registry-exec-fe` missing",
+      "artifact": "registry-exec-fe",
+      "line": 0
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "does not state the declared code format `{MOD}-{http}[-{SLUG}]` (`stack.backend.api.error_code_format`)",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    }
+  ],
+  "provenance": {
+    "rules": {
+      "contracts": "8b061142d7ce0c7586f81b1b17aa2684b81ab6b946f963500cc9a3b9a63ed36d",
+      "checker": "49fe4e5a1123136a3d48c45fc88c3be6e310c01f1f99f481c8519086f0ce87c8",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest"
+    ],
+    "inputs": {
+      "backend-execution-plan": "2ba4bcf7fca1215421847ed4f11688e2ab8c3c2c7537e0aa04a4346530fb122a",
+      "backend-test-plan": "20e6964e3a68c9592c79225a33ad5177ad6196656a059cb2f064b9c54b20f744",
+      "business-policies": "a24f602bf4a6d363ef4ae9707c7ad02d2613f675262ec0643d52b6e19ae07610",
+      "db-script": "5bc170fbb831b6272f68586bda6a9c7556198800b6c2588205b789fd92373073",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "frontend-test-plan": "d587391f651ae04cfbc7d8c4527a2713fac789e71d40b796aa7d842f8c30c13d",
+      "module-registry": "00c50cdcb36d25d8d01b1ffe59601983321f5185c2cfbe8e273b393ad29462fd",
+      "platform-summary": "f34badb101d03d55af07076d04fee4c2647627707292b246f7bc78c449dfc649",
+      "prd": "1d14a3ab6d7e190f06748a56be0cd23d633f82ef3b2f802f31badbc54be24d58",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "b792b9be98c201f759cc76b14551d9e748ec48dc539b7ee103e03d5d63a831f8",
+      "registry-exec-be": "2b1aa474e2a1c341deb92e04e93bab97af750f277fcac4950d0f19cba431b8e7",
+      "registry-srs": "2ca257f9002cc2cccf8a74c8f4c5608b56a54166fd02efe04dddd12e622661bb",
+      "srs": "8118989c8d59583483dbc1b2f3a3427d9ed55d64ccc02bc073dd0f0124b1c17b",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "aad86ad6fedd4ead5c5f4b26d11d0a7dadb0cd38c4652e097dc8f3c2002dd8b3"
+    },
+    "at": "2026-09-11T11:54:33+00:00"
+  }
+}

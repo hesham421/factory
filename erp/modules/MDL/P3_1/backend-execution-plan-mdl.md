@@ -175,7 +175,7 @@ spanning more than one entity or a cross-module read (RULE-MDL-001 via XM-MDL-00
 RULE-MDL-004's join, RULE-MDL-002's pre-check even though it is also DB-enforced).
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`; runtime code
-format `MDL-<3-digit>` (module-scoped, same convention as SEC's `SEC-<3-digit>`).
+format `MDL-{http}[-{SLUG}]` (`profile.stack.backend.api.error_code_format`; {http} = the row's HTTP status, {SLUG} = SCREAMING-KEBAB, the [ ] half optional).
 
 **Transaction scope**: `READ_ONLY` for every `FIND_*`/`EXISTS` QR; `READ_WRITE` for every
 `SAVE`/`UPDATE` QR (including the batch reorder, QR-MDL-009, in one transaction).
@@ -207,7 +207,7 @@ against another lookup type.
 **Cross-module contract placement**: MDL's one cross-module read (XM-MDL-001) is a plain
 outbound call from the service layer (`SecModuleRegistryClient` or an equivalent
 inversion-of-control interface implemented against SEC's `GET /api/v1/sec/registry`
-search endpoint, filtered by `code`) — not a physical join, not a shared transaction.
+search endpoint (API-SEC-021), filtered by `code`) — not a physical join, not a shared transaction.
 
 **Cross-cutting authorization**: the same CORE interceptor mechanism SEC's own plan
 declares (SEC's backend-execution-plan-sec.md → Phase 1 CORE) applies platform-wide; MDL
@@ -451,18 +451,21 @@ Localization : n/a
 
 | API | Path | Verb | Request DTO | Response DTO | Stability |
 |---|---|---|---|---|---|
-| API-MDL-001 | /lookup-types | GET | (query params) | Page\<LookupTypeResponse\> | v1 |
-| API-MDL-002 | /lookup-types | POST | LookupTypeCreateRequest | LookupTypeResponse | v1 |
-| API-MDL-003 | /lookup-types/{id} | PUT | LookupTypeUpdateRequest | LookupTypeResponse | v1 |
-| API-MDL-004 | /lookup-types/{id} | DELETE | — | DeactivateConfirmation | v1 |
-| API-MDL-005 | /lookup-types/{id}/values | GET | (query params) | Page\<LookupValueResponse\> | v1 |
-| API-MDL-006 | /lookup-types/{id}/values | POST | LookupValueCreateRequest | LookupValueResponse | v1 |
-| API-MDL-007 | /lookup-values/{id} | PUT | LookupValueUpdateRequest | LookupValueResponse | v1 |
-| API-MDL-008 | /lookup-values/{id} | DELETE | — | DeactivateConfirmation | v1 |
-| API-MDL-009 | /lookup-types/{id}/values/reorder | PATCH | ReorderRequest | List\<LookupValueResponse\> | v1 |
-| API-MDL-010 | /lookup-types/by-owner | GET | (query params) | List\<OwnerGroupResponse\> | v1 |
-| API-MDL-011 | /lookups | GET | (query param `type`) | List\<LookupValueResponse\> | v1 |
-(paths relative to `/api/v1/mdl`)
+| API-MDL-001 | /lookup-types | GET | — | Page\<LookupTypeResponse\> (proposed) | v1 |
+| API-MDL-002 | /lookup-types | POST | LookupTypeCreateRequest (proposed) | LookupTypeResponse (proposed) | v1 |
+| API-MDL-003 | /lookup-types/{id} | PUT | LookupTypeUpdateRequest (proposed) | LookupTypeResponse (proposed) | v1 |
+| API-MDL-004 | /lookup-types/{id} | DELETE | — | DeactivateConfirmation (proposed) | v1 |
+| API-MDL-005 | /lookup-types/{id}/values | GET | — | Page\<LookupValueResponse\> (proposed) | v1 |
+| API-MDL-006 | /lookup-types/{id}/values | POST | LookupValueCreateRequest (proposed) | LookupValueResponse (proposed) | v1 |
+| API-MDL-007 | /lookup-values/{id} | PUT | LookupValueUpdateRequest (proposed) | LookupValueResponse (proposed) | v1 |
+| API-MDL-008 | /lookup-values/{id} | DELETE | — | DeactivateConfirmation (proposed) | v1 |
+| API-MDL-009 | /lookup-types/{id}/values/reorder | PATCH | ReorderRequest (proposed) | List\<LookupValueResponse\> (proposed) | v1 |
+| API-MDL-010 | /lookup-types/by-owner | GET | — | List\<OwnerGroupResponse\> (proposed) | v1 |
+| API-MDL-011 | /lookups | GET | — | List\<LookupValueResponse\> (proposed) | v1 |
+(paths relative to `/api/v1/mdl`. A `—` request means the endpoint takes no body: the GET rows
+read their filters from query parameters. Every type name above is marked `(proposed)` — this
+stage runs before any implementation exists, so the names are derived, not decided; the real
+ones arrive with `api-docs-mdl.md` and the stage that can resolve them fills them in.)
 
 **DTO typing constraints**: `ownerModuleCode` is `String` (the platform module code, not
 an enum); no business code field exists.
@@ -524,7 +527,7 @@ See Alignment self-check (ALIGN) below.
 
 ## Error Catalog — MDL v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `MDL-<3-digit>`.
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `MDL-{http}[-{SLUG}]`.
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -554,7 +557,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR; no join for a 
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD (citing SEC's ADR-SEC-002 convention); create/update requests exclude PK/audit/immutable fields
 CROSS-MODULE      ✓ 1 XM from db-script, 1 placed (XM-MDL-001), 0 mismatched; ACTIVE status correctly reflects SEC's already-gated state; inbound stub uses XM-INBOUND-STUB-2 notation
 SECURITY (R7)     ✓ both secured APIs' screens declare PERM_*; ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
-CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-<3-digit>`), type mapping (incl. the stated sort_order→Integer deviation) all declared
+CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-{http}[-{SLUG}]`), type mapping (incl. the stated sort_order→Integer deviation) all declared
 DECISIONS         ✓ 0 new ADR this stage; SEC's ADR-SEC-002 convention correctly cited, not re-derived
 RESULT            PASSED ✓ — 0 findings
 ```

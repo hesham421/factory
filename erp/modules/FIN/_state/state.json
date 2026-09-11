@@ -2,7 +2,7 @@
   "module": "FIN",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-10T20:55:09+00:00",
+  "generated_at": "2026-09-11T11:55:50+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -52,5 +52,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789073709.2660608
+  "inputs_mtime": 1789127750.1540148
 }

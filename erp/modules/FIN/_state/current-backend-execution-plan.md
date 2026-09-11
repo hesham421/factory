@@ -338,7 +338,7 @@ Domain-behaviour placement: entity methods for single-entity invariants (e.g.
 or multi-table rule (RULE-FIN-001, 003, 006-012, 014-016 all read beyond one row).
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`; runtime code
-format `FIN-<3-digit>`.
+format `FIN-{http}[-{SLUG}]`.
 
 **Transaction scope**: `READ_ONLY` for every `FIND_*`/`EXISTS`/`AGGREGATE` QR; `READ_WRITE`
 for every `SAVE`/`UPDATE` QR. The build→validate→post sequence (QR-FIN-024/025 through
@@ -1080,7 +1080,7 @@ See Alignment self-check (ALIGN) below.
 
 ## Error Catalog — FIN v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `FIN-<3-digit>`.
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `FIN-{http}[-{SLUG}]`.
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -1129,7 +1129,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR; no join for a 
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD (SEC's ADR-SEC-002 convention); create/update requests exclude PK/audit/system fields (docNo, statusCode, postedAt); business code (docNo) always in responses, never in create/update bodies
 CROSS-MODULE      ✓ 1 XM from db-script, 1 placed (XM-FIN-001), 0 mismatched; ACTIVE status correct; inbound stub XM-INBOUND-STUB-3 notation
 SECURITY (R7)     ✓ every secured API declares its PERM_*; ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one, including the two custom SoD-relevant actions
-CORE (R1)         ✓ layers, domain placement, error signalling (`FIN-<3-digit>`), type mapping (incl. the NUMERIC→Integer governance note) all declared
+CORE (R1)         ✓ layers, domain placement, error signalling (`FIN-{http}[-{SLUG}]`), type mapping (incl. the NUMERIC→Integer governance note) all declared
 DECISIONS         ✓ ADR-FIN-001 (carried from P2) cited; one new DEFAULT this stage (JOURNAL_TYPE gains CLOSING/OPENING, data-only, non-breaking); no BLOCKED ADR
 ACCOUNTING §12    ✓ all 14 must-honor points traced: (1) RULE-FIN-006 · (2) POL-FIN-002/API-FIN-029 sign presentation · (3) RULE-FIN-007 · (4) RULE-FIN-008 · (5) CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE + directionCode · (6) RULE-FIN-003/010 · (7) RULE-FIN-011 · (8) API-FIN-029 (balances by construction) · (9) every report QR reads POSTED lines live, no stored balance column anywhere in db-script-fin.md · (10) REQ-FIN-036/RULE for continuity · (11) RULE-FIN-009 + QR-FIN-044 dimension grouping · (12) RULE-FIN-004 · (13) RULE-FIN-016 lock + no DELETE mapping anywhere · (14) POL-FIN-014, no host-specific branch anywhere in this plan
 RESULT            PASSED ✓ — 0 findings
