@@ -3,7 +3,7 @@
 Module : SEC   Version : v1   Profile : erp   Stage : P3.2 (Part A — UX design)
 Inputs : srs (v1), prd (v1, APPROVED), api-docs (v1), registry-srs (v1), registry-exec-be (v1)
 Screens: 10 — SCR-SEC-001..010 (one per SRS Part B screen requirement)
-Flows  : 11 · ADRs open : 6 — ADR-SEC-003..008 (all non-breaking)
+Flows  : 11 · ADRs open : 8 — ADR-SEC-003..010 (all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 يصف هذا المستند مسارات التنقّل فقط: كل مسار يبدأ من شاشة معرّفة في متطلبات الشاشات
@@ -42,7 +42,9 @@ Sequence  : (public entry) → SCR-SEC-001 Login → [credentials accepted] → 
 Trigger   : تشغيل المنصة دون جلسة صالحة / opening the platform without a valid session
 Priority  : HIGH (PRD US-SEC-001 — the entry point of the whole module)
 ```
-تسجيل الدخول هو نقطة الدخول الوحيدة؛ لا تُعرض أي شاشة داخلية قبل نجاحه.
+تسجيل الدخول هو المدخل الوحيد إلى الشاشات الداخلية، لا المدخل الوحيد إلى المنصة: الشاشات
+العامة الثلاث (SCR-SEC-001، SCR-SEC-002، SCR-SEC-003) تُبلَغ دون جلسة، ويمكن بلوغ خطوة إعادة
+التعيين مباشرةً من رابط البريد دون المرور بهذه الشاشة. لا تُعرض أي شاشة داخلية قبل نجاح الدخول.
 The rejected path is part of this flow, not a separate one: REQ-SEC-002 returns the user to
 the same screen, and the failed attempt is recorded by the server (audit), not by the UI.
 
@@ -187,11 +189,19 @@ B2 no RULE-* contradicts a flow/spec outcome
 B3 every field/permission on a screen exists in the SRS
    → fields copied from SRS A3 per owning ENT and reconciled against the api-docs DTOs in
      ui-ux-spec-sec.md; permission names taken from the api-docs (backend-declared), never
-     minted here. Extra removed: none. Missing added: none.
+     minted here. Extra removed: none. Missing added: none — with ONE screen diverging from
+     its Part B input list, resolved against SRS A3 in ADR-SEC-010:
+     SCR-SEC-004 · `password` is an input on create although B3 does not list it — the
+       published `UserCreateRequest` declares it required, and its SRS basis is
+       ENT-SEC-001.passwordHash (write-only, never exposed [POL-SEC-004]);
+     SCR-SEC-004 · `statusCode` is read-only although B3 lists it as an input — no write DTO
+       accepts it, and SRS A7's transitions are performed by API-SEC-009/010/011 instead.
+     Nine of the ten screens match their B3 list exactly.
 B4 every screen entry of the SRS has exactly one SCR-* block
    → 10 SRS screen requirements ↔ SCR-SEC-001..010, 1:1 (SCREEN INDEX above).
-RESULT  reconciled 10 · reworked 0 · ADRs ADR-SEC-003, ADR-SEC-004, ADR-SEC-005,
-        ADR-SEC-006, ADR-SEC-007, ADR-SEC-008 (all non-breaking, raised in Part B's
-        binding to the published api-docs and recorded here for completeness)
+RESULT  reconciled 10 · reworked 1 (SCR-SEC-004's field list, per B3 above) ·
+        ADRs ADR-SEC-003, ADR-SEC-004, ADR-SEC-005, ADR-SEC-006, ADR-SEC-007,
+        ADR-SEC-008, ADR-SEC-009, ADR-SEC-010 (all ACCEPTED, all non-breaking; raised in
+        Part B's binding to the published api-docs and recorded here for completeness)
 ```
 ══════════════════════════════════════════════════════════════════

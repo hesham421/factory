@@ -7,7 +7,7 @@ Framework : react-ts-vite (profile.stack.frontend.framework) · routing react-ro
 Inputs : srs (v1, PRD-approved), prd (v1), api-docs (v1, published by the backend repo),
          registry-srs (v1), registry-exec-be (v1)
 Screens : 10 — SCR-SEC-001..010 · UXD : 0 (SEC is ROOT — SRS A8) · API bound : 27 / 27
-Open ADRs : 6 — erp/decisions/SEC/ (ADR-SEC-003..008, all non-breaking) + ADR-SEC-009
+Open ADRs : 8 — erp/decisions/SEC/ (ADR-SEC-003..010, all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 ## API SURFACE — SEC v1   (source: `_inputs/api-docs-sec.md` — the ONLY endpoint source)
@@ -67,6 +67,10 @@ PERMISSIONS declared by the backend and read from the api-docs, never redeclared
 - **Endpoints published but not called by this frontend** — API-SEC-018, API-SEC-019,
   API-SEC-020, the three registration calls a consuming module makes for itself
   (SRS SCR-REQ-SEC-006 B3). Bound, blocked out in F2 and left uncalled (ADR-SEC-009).
+- **One screen's form differs from its SRS Part B input list** — SCR-SEC-004 takes `password`
+  on create (B3 omits it; `UserCreateRequest` requires it) and renders `statusCode` read-only
+  (B3 lists it as an input; no write DTO accepts it). Both resolve against SRS A3 and A7
+  rather than against B3's prose — ADR-SEC-010. The other nine screens match their B3 list.
 - **Nothing is invented.** No value absent from the api-docs appears in this plan except as
   an explicit `PENDING ADR-…` marker.
 
@@ -663,8 +667,10 @@ Errors       : `SEC-409-NO-SCREEN-GRANT` (409) → user message for RULE-SEC-002
 Invalidation : `[role-grants, roleId]` and `[menu]`
 ### F2-QUERY — API-SEC-021 (grant tree source)   traces=API-SEC-021,REQ-SEC-012
 POST `/api/v1/sec/registry/search` · response `Page<RegistryRowResponse>` · kind **read query**
-Cache key    : `[registry, filters]` — the same key SCR-SEC-006 uses, so the registry is
-               fetched once and both screens read one cache entry
+Cache key    : `[registry, filters]` — module code, pageCode, sort **and page, size**, in the
+               one filter object: byte-for-byte the key SCR-SEC-006 builds, so the registry is
+               fetched once and both screens read one cache entry. A key that differed in page
+               or size here would silently double the fetch.
 Errors       : `ACCESS_DENIED` → forbidden message · `INTERNAL_ERROR` → generic
 Cache policy : defaults; the registry changes only when a module onboards, so this entry is a
                natural candidate for a longer stale window — left at defaults, since deviating
@@ -1672,7 +1678,8 @@ DECISIONS    ADR-SEC-003 (search shape) · ADR-SEC-004 (API id binding) · ADR-S
              (no action-level permission endpoint) · ADR-SEC-006 (no lookup endpoint) ·
              ADR-SEC-007 (container pattern for screens with no entry sub-view) ·
              ADR-SEC-008 (operations with no endpoint) · ADR-SEC-009 (documented endpoints
-             this frontend does not call) — all ACCEPTED, all non-breaking
+             this frontend does not call) · ADR-SEC-010 (SCR-SEC-004's form vs SRS B3's input
+             list) — all ACCEPTED, all non-breaking
 RESULT       PASSED ✓ — 0 findings
 ```
 

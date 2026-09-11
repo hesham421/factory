@@ -66,7 +66,8 @@ erp/decisions/SEC/ADR-SEC-005.md (ACCEPTED, non-breaking — no action-level per
 erp/decisions/SEC/ADR-SEC-006.md (ACCEPTED, non-breaking — no lookup endpoint) ·
 erp/decisions/SEC/ADR-SEC-007.md (ACCEPTED, non-breaking — container pattern for screens with no entry sub-view) ·
 erp/decisions/SEC/ADR-SEC-008.md (ACCEPTED, non-breaking — operations with no published endpoint) ·
-erp/decisions/SEC/ADR-SEC-009.md (ACCEPTED, non-breaking — documented endpoints this frontend does not call)
+erp/decisions/SEC/ADR-SEC-009.md (ACCEPTED, non-breaking — documented endpoints this frontend does not call) ·
+erp/decisions/SEC/ADR-SEC-010.md (ACCEPTED, non-breaking — SCR-SEC-004's form vs SRS B3's input list)
 Carried from earlier stages: ADR-SEC-001 (P2), ADR-SEC-002 (P3.1). No BLOCKED ADR.
 
 TRACEABILITY
@@ -80,5 +81,5 @@ UXD cited by an F-block: 0 of 0 — none minted, none dangling.
 
 Event
 "P3.2 completed: SEC v1 — 10 screens, 0 UXD, 27/27 API bound (24 called), 4 sub-bearing phases
-× 10 SUB blocks, ALIGN-FE PASSED, 7 ADRs"
+× 10 SUB blocks, ALIGN-FE PASSED, 8 ADRs"
 ══════════════════════════════════════════════════════════════════

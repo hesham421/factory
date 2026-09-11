@@ -3,7 +3,7 @@
 Module : SEC   Version : v1   Profile : erp   Stage : P3.2 (Part A — UX design)
 Screens: 10 — SCR-SEC-001..010 · UXD : 0 (SEC is ROOT — SRS A8: no consumed entity)
 Fields : copied from SRS A3 per owning ENT, reconciled against the published DTOs
-ADRs   : ADR-SEC-003..008 (all non-breaking)
+ADRs   : ADR-SEC-003..010 (all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 كل كتلة أدناه تصف شاشة واحدة: حقولها وصلاحياتها منسوخة من SRS بلا إضافة ولا حذف، ونمط
@@ -120,9 +120,13 @@ Fields shown      : from ENT-SEC-001 —
                     fullNameAr — الاسم الكامل (عربي) / Full name (Arabic) (required, editable) ·
                     fullNameEn — الاسم الكامل (إنجليزي) / Full name (English) (required, editable) ·
                     password — كلمة المرور / Password (required on create only, write-only;
-                    never shown, never returned) ·
-                    statusCode — الحالة / Status (read-only — changed by the activate /
-                    deactivate affordances and by sign-up approval, never typed) ·
+                    never shown, never returned — SRS B3 does not list it, but
+                    `UserCreateRequest` requires it and ENT-SEC-001.passwordHash is its SRS
+                    basis [POL-SEC-004]; ADR-SEC-010) ·
+                    statusCode — الحالة / Status (read-only — SRS B3 lists it as an input, but
+                    no published write DTO accepts it; it is changed by the activate /
+                    deactivate affordances and by sign-up approval, along SRS A7's transitions,
+                    never typed; ADR-SEC-010) ·
                     lastLoginAt — آخر دخول / Last login (read-only, informational) ·
                     isActiveFl — نشط / Active (read-only — mirrors statusCode) ·
                     createdBy, createdAt, updatedBy, updatedAt — audit fields (read-only)
