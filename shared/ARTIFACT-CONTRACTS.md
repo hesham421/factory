@@ -7,7 +7,7 @@
 #   exists · no-questions · languages · ids-owned · ids-continue · traces · orphans
 #   · ears · registry-agree · markers · manifest · gate-approved
 #   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
-#   · verdict-agrees · forward-refs · xref-surface
+#   · verdict-agrees · forward-refs · xref-surface · endpoint-agrees
 contracts:
   - id: C1
     title: domain profile → registry bootstrap
@@ -118,6 +118,7 @@ contracts:
       - {id: C8.1, check: exists,         args: {input: api-docs},                                                       severity: CRITICAL}
       - {id: C8.2, check: registry-agree, args: {artifact: api-docs, registry: registry-exec-be, kinds: [API], direction: artifact→registry}, severity: MAJOR}
       - {id: C8.3, check: registry-agree, args: {artifact: api-docs, registry: registry-exec-be, kinds: [API], direction: registry→artifact}, severity: MAJOR}
+      - {id: C8.4, check: endpoint-agrees, args: {artifact: backend-execution-plan, source: api-docs, kind: API},          severity: MAJOR}
   - id: C9
     title: frontend design + execution plan → split / deliver
     owner: P3.2
@@ -189,7 +190,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
 | `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 17 |
-| `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 3 |
+| `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 13 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
@@ -307,8 +308,8 @@ these are mechanical clauses here and not a checklist line there.
 | Consumer | `P3.2` — pass 2 cannot start without it (`passes."2".required_inputs`) |
 | What crosses | the implemented endpoint contracts keyed by `API` ID (method, path under `profile.stack.backend.api.base_path`, request/response shapes, error envelope) |
 | What does not cross | the planned endpoint text of `backend-execution-plan` — the frontend never trusts a pre-implementation contract; nothing about UI |
-| Clauses | C8.1 the input exists · C8.2 every `API` in api-docs is registered in `registry-exec-be` · C8.3 every `API` in `registry-exec-be` appears in api-docs (a missing one is listed for an ADR) |
-| Violation | C8.1 CRITICAL — gate closed; C8.2/C8.3 MAJOR |
+| Clauses | C8.1 the input exists · C8.2 every `API` in api-docs is registered in `registry-exec-be` · C8.3 every `API` in `registry-exec-be` appears in api-docs (a missing one is listed for an ADR) · C8.4 every `(verb, path)` the backend execution plan states for an `API` is one the api-docs really publish |
+| Violation | C8.1 CRITICAL — gate closed; C8.2/C8.3/C8.4 MAJOR |
 
 ## C9 — frontend design + execution plan → split / deliver
 
@@ -379,6 +380,7 @@ these are mechanical clauses here and not a checklist line there.
 | `refs-exist` | every id of `kind` cited anywhere in the module has the file it is cited as, at `dir`/`<MOD>`/`naming[file_pattern]` | `kind`, `dir`, `file_pattern`, `per_module?` |
 | `paths-resolve` | every path-shaped string in each generated index (`files`, by `paths.module.*` key) resolves to something that exists, relative to the index's own directory | `files`, `required?` |
 | `xref-surface` | every reference to **another module's surface** written as prose resolves in that module's own artifacts. `locator` is a profile address holding the surface address template (e.g. the API base path); every `{module}` slot in it that names a declared module other than this one must be accompanied by a cited id of `kinds` that the target module really defines — anywhere in the same paragraph, because prose wraps; inside a table the scope narrows to the row, since an id in a neighbouring row says nothing about this one. `xref-resolve` sees id-shaped citations only, and prose is exactly how a module encodes a dependency it has no id for yet — so both modules pass, each having validated only itself. Resolved across the module set. | `artifact`, `locator`, `kinds?` |
+| `endpoint-agrees` | every `(verb, path)` the `artifact` states for an id of `kind` is one the published `source` really serves. Paths match by suffix, since a plan writes them relative to the module base while the api-docs write them absolute. One-way on purpose: the api-docs are the authority, and an endpoint the plan never mentions belongs to `registry-agree`. `forward-refs` guards the request/response columns of the same table; without this the verb and path beside them were unguarded, and a row could name a correct request type on a verb that carries no body | `artifact`, `source`, `kind?` |
 | `forward-refs` | every cell of a column the profile declares forward-referencing (`spec`, a profile address) either carries `factory.forward_reference.proposed_token` or holds a value that resolves in that row's `resolved_from` artifact. A stage that runs before the thing exists cannot state its name as fact; printed beside facts, a guess is read as a decision. Generalises past any one column: the artifact, the column header and the resolving artifact are all profile data. | `spec`, `when?` |
 | `verdict-agrees` | the verdict the artifact states **about itself** does not claim fewer findings than `gov.py analyze` produced for that artifact. The block name, the verdict label and the pass/fail wording are read from the profile address in `spec` — the checker knows none of them, and a profile that declares no self-check carries no such clause. Evaluated after every clause that produces findings. The orchestrator normally *writes* this line from the report (`gov.py` stamps it after analyze), so the check is the guard for anything still authored by hand. | `artifact`, `spec`, `when?` |
 

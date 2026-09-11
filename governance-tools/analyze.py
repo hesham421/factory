@@ -900,6 +900,30 @@ def _column_cells(text: str, column: str) -> list[tuple[int, str]]:
 _EMPTY = {"", "—", "-", "–", "n/a", "N/A", "none", "None"}
 
 
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _names_in(value: str, source: str) -> bool:
+    """Does `source` really name `value`, or does it merely contain its letters?
+
+    A plain `value in source` passes on any substring, so a cell naming
+    `RoleAssignmentRequest` resolved happily against an api-docs that defines only
+    `UserRoleAssignmentRequest` — a different type, one the implementer cannot import.
+    Four of SEC's twenty-seven rows were wrong that way and the column reported clean.
+
+    Identifier-shaped values are matched on a whole-token boundary. Anything else —
+    a prose cell like `paginated list of UserResponse`, or a wrapper notation — keeps
+    substring semantics, because there is no token to anchor and a false negative there
+    would be worse than the false positive it prevents.
+    """
+    value = value.strip()
+    if not value:
+        return True
+    if _IDENTIFIER.fullmatch(value):
+        return re.search(rf"(?<![A-Za-z0-9_]){re.escape(value)}(?![A-Za-z0-9_])", source) is not None
+    return value in source
+
+
 def _c_forward_refs(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     rows = CFG.profile.get(c["spec"]) or []
     if not rows:
@@ -928,7 +952,7 @@ def _c_forward_refs(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                                    f"Lines {where}", row["artifact"], unmarked[0][0]))
             continue
         for n, bare in unmarked:
-            if bare.replace("\\", "") not in source:
+            if not _names_in(bare.replace("\\", ""), source):
                 out.append(Finding(sev, "", "forward-refs",
                                    f"`{row['column']}` names `{bare}`, which `{row['resolved_from']}` "
                                    f"does not define — either it is `{token}`, or the two disagree",
@@ -1027,6 +1051,78 @@ def _c_verdict_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
 _c_verdict_agrees.reads_report = True     # evaluated after every clause that PRODUCES findings
 
 
+# ── a plan's endpoint assertions vs the surface that was actually published ──
+# `forward-refs` guards the DTO columns of the same table and nothing guarded the
+# verb or the path beside them, so a row could name the right request type on a
+# verb that cannot carry one. SEC shipped five: `GET /users` with a
+# `UserSearchRequest` body, against a surface that publishes `POST /users/search`.
+# Self-contradictory at a glance, invisible to every clause.
+
+_HTTP_VERB = re.compile(r"(?<![A-Za-z])(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)(?![A-Za-z])")
+_URL_PATH = re.compile(r"/[A-Za-z0-9_{}][A-Za-z0-9_\-{}/.]*")
+_BODYLESS = {"GET", "HEAD", "DELETE"}
+
+
+def _published_endpoints(source: str) -> set[tuple[str, str]]:
+    """(verb, path) of every endpoint the api-docs publish, from its own headings."""
+    return {(m.group(1), m.group(2))
+            for m in re.finditer(r"^#+\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(/\S+)\s*$",
+                                 source, re.M)}
+
+
+def _c_endpoint_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Every (verb, path) an artifact asserts for an id of `kind` is one the
+    published surface really serves.
+
+    A path is matched by suffix, because a plan legitimately writes its paths
+    relative to the module base while the api-docs write them absolute. The
+    direction is one-way on purpose: the api-docs are the authority, and an
+    endpoint the plan never mentions is `registry-agree`'s business, not this
+    check's."""
+    text = ctx.text(c["artifact"])
+    source = ctx.text(c["source"])
+    if text is None or source is None:
+        return []                            # nothing published yet — forward-refs owns that case
+    published = _published_endpoints(source)
+    if not published:
+        return []
+    kind = c["kind"]
+    out, seen = [], set()
+    for n, line in enumerate(text.splitlines(), 1):
+        # `parts[1] == ctx.mod` keeps this to the module whose api-docs these are:
+        # a cited endpoint of ANOTHER module is that module's to publish, and
+        # `xref-surface` is what resolves it against its owner.
+        aids = {x for x in idmodel.find_ids(line)
+                if (parts := idmodel.split_id(x)) and parts[0] == kind and parts[1] == ctx.mod}
+        if len(aids) != 1:
+            continue                         # a line citing several ids states no single endpoint
+        aid = aids.pop()
+        verbs = set(_HTTP_VERB.findall(line))
+        if len(verbs) != 1:
+            continue
+        verb = verbs.pop()
+        paths = [p for p in _URL_PATH.findall(line) if p.count("/") >= 1 and len(p) > 1]
+        if not paths:
+            continue
+        path = max(paths, key=len)
+        if (aid, verb, path) in seen:
+            continue
+        seen.add((aid, verb, path))
+        if any(v == verb and (q == path or q.endswith(path)) for v, q in published):
+            continue
+        served = sorted(f"{v} {q}" for v, q in published if q.endswith(path) or path.endswith(q.split("/")[-1]))
+        hint = (f" — the published surface serves {', '.join('`' + s + '`' for s in served[:3])}"
+                if served else " — no published endpoint matches that path at all")
+        body = (" A body-carrying request type on a verb that sends no body is "
+                "self-contradictory on its face." if verb in _BODYLESS and "Request" in line else "")
+        out.append(Finding(sev, "", "endpoint-agrees",
+                           f"`{aid}` is stated as `{verb} {path}`, which `{c['source']}` does not "
+                           f"publish{hint}.{body} The published surface is the authority; correct the "
+                           f"row, or record the divergence at the row rather than only in an ADR",
+                           c["artifact"], n))
+    return out
+
+
 def _walk_paths(node, key: str = "") -> list[tuple[str, str]]:
     """Every string in a generated index that is shaped like a path."""
     out: list[tuple[str, str]] = []
@@ -1049,7 +1145,7 @@ CHECKS = {
     "value-agreement": _c_value_agreement, "code-format": _c_code_format, "data-source": _c_data_source,
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
-    "xref-surface": _c_xref_surface,
+    "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
 }
 
 

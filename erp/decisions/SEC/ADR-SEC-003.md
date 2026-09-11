@@ -38,6 +38,12 @@ planned, and no query-parameter variant is offered as a fallback.
   the same screen therefore build their parameters from one shared filter object in two
   shapes. Declared once in the RF2 block of `SCR-SEC-008`.
 - No SRS `REQ-*` changes: every operation the REQ set needs still exists.
+- The "Planned" column above is history, not the current plan. `backend-execution-plan-sec.md`
+  carried `GET /users` beside a `UserSearchRequest` body in two of its tables — a request type
+  on a verb that sends none — and both tables have since been corrected to the published
+  surface. Contract clause **C8.4 (`endpoint-agrees`)** now holds them there: every
+  `(verb, path)` a plan states for an `API-*` must be one the api-docs really publish, so this
+  divergence cannot reappear unnoticed in this module or any other.
 
 ## Traces
 REQ-SEC-009, REQ-SEC-012, REQ-SEC-016, REQ-SEC-025, REQ-SEC-026, REQ-SEC-027 ·

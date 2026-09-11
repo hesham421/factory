@@ -49,3 +49,26 @@ def cfg(factory_root):
 def mod(factory_root) -> str:
     """The first module code the active profile declares."""
     return next(iter(CFG.profile.vocabulary["module_prefixes"]))
+
+
+@pytest.fixture
+def endpoint_ctx():
+    """A minimal analyze Ctx over two in-memory texts.
+
+    `endpoint-agrees` reads exactly three things — the artifact's text, the
+    source's text and the module code — so the fixture supplies those and
+    nothing else: a check that needed more of a Ctx than it reads would be
+    reaching past its own inputs.
+    """
+    class _Ctx:
+        def __init__(self, artifact: str, source: str | None, mod: str):
+            self._t = {"plan": artifact, "docs": source}
+            self.mod = mod
+
+        def text(self, name):
+            return self._t.get(name)
+
+    def make(artifact_text: str, source_text: str | None, mod: str = "SEC"):
+        return _Ctx(artifact_text, source_text, mod)
+
+    return make
