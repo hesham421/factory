@@ -523,3 +523,84 @@ def test_atom_lists_in_briefs_follow_the_id_grammar(toy):
     out = dp.render_engine(tg, mod, 1)
     sources = CFG.id_atoms()["TC"]["traces_to"]
     assert "/".join(sources) in out, f"the TC source list is not rendered from ids.atoms.TC.traces_to"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F6a — an artifact may not state as fact what it cannot verify at its own stage
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_forward(toy_analyzable):
+    """The toy declares a forward-referencing column of its own — a different
+    artifact, a different header, a different resolving artifact, and its own
+    proposed token in the toy factory.yaml."""
+    import render
+    mod, art, an = toy_analyzable
+    fac = toy_analyzable[2].CFG.root / "factory.yaml"
+    data = yaml.safe_load(fac.read_text(encoding="utf-8"))
+    data["forward_reference"] = {"proposed_token": "<<TBD>>"}
+    fac.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["forward_columns"] = [{"artifact": "prd", "column": "Handler class", "resolved_from": "srs"}]
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.3", "check": "forward-refs",
+         "args": {"spec": "forward_columns", "when": "profile.forward_columns"}, "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _table(*handlers: str) -> str:
+    rows = "\n".join(f"| A-{i} | {h} | v1 |" for i, h in enumerate(handlers, 1))
+    return "# toy prd\n\n| Endpoint | Handler class | Stability |\n|---|---|---|\n" + rows + "\n"
+
+
+def _srs(text: str) -> None:
+    stage = next(s for s in CFG.stages if any(a.artifact == "srs" for a in s.produces))
+    p = CFG.artifact_path(next(iter(CFG.profile.vocabulary["module_prefixes"])), stage.id, "srs", 1)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+
+
+def test_toy_forward_column_stated_as_fact_before_it_can_resolve(toy_forward):
+    """The shipped defect, in a profile whose column, artifact and token are all
+    different words: names invented for something that does not exist yet."""
+    import state as st
+    mod, art, an = toy_forward
+    art.write_text(_table("LoginHandler", "SignupHandler"), encoding="utf-8")
+    st.build_state(mod, 1)
+    fs = [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "forward-refs"]
+    assert len(fs) == 1, "one finding per unresolvable column, not one per row"
+    assert "Handler class" in fs[0].message and "2 value(s)" in fs[0].message
+    assert "<<TBD>>" in fs[0].message, "the message names the toy factory's own token"
+    assert fs[0].severity == "WARN"
+
+
+def test_toy_forward_column_marked_proposed_is_honest(toy_forward):
+    import state as st
+    mod, art, an = toy_forward
+    art.write_text(_table("LoginHandler <<TBD>>", "<<TBD>>"), encoding="utf-8")
+    st.build_state(mod, 1)
+    assert [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "forward-refs"] == []
+
+
+def test_toy_forward_column_resolves_once_the_later_artifact_exists(toy_forward):
+    """The later stage that CAN resolve it: a value the resolving artifact defines
+    is a fact, and one it does not is a disagreement — reported per row."""
+    import state as st
+    mod, art, an = toy_forward
+    art.write_text(_table("LoginHandler", "GhostHandler"), encoding="utf-8")
+    _srs("# toy srs\nDefines LoginHandler.\n")
+    st.build_state(mod, 1)
+    fs = [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "forward-refs"]
+    assert len(fs) == 1 and "GhostHandler" in fs[0].message and "LoginHandler" not in fs[0].message
+
+
+def test_a_profile_with_no_forward_columns_is_served_unchanged(toy_analyzable):
+    mod, art, an = toy_analyzable
+    assert CFG.profile.get("forward_columns") is None
+    assert an._c_forward_refs(an.Ctx(mod, 1), {"spec": "forward_columns"}, "WARN") == []

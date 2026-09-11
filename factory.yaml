@@ -353,6 +353,17 @@ lanes:
     effort: high                       # a dedicated lane so its model can be swapped independently
                                         # of `analysis` — same shape, own identity (factory.yaml lanes)
 
+# ── Forward references — what a stage cannot resolve at its own stage ──────
+# A planning stage runs before any implementation exists, so a name it invents for
+# an implementation artifact is a guess. Printed in a table of facts, a guess is
+# indistinguishable from a decision and the reader inherits it as one — 14 of 27
+# rows in one shipped contract table named types that never existed. A cell a stage
+# cannot resolve carries this token; a later stage that CAN resolve it fills it from
+# the built artifact. WHICH columns forward-reference is a project fact
+# (profile.forward_columns); the token itself is a factory fact, agreed once here.
+forward_reference:
+  proposed_token: "(proposed)"
+
 # ── Analyze — severity vocabulary and the blocking policy ──────────────────
 # The one policy that decides what ships, and the one factory fact that used to
 # live as a literal in Python instead of here (analyze.py's severity map and its

@@ -154,6 +154,14 @@ conventions:
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden
 
+forward_columns:                           # the backend plan names request/response types for an
+                                           # implementation that does not exist yet; the real api-docs,
+                                           # published after implementation, is where they resolve.
+                                           # 14 of 27 rows in the shipped SEC table named types that
+                                           # never existed — each one indistinguishable from a decision.
+  - {artifact: backend-execution-plan, column: "Request DTO",  resolved_from: api-docs}
+  - {artifact: backend-execution-plan, column: "Response DTO", resolved_from: api-docs}
+
 self_check:                                # the verdict line inside the plan; the ORCHESTRATOR writes it
   block: ALIGN                             # from the analyze report (gov.py), the author leaves it alone.
   verdict_label: RESULT                    # `verdict-agrees` (C7.15/C9.12) guards it for anything still

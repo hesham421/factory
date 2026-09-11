@@ -119,6 +119,17 @@ conventions?:                               # OPTIONAL — absent = not applied 
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
   workflow_engine?: "(forbidden|allowed)"
 
+forward_columns?: "list[{artifact: str, column: str, resolved_from: str}]"
+                                            # OPTIONAL — table columns a stage EMITS but cannot resolve at
+                                            # its own stage. Each cell must either carry
+                                            # factory.forward_reference.proposed_token, or hold a value that
+                                            # resolves in `resolved_from` — the artifact or fetched input of
+                                            # the later stage that CAN resolve it. A profile that declares
+                                            # none carries no such clause and the check never runs.
+                                            #   artifact      — an artifact id from stages[*].produces
+                                            #   column        — the table header cell, as the engine emits it
+                                            #   resolved_from — artifact/input id the cell must appear in
+
 self_check?:                                # OPTIONAL — the block a stage artifact carries its OWN
                                              # verdict in. A profile that declares none simply has no
                                              # self-check: the `verdict-agrees` clause never runs and the

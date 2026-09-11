@@ -754,6 +754,85 @@ def _c_paths_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+# ── forward references — a fact a stage cannot verify at its own stage ───────
+# A planning stage runs before any implementation exists, so a name it invents for
+# an implementation artifact is a guess. In a table of facts a guess is
+# indistinguishable from a decision, and the reader has no way to tell which columns
+# were derived and which were imagined. A forward-referencing cell either carries the
+# agreed proposed token, or holds a value that resolves in the artifact of the later
+# stage that CAN resolve it. Which columns forward-reference is a profile fact; the
+# token is a factory fact; this checker knows neither.
+
+_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
+
+
+def _cells(line: str) -> list[str]:
+    m = _ROW.match(line)
+    return [c.strip() for c in m.group(1).split("|")] if m else []
+
+
+def _is_separator(cells: list[str]) -> bool:
+    return bool(cells) and all(re.fullmatch(r":?-{2,}:?", c) for c in cells)
+
+
+def _column_cells(text: str, column: str) -> list[tuple[int, str]]:
+    """(line number, cell) for `column` in every markdown table that declares it."""
+    out, idx = [], None
+    lines = text.splitlines()
+    for n, ln in enumerate(lines, 1):
+        cells = _cells(ln)
+        if not cells:
+            idx = None
+            continue
+        if idx is None:
+            idx = cells.index(column) if column in cells else None
+            continue
+        if _is_separator(cells):
+            continue
+        if idx < len(cells):
+            out.append((n, cells[idx]))
+    return out
+
+
+_EMPTY = {"", "—", "-", "–", "n/a", "N/A", "none", "None"}
+
+
+def _c_forward_refs(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    rows = CFG.profile.get(c["spec"]) or []
+    if not rows:
+        return []                            # this profile declares no forward-referencing column
+    token = CFG.data["forward_reference"]["proposed_token"]
+    out = []
+    for row in rows:
+        text = ctx.text(row["artifact"])
+        if text is None:
+            continue
+        source = ctx.text(row["resolved_from"])
+        unmarked = [(n, cell.strip("`*_ ")) for n, cell in _column_cells(text, row["column"])
+                    if cell.strip("`*_ ") not in _EMPTY and token not in cell]
+        if source is None:
+            # nothing in this version can resolve the column, so every unmarked cell in
+            # it is the same defect: ONE finding, not one per row. The count is the size
+            # of the problem and the line numbers say where to start.
+            if unmarked:
+                where = ", ".join(str(n) for n, _ in unmarked[:5]) + (" …" if len(unmarked) > 5 else "")
+                out.append(Finding(sev, "", "forward-refs",
+                                   f"`{row['column']}` states {len(unmarked)} value(s) as fact "
+                                   f"({', '.join(repr(v) for _, v in unmarked[:3])}…) but this stage cannot "
+                                   f"resolve any of them: `{row['resolved_from']}` does not exist yet. Each "
+                                   f"is a guess printed beside facts, which reads as a decision — mark them "
+                                   f"`{token}` and let the stage that can resolve them fill them in. "
+                                   f"Lines {where}", row["artifact"], unmarked[0][0]))
+            continue
+        for n, bare in unmarked:
+            if bare.replace("\\", "") not in source:
+                out.append(Finding(sev, "", "forward-refs",
+                                   f"`{row['column']}` names `{bare}`, which `{row['resolved_from']}` "
+                                   f"does not define — either it is `{token}`, or the two disagree",
+                                   row["artifact"], n))
+    return out
+
+
 # ── the artifact's own verdict about itself ──────────────────────────────────
 # A model authors a verdict line inside the shipped artifact; the machine writes
 # its own into `_state/`. Nothing compared them, and the shipped plan asserted
@@ -866,7 +945,7 @@ CHECKS = {
     "markers": _c_markers, "manifest": _c_manifest, "gate-approved": _c_gate_approved,
     "value-agreement": _c_value_agreement, "code-format": _c_code_format, "data-source": _c_data_source,
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
-    "verdict-agrees": _c_verdict_agrees,
+    "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
 }
 
 

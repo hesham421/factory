@@ -20,6 +20,8 @@
 {%- set seqpat = (db.naming or {}).get('sequence_pattern') -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sc = profile.self_check | default({}) -%}
+{%- set fwd = (profile.forward_columns | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
+{%- set proposed = factory.forward_reference.proposed_token -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
 PASS / TRACK  : pass {{ st['pass'] }} · track {{ track }} · lane {{ st.lane }} · questions {{ st.questions }}
@@ -357,6 +359,14 @@ strings holding the code, never enums; {% endif %}business code never in create/
 pagination + filter standard (request shape, sort validation, empty result = success). This
 section is a **backend self-check only** — the frontend stage binds to the real
 `{{ factory.inputs['api-docs'].file.replace('{mod}', MOD | lower) }}` published after implementation, never to this summary.
+{% if fwd %}
+This stage runs before any implementation exists, so {% for f in fwd %}`{{ f.column }}`{% if not loop.last %} and {% endif %}{% endfor %}
+{{ 'name' if fwd | length > 1 else 'names' }} something that does not exist yet. Every cell of {{ 'those columns' if fwd | length > 1 else 'that column' }}
+carries `{{ proposed }}` unless the value is already resolvable in {% for r in fwd | map(attribute='resolved_from') | unique %}`{{ r }}`{% if not loop.last %} / {% endif %}{% endfor %} —
+a guess printed beside facts is read downstream as a decision, and the implementer has no way to
+tell which columns were derived and which were imagined. The stage that CAN resolve them fills
+them in from the built artifact. `gov.py analyze` → `forward-refs`.
+{% endif %}
 
 **R5 — Cross-module consume (contracts).** The plan never mints `XM-*`; it places every XM
 from the db-script register:
