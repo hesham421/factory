@@ -186,17 +186,17 @@
 | `ENT-SEC-011` | srs | — | DBF-SEC-083, DBF-SEC-084, DBF-SEC-085, DBF-SEC-086, DBF-SEC-087, DBF-SEC-088, DBF-SEC-089, DBF-SEC-090, QR-SEC-022, QR-SEC-023, QR-SEC-024 |
 | `ENT-SEC-012` | srs | — | DBF-SEC-091, DBF-SEC-092, DBF-SEC-093, DBF-SEC-094, DBF-SEC-095, DBF-SEC-096, QR-SEC-003, QR-SEC-004, QR-SEC-038 |
 | `ENT-SEC-013` | srs | — | DBF-SEC-097, DBF-SEC-098, DBF-SEC-099, DBF-SEC-100, DBF-SEC-101, DBF-SEC-102, DBF-SEC-103, DBF-SEC-104, QR-SEC-002, QR-SEC-011 |
-| `POL-SEC-001` | business-policies | — | US-SEC-005 |
-| `POL-SEC-002` | business-policies | — | US-SEC-005 |
+| `POL-SEC-001` | business-policies | — | US-SEC-005, US-SEC-006 |
+| `POL-SEC-002` | business-policies | — | US-SEC-005, US-SEC-006 |
 | `POL-SEC-003` | business-policies | — | US-SEC-002 |
-| `POL-SEC-004` | business-policies | — | US-SEC-001, US-SEC-003 |
+| `POL-SEC-004` | business-policies | — | US-SEC-001, US-SEC-003, US-SEC-012 |
 | `POL-SEC-005` | business-policies | — | US-SEC-007 |
 | `POL-SEC-006` | business-policies | — | US-SEC-008 |
 | `POL-SEC-007` | business-policies | — | US-SEC-008 |
 | `POL-SEC-008` | business-policies | — | US-SEC-004 |
-| `POL-SEC-009` | business-policies | — | US-SEC-010 |
+| `POL-SEC-009` | business-policies | — | US-SEC-010, US-SEC-011 |
 | `POL-SEC-010` | business-policies | — | US-SEC-009 |
-| `POL-SEC-011` | business-policies | — | US-SEC-009 |
+| `POL-SEC-011` | business-policies | — | US-SEC-009, US-SEC-011 |
 | `QR-SEC-001` | backend-execution-plan | ENT-SEC-001, API-SEC-001 | — |
 | `QR-SEC-002` | backend-execution-plan | ENT-SEC-013, API-SEC-002 | — |
 | `QR-SEC-003` | backend-execution-plan | ENT-SEC-012, API-SEC-003 | — |
@@ -333,10 +333,10 @@
 | `US-SEC-003` | prd | POL-SEC-004 | REQ-SEC-006, REQ-SEC-007, REQ-SEC-008 |
 | `US-SEC-004` | prd | POL-SEC-008 | REQ-SEC-009, REQ-SEC-010, REQ-SEC-011, REQ-SEC-031 |
 | `US-SEC-005` | prd | POL-SEC-001, POL-SEC-002 | REQ-SEC-012, REQ-SEC-013, REQ-SEC-014, REQ-SEC-015, REQ-SEC-030 |
-| `US-SEC-006` | prd | — | REQ-SEC-016, REQ-SEC-017, REQ-SEC-018, REQ-SEC-019 |
+| `US-SEC-006` | prd | POL-SEC-001, POL-SEC-002 | REQ-SEC-016, REQ-SEC-017, REQ-SEC-018, REQ-SEC-019 |
 | `US-SEC-007` | prd | POL-SEC-005 | REQ-SEC-020 |
 | `US-SEC-008` | prd | POL-SEC-006, POL-SEC-007 | REQ-SEC-021, REQ-SEC-032, REQ-SEC-033 |
 | `US-SEC-009` | prd | POL-SEC-010, POL-SEC-011 | REQ-SEC-022, REQ-SEC-023 |
 | `US-SEC-010` | prd | POL-SEC-009 | REQ-SEC-024, REQ-SEC-025, REQ-SEC-026 |
-| `US-SEC-011` | prd | — | REQ-SEC-027, REQ-SEC-028 |
-| `US-SEC-012` | prd | — | REQ-SEC-029 |
+| `US-SEC-011` | prd | POL-SEC-009, POL-SEC-011 | REQ-SEC-027, REQ-SEC-028 |
+| `US-SEC-012` | prd | POL-SEC-004 | REQ-SEC-029 |

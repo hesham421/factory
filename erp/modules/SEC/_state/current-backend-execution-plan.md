@@ -407,8 +407,10 @@ returned as codes; the frontend resolves the display label).
 - **repository**: Spring Data JPA repositories, one per entity/table; every non-trivial query is a named method backed by a `QR-SEC-*` spec (§Query Reference Catalog); no business logic.
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`. Runtime `code` format:
-`SEC-<3-digit-sequence>` (module-scoped, stated once here so `api-verify` can assert on it — e.g.
-`SEC-001` for the first catalog row). Every catalog row (§Error Catalog) is registered as a
+`{MOD}-{http}[-{SLUG}]` (profile.stack.backend.api.error_code_format; `{MOD}` = SEC, `{http}` =
+the row's HTTP status, `{SLUG}` = SCREAMING-KEBAB, the slug half optional — e.g.
+`SEC-409-USER-DUP`, and `SEC-500` where no slug is needed). Stated once here so `api-verify` can
+assert on it. Every catalog row (§Error Catalog) is registered as a
 static enum/constant the controller-advice layer maps to the envelope; `messageAr`/`messageEn`
 are copied character-perfect from the SRS RULE message or from this plan where PLATFORM-STD.
 
@@ -506,7 +508,7 @@ FIELDS:
 | DBF-SEC-012 | updatedBy | updated_by | String | NULL | Yes | — | حُدّث بواسطة / Updated by |
 | DBF-SEC-013 | updatedAt | updated_at | Instant | NULL | Yes | — | تاريخ التحديث / Updated at |
 DTO MEMBERSHIP: create-request excludes {userPk, passwordHash(raw password field instead, hashed server-side), statusCode, lastLoginAt, isActiveFl, audit}; update-request excludes {userPk, username, passwordHash, statusCode, isActiveFl, audit} (username immutable after create; password changes only via API-SEC-004); response includes all except passwordHash (never serialized).
-LOOKUP FIELDS: `statusCode` → key `USER_STATUS` → GET /api/v1/mdl/lookups?type=USER_STATUS (once MDL exists; v1 validates server-side against the closed set per ADR-SEC-001) — stores the code, never a numeric FK.
+LOOKUP FIELDS: `statusCode` → key `USER_STATUS` → GET /api/v1/mdl/lookups?type=USER_STATUS (API-MDL-011 — MDL's consumer lookup API; v1 validates server-side against the closed set per ADR-SEC-001) — stores the code, never a numeric FK.
 DOMAIN RULES: none scoped to User alone (RULE-SEC-005 scopes ENT-SEC-003/009, cited there).
 STATE MACHINE: `statusCode` (USER_STATUS) — values PENDING/ACTIVE/DISABLED; initial ACTIVE (direct create, API-SEC-006) or PENDING (via sign-up approval, API-SEC-011); transitions PENDING→ACTIVE (API-SEC-011, actor: administrator), ACTIVE→DISABLED (API-SEC-009, actor: administrator), DISABLED→ACTIVE (API-SEC-010, actor: administrator); no terminal state; no invalid-transition RULE beyond "the four listed transitions are the only ones exposed" (enforced by which endpoint exists, not a DB CHECK on the transition itself).
 CROSS-MODULE: none (SEC is ROOT).
@@ -618,7 +620,7 @@ FIELDS:
 | DBF-SEC-061 | roleId | role_id | Long | NOT NULL | No | FK_ROLE_MODULE_GRANT_ROLE, UQ_SEC_ROLE_MODULE_GRANT_ROLE_MODULE |
 | DBF-SEC-062 | moduleId | module_id | Long | NOT NULL | No | FK_ROLE_MODULE_GRANT_MODULE, UQ_SEC_ROLE_MODULE_GRANT_ROLE_MODULE |
 | DBF-SEC-063 | grantedBy | granted_by | String | NOT NULL | Yes | — |
-| DBF-SEC-064 | grantedAt | grant_at | Instant | NOT NULL | Yes | — |
+| DBF-SEC-064 | grantedAt | granted_at | Instant | NOT NULL | Yes | — |
 DOMAIN RULES: **RULE-SEC-003** — Scope ENT-SEC-007 · Trigger: on delete (module grant) · Statement: "The system shall delete every screen grant and action grant that module covered for that role when its module grant is revoked." · Message ar: "سيتم سحب كل منح الشاشات والإجراءات ضمن هذه الوحدة لهذا الدور" / en: "Every screen and action grant under this module for this role will be revoked" · DB enforcement: application layer (service, transactional) · owner layer: service.
 CROSS-MODULE: none.
 REPOSITORY OPS → QR-SEC-014 (SAVE), QR-SEC-015 (DELETE), QR-SEC-032 (FIND_ALL, cascade targets).
@@ -1104,32 +1106,32 @@ real `api-docs-sec.md` published after implementation, never to this table):
 | API | Path | Verb | Request DTO | Response DTO | Stability |
 |---|---|---|---|---|---|
 | API-SEC-001 | /auth/login | POST | LoginRequest | LoginResponse | v1 |
-| API-SEC-002 | /auth/signup | POST | SignupRequestDto | SignupRequestResponse | v1 |
-| API-SEC-003 | /auth/password-reset/request | POST | ResetRequestDto | ConfirmationResponse | v1 |
-| API-SEC-004 | /auth/password-reset/complete | POST | ResetCompleteDto | ConfirmationResponse | v1 |
-| API-SEC-005 | /users | GET | (query params) | Page\<UserResponse\> | v1 |
+| API-SEC-002 | /auth/signup | POST | SignupSubmitRequest | SignupRequestResponse | v1 |
+| API-SEC-003 | /auth/password-reset/request | POST | PasswordResetRequest | ConfirmationResponse | v1 |
+| API-SEC-004 | /auth/password-reset/complete | POST | PasswordResetCompleteRequest | ConfirmationResponse | v1 |
+| API-SEC-005 | /users | GET | UserSearchRequest | paginated list of UserResponse | v1 |
 | API-SEC-006 | /users | POST | UserCreateRequest | UserResponse | v1 |
 | API-SEC-007 | /users/{id} | PUT | UserUpdateRequest | UserResponse | v1 |
 | API-SEC-008 | /users/{id}/roles | PUT | RoleAssignmentRequest | UserResponse | v1 |
-| API-SEC-009 | /users/{id} | DELETE | — | DeactivateConfirmation | v1 |
-| API-SEC-010 | /users/{id} | PATCH | — | ReactivateConfirmation | v1 |
+| API-SEC-009 | /users/{id} | DELETE | — | UserStatusResponse | v1 |
+| API-SEC-010 | /users/{id} | PATCH | — | UserStatusResponse | v1 |
 | API-SEC-011 | /signup-requests/{id} | PATCH | SignupDecisionRequest | UserResponse \| SignupRequestResponse | v1 |
-| API-SEC-012 | /roles | GET | (query params) | Page\<RoleResponse\> | v1 |
+| API-SEC-012 | /roles | GET | RoleSearchRequest | paginated list of RoleResponse | v1 |
 | API-SEC-013 | /roles | POST | RoleCreateRequest | RoleResponse | v1 |
 | API-SEC-014 | /roles/{id}/modules | POST | ModuleGrantRequest | RoleModuleGrantResponse | v1 |
-| API-SEC-015 | /roles/{id}/modules/{moduleId} | DELETE | — | RevokeConfirmation | v1 |
+| API-SEC-015 | /roles/{id}/modules/{moduleId} | DELETE | — | ModuleGrantRevokeResponse | v1 |
 | API-SEC-016 | /roles/{id}/screens | POST | ScreenGrantRequest | RoleScreenGrantResponse | v1 |
 | API-SEC-017 | /roles/{id}/actions | POST | ActionGrantRequest | RoleActionGrantResponse | v1 |
-| API-SEC-018 | /registry/modules | POST | ModuleRegisterRequest | ModuleRegistryResponse | v1 |
-| API-SEC-019 | /registry/screens | POST | ScreenRegisterRequest | ScreenRegistryResponse | v1 |
-| API-SEC-020 | /registry/actions | POST | ActionRegisterRequest | ActionRegistryResponse | v1 |
-| API-SEC-021 | /registry | GET | (query params) | Page\<RegistryRowResponse\> | v1 |
+| API-SEC-018 | /registry/modules | POST | ModuleRegistryCreateRequest | ModuleRegistryResponse | v1 |
+| API-SEC-019 | /registry/screens | POST | ScreenRegistryCreateRequest | ScreenRegistryResponse | v1 |
+| API-SEC-020 | /registry/actions | POST | ActionRegistryCreateRequest | ActionRegistryResponse | v1 |
+| API-SEC-021 | /registry | GET | RegistrySearchRequest | paginated list of RegistryRowResponse | v1 |
 | API-SEC-022 | /dashboard | GET | — | DashboardResponse | v1 |
-| API-SEC-023 | /audit-log | GET | (query params) | Page\<AuditLogEntryResponse\> | v1 |
-| API-SEC-024 | /audit-log/export | GET | (query params) | text/csv | v1 |
-| API-SEC-025 | /sessions | GET | (query params) | Page\<ActiveSessionResponse\> | v1 |
-| API-SEC-026 | /sessions/{id} | DELETE | — | TerminateConfirmation | v1 |
-| API-SEC-027 | /menu | GET | — | List\<ModuleMenuResponse\> | v1 |
+| API-SEC-023 | /audit-log | GET | AuditLogEntrySearchRequest | paginated list of AuditLogEntryResponse | v1 |
+| API-SEC-024 | /audit-log/export | GET | (proposed) query parameters — api-docs declares them but binds no schema | (proposed) CSV stream — api-docs declares no response schema | v1 |
+| API-SEC-025 | /sessions | GET | ActiveSessionSearchRequest | paginated list of ActiveSessionResponse | v1 |
+| API-SEC-026 | /sessions/{id} | DELETE | — | SessionTerminationResponse | v1 |
+| API-SEC-027 | /menu | GET | — | array of ModuleMenuResponse | v1 |
 (paths relative to `/api/v1/sec`)
 
 **DTO typing constraints**: `statusCode`/`eventTypeCode`/`actionCode` are `String` holding
@@ -1210,7 +1212,7 @@ engine §6.1 R8 ("written as the phase content of the alignment-role phase").
 
 ## Error Catalog — SEC v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `SEC-<3-digit>` (Phase 1 CORE).
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `{MOD}-{http}[-{SLUG}]` (Phase 1 CORE; profile.stack.backend.api.error_code_format).
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -1264,7 +1266,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR (API-SEC-001..0
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD + ADR-SEC-002; create/update requests exclude PK/audit/system fields (DTO MEMBERSHIP, Phase 2; Request lines, Phase 3); business code: not applicable (none exists)
 CROSS-MODULE      ✓ 0 XM from db-script, 0 placed, 0 mismatched; inbound stub uses XM-INBOUND-STUB-1 notation, not TODO
 SECURITY (R7)     ✓ every secured API declares its PERM_* (Phase 3 Security lines, cross-checked against Phase 7 table); every secured screen has a Phase 7 seed row; no permission outside SRS §7.1/Access summary — profile.review.extra_checks ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
-CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `SEC-<3-digit>`), type mapping declared (postgresql16 → Java table)
+CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `{MOD}-{http}[-{SLUG}]`), type mapping declared (postgresql16 → Java table)
 DECISIONS         ✓ ADR-SEC-001 (carried from P2, lookup centralization deferral) and ADR-SEC-002 (this stage, PLATFORM-STD catalog umbrella) both ACCEPTED, non-breaking; no BLOCKED ADR
 RESULT            PASSED ✓ — 0 findings
 ```

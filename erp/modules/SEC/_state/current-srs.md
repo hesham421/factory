@@ -681,6 +681,7 @@ Then the system denies it until VIEW is also granted on that screen
 Scope      : ENT-SEC-008
 Trigger    : on create (screen grant)
 Statement  : The system shall prevent a screen grant for a role that does not hold the screen's module grant.
+Data source: ENT-SEC-007 (the role's module grants) · ENT-SEC-005 (the screen's owning module)
 Message    : ar: "لا يمكن منح شاشة دون منح الوحدة أولًا" · en: "Cannot grant a screen without first granting its module"
 Traces     : REQ-SEC-013
 Source     : security-module-plan-en.md §4.2
@@ -689,6 +690,7 @@ Source     : security-module-plan-en.md §4.2
 Scope      : ENT-SEC-009
 Trigger    : on create (action grant)
 Statement  : The system shall prevent an action grant for a role that does not hold the action's screen grant.
+Data source: ENT-SEC-008 (the role's screen grants) · ENT-SEC-006 (the action's owning screen)
 Message    : ar: "لا يمكن منح إجراء دون منح الشاشة أولًا" · en: "Cannot grant an action without first granting its screen"
 Traces     : REQ-SEC-014
 Source     : security-module-plan-en.md §4.2
@@ -697,6 +699,7 @@ Source     : security-module-plan-en.md §4.2
 Scope      : ENT-SEC-007
 Trigger    : on delete (module grant)
 Statement  : The system shall delete every screen grant and action grant that module covered for that role when its module grant is revoked.
+Data source: ENT-SEC-008 and ENT-SEC-009 (the grants to remove) · ENT-SEC-005 and ENT-SEC-006 (which screens and actions that module covers)
 Message    : ar: "سيتم سحب كل منح الشاشات والإجراءات ضمن هذه الوحدة لهذا الدور" · en: "Every screen and action grant under this module for this role will be revoked"
 Traces     : REQ-SEC-015
 Source     : security-module-plan-en.md §4.2
@@ -705,6 +708,7 @@ Source     : security-module-plan-en.md §4.2
 Scope      : ENT-SEC-005
 Trigger    : on create (screen registration)
 Statement  : The system shall reject a screen registration whose module code has no ModuleRegistry row.
+Data source: ENT-SEC-004 (the ModuleRegistry row the submitted module code must match)
 Message    : ar: "الوحدة غير مسجّلة" · en: "Module is not registered"
 Traces     : REQ-SEC-018
 Source     : security-module-plan-en.md §4.3
@@ -713,6 +717,7 @@ Source     : security-module-plan-en.md §4.3
 Scope      : ENT-SEC-003, ENT-SEC-009
 Trigger    : on create (role assignment or action grant)
 Statement  : The system shall prevent assigning a user, by any combination of roles, both actions of a module-declared conflicting pair.
+Data source: ENT-SEC-003 (every role the user holds) · ENT-SEC-009 (the action grants those roles carry) · ENT-SEC-006 (the owning module's action declarations, which carry the conflicting pair)
 Message    : ar: "هذا المستخدم يملك إجراءً متعارضًا بالفعل" · en: "This user already holds a conflicting action"
 Traces     : REQ-SEC-020
 Source     : security-module-plan-en.md §4.4; general-accounting-system-plan-en.md §8.2
@@ -721,6 +726,7 @@ Source     : security-module-plan-en.md §4.4; general-accounting-system-plan-en
 Scope      : ENT-SEC-012
 Trigger    : on submit (password reset completion)
 Statement  : The system shall reject a password-reset submission whose token is expired or already used.
+Data source: ENT-SEC-012 (the token's expiry and used state)
 Message    : ar: "رابط إعادة التعيين غير صالح أو منتهي" · en: "This reset link is invalid or has expired"
 Traces     : REQ-SEC-008
 Source     : security-module-plan-en.md §3
@@ -729,6 +735,7 @@ Source     : security-module-plan-en.md §3
 Scope      : ENT-SEC-009
 Trigger    : on evaluate (any action check) and on create (action grant, informational)
 Statement  : The system shall require a role to hold the VIEW action grant on a screen before any other action grant on that screen takes effect for it.
+Data source: ENT-SEC-009 (the role's action grants on that screen) · ENT-SEC-006 (which registered action is VIEW, and the screen it belongs to)
 Message    : ar: "يلزم منح إجراء العرض (VIEW) أولًا على هذه الشاشة" · en: "The VIEW action must be granted on this screen first"
 Traces     : REQ-SEC-030
 Source     : profiles/erp.yaml conventions.security_model.gateway_action

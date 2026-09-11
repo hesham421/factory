@@ -1,0 +1,57 @@
+{
+  "gate": "pass-2",
+  "pass": "2",
+  "verdict": "REVISE",
+  "scores": {
+    "unambiguous": 3,
+    "verifiable": 3,
+    "complete": 2,
+    "consistent": 2,
+    "singular": 3,
+    "feasible": 3,
+    "traceable": 3
+  },
+  "findings": [
+    {
+      "id": "G1",
+      "severity": "MAJOR",
+      "artifact": "ui-ux-spec",
+      "line": null,
+      "clause": "consistent",
+      "problem": "SRS Part B places six screens under an intermediate navigation grouping — 'SEC -> Authorization -> Users/Roles/Registry' and 'SEC -> Monitoring -> Dashboard/Audit log/Active sessions'. REQ-SEC-021 and AC-SEC-021 define the menu as two tiers (module -> screens), and the published ModuleMenuResponse carries exactly two (code/nameAr/nameEn -> screens[]), with no group level. The grouping therefore cannot be rendered from API-SEC-027. P3.2 resolved the tension silently in favour of REQ-SEC-021: the word Authorization and the word Monitoring appear nowhere in any of the four artifacts, and F4 flattens every route to /security/<slug>. The P3.2 engine is explicit that a conflict between the SRS and another authority 'is a finding (ADR), never a silent resolution'.",
+      "fix": "Raise an ADR recording that SRS Part B's three-segment navigation prose is not renderable from the two-tier menu REQ-SEC-021 mandates and API-SEC-027 returns, that REQ-SEC-021 wins as the requirement, and that the Authorization/Monitoring grouping is therefore dropped in v1 (restorable only if a grouping tier is added to the menu contract). Cite it from SCR-SEC-010's ui-ux-spec block and from the F4 block that sets the route prefix.",
+      "adr": true
+    },
+    {
+      "id": "G2",
+      "severity": "MAJOR",
+      "artifact": "frontend-execution-plan",
+      "line": 1417,
+      "clause": "C9.5",
+      "problem": "REQ-SEC-023 requires an ungranted dashboard widget to be omitted for that user. P3.2 delegates that requirement entirely to the server, asserting in four places that 'the server returns only the widgets the caller may see' and that a widget's absence from DashboardResponse IS the permission decision (ui-ux-spec SCR-SEC-007, plan F1/F2/F4 SCR-SEC-007, ADR-SEC-005). The api-docs support that for exactly ONE of the six widgets: recentActivity is annotated 'requires SEC_AUDIT_LOG VIEW'. The other five (usersOverview, failedLogins24h, activeSessions, rolesPermissionsSummary, onboardingFunnel) carry no such annotation — they are merely optional, as every property in that response is. The design generalises one documented case into a guarantee, and if the server gates only recentActivity then five widgets leak and REQ-SEC-023 fails with no client-side check left to catch it.",
+      "fix": "State the generalisation as the assumption it is rather than as a fact: mark the five unannotated widgets PENDING in the F2 block for API-SEC-022, record the assumption and its blast radius in ADR-SEC-005, and raise it as a question for the backend so the api-docs annotate per-widget permission for all six (or state that the omission is uniform). Do not add a client-side permission test — none is readable (ADR-SEC-005).",
+      "adr": false
+    },
+    {
+      "id": "G3",
+      "severity": "MINOR",
+      "artifact": "frontend-execution-plan",
+      "line": null,
+      "clause": "feasible",
+      "problem": "ADR-SEC-005 clause 2 makes CREATE/UPDATE/DELETE affordances optimistic, so a caller holding a screen but not an action sees a control that fails with a forbidden message. The P3.2 engine's RF5 states the opposite behaviour outright ('no CREATE -> its affordance hidden / read-only'). The deviation is forced — no published endpoint exposes the caller's action-level permissions — and the ADR is explicit about the cost, so this is recorded rather than blocking.",
+      "fix": "No change in this pass. Carry it as the first consequence to revisit when the backend publishes an effective-permissions endpoint; ADR-SEC-005 already names that as the event that supersedes it.",
+      "adr": false
+    },
+    {
+      "id": "G4",
+      "severity": "MINOR",
+      "artifact": "backend-execution-plan",
+      "line": null,
+      "clause": "consistent",
+      "problem": "The contract table now names the real request DTOs (UserSearchRequest, RoleSearchRequest, RegistrySearchRequest, ActiveSessionSearchRequest, AuditLogEntrySearchRequest) while still showing the verb and path as GET /users, GET /roles, GET /registry, GET /audit-log, GET /sessions. The published surface is POST .../search with that DTO as a JSON body. A row reading 'GET' with a request-body DTO is internally contradictory, and an implementer reading only that table would build the wrong call.",
+      "fix": "Either move the five rows to POST .../search to match the published surface, or annotate each with ADR-SEC-003 so the divergence is visible at the row rather than only in the ADR. Out of this pass's scope to edit (P3.1 artifact) — referred to the owning stage.",
+      "adr": false
+    }
+  ],
+  "at": "2026-09-11T18:00:30+00:00"
+}
