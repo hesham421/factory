@@ -17,6 +17,7 @@
 {%- set state_dir = factory.paths.module.state_dir -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set tc_kind = factory.markers.kinds.TC -%}
+{%- set tc_sources = atoms[tc_kind.atom].traces_to -%}{#- the atoms a TC may derive from: factory.ids.atoms.<TC>.traces_to (F5b) -#}
 {%- set produces_now = st.produces | rejectattr('artifact', 'equalto', 'system-test-index') | list -%}
 {%- if scope == 'project' -%}{%- set produces_now = st.produces -%}{%- endif -%}
 ```
@@ -257,7 +258,7 @@ SYSTEM TEST INDEX — {{ profile.identity.display }} — generated {scope: proje
 AC → TC       per module: AC covered <n>/<total>, list of uncovered AC (✗)
 XM → TC       every XM-* between two modules that both have a committed version: covered ✓/✗ (✗ = gap, never silently dropped)
 UXD → TC      every UXD-* whose owner module also has a committed version: covered ✓/✗
-COVERAGE %    per module: AC%, and — where the module both declares and is targeted by XM/UXD — integration%
+COVERAGE %    per module: {{ tc_sources[0] }}%, and — where the module both declares and is targeted by {% for s in tc_sources[1:] %}{{ s }}{% if not loop.last %}/{% endif %}{% endfor %} — integration%
 CROSS-MODULE  matrix of module → module, one row per XM/UXD pair, TC id(s) covering it (— if none: gap ✗)
 ```
 Never restates TC content — every row is an ID reference. A module the platform has never
@@ -279,15 +280,15 @@ Every TC atom is verified by content hash (`factory.markers.rules.verify` = {{ f
 
 ```
 [ ] every AC-* in the SRS (of every selected module) has ≥1 TC-* (coverage ✗ = not done)
-[ ] every TC-* carries traces= with its AC-*/XM-*/UXD-* source (+ REQ, API/SCR) and the atom marker pair
-[ ] no TC without an AC/XM/UXD source; no reworded rule/message/endpoint; test data never invented
+[ ] every TC-* carries traces= with its {% for s in tc_sources %}{{ s }}-*{% if not loop.last %}/{% endif %}{% endfor %} source (+ the upstream ids the plan names) and the atom marker pair
+[ ] every TC names one of {% for s in tc_sources %}{{ s }}{% if not loop.last %}/{% endif %}{% endfor %} as its source; no reworded rule/message/endpoint; test data never invented
 [ ] phases = the profile's test phases, in order; SUB labels bare; thresholds checked while writing
 [ ] framework wording matches §6; manifest emitted iff profile.stack.testing.manifest (per module)
 [ ] at scope module: no integration phase, no system-test-index — output unchanged from before
 [ ] at scope modules|project: every XM-*/UXD-* between two SELECTED modules has ≥1 TC or is
     recorded as a gap (✗) — never silently dropped, never fabricated when absent
 [ ] at scope project: system-test-index-{{ profile.identity.id }}.md rolls up every module with
-    a committed version; every AC/XM/UXD gap listed is ✗, exactly like a module-scope AC gap
+    a committed version; every {% for s in tc_sources %}{{ s }}{% if not loop.last %}/{% endif %}{% endfor %} gap listed is ✗, exactly like a module-scope {{ tc_sources[0] }} gap
 [ ] ADRs written for every derivation choice that was not mechanical
 ```
 

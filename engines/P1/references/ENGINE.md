@@ -9,6 +9,8 @@
 {%- set ears = factory.ids.ears.patterns -%}
 {%- set idp = factory.ids.pattern -%}
 {%- set amb = factory.ambiguity -%}
+{%- set st = (factory.stages + factory.standalone) | selectattr('id', 'equalto', stage.id) | first -%}
+{%- set adr_atom = atoms | list | select('equalto', amb.non_breaking.action | upper) | first -%}{#- the atom the ambiguity rule mints, derived from factory.ambiguity (F5b) -#}
 {%- set extra = (profile.review or {}).extra_checks or [] -%}
 {%- macro art(name) %}{% for a in stage.produces if a.artifact == name %}{{ a.file }}{% endfor %}{% endmacro -%}
 {%- macro owner(atom) %}{{ atoms[atom].owner if atom in atoms else '?' }}{% endmacro -%}
@@ -375,7 +377,7 @@ No section is omitted; a section that does not apply says so in one line.
 ══════════════════════════════════════════════════════════════════
 Module : {{ mod }}   Version : v{{ version }}   Profile : {{ profile.identity.id }}
 Inputs : {{ stage.inputs | join(', ') }} (PRD approved [date])
-Counts : ENT [N] · REQ [N] · AC [N] · RULE [N] · SCR-REQ [N] · ADR [N]
+Counts : {% for x in st.owns_ids %}{{ x }} [N] · {% endfor %}{{ adr_atom }} [N]
 ══════════════════════════════════════════════════════════════════
 
 # PART A — MODULE FOUNDATION

@@ -466,3 +466,60 @@ def test_the_engines_emit_the_toy_answer_not_a_default(toy):
             f"{sid} does not emit the toy's pk_generation"
     sem = TOY["stack"]["db"]["delete_semantics"]
     assert f"`{sem}` per profile.stack.db.delete_semantics" in dp.render_engine(CFG.stage("P3.1"), mod, 1)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F5b — a config fact is rendered, never restated by an author
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_no_engine_brief_restates_a_config_value_it_could_render(toy):
+    """Every engine brief, rendered under the TOY profile, must contain no value
+    belonging to the OTHER profile on disk. A sentence an author maintains by hand
+    drifts from the value it describes — that is the whole of C7.11's existence."""
+    import shutil
+    import dispatch as dp
+    from conftest import REAL_ROOT
+    for d in ("engines", "standalone"):
+        shutil.copytree(REAL_ROOT / d, toy.root / d)
+    other = toy.load_profile(toy.data["factory"]["active_profile"])
+    # the other profile's distinctive stack values — read from it, never typed here
+    foreign = set()
+    def collect(v):
+        if isinstance(v, str):
+            tok = v.split()[0]
+            if len(tok) >= 6 and (any(c.isdigit() for c in tok) or "-" in tok or "_" in tok
+                                  or (any(c.isupper() for c in tok) and any(c.islower() for c in tok))):
+                foreign.add(tok.strip("(),`"))
+        elif isinstance(v, list):
+            for x in v: collect(x)
+        elif isinstance(v, dict):
+            for x in v.values(): collect(x)
+    collect(other.get("stack"))
+    collect(other.get("conventions"))
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    leaks = []
+    for stage in list(CFG.stages) + list(CFG.standalone):
+        if not (toy.root / ("standalone" if stage.standalone else "engines") / stage.id / "references" / "ENGINE.md").exists():
+            continue
+        out = dp.render_engine(stage, mod, 1)
+        assert "{{" not in out and "{%" not in out, f"{stage.id}: unrendered template syntax survives"
+        leaks += [(stage.id, f) for f in foreign if f in out]
+    assert leaks == [], f"engine briefs leak values of profile {other.id}: {sorted(set(leaks))}"
+
+
+def test_atom_lists_in_briefs_follow_the_id_grammar(toy):
+    """The P1 count line and the test-gen source list are rendered from
+    factory.ids, so a factory that adds or renames an atom needs no engine edit."""
+    import shutil
+    import dispatch as dp
+    from conftest import REAL_ROOT
+    shutil.copytree(REAL_ROOT / "engines", toy.root / "engines")
+    shutil.copytree(REAL_ROOT / "standalone", toy.root / "standalone")
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    p1 = next(s for s in CFG.stages if "REQ" in s.owns_ids)
+    line = next(l for l in dp.render_engine(p1, mod, 1).splitlines() if l.startswith("Counts :"))
+    assert all(f"{x} [N]" in line for x in p1.owns_ids), line
+    tg = next(s for s in CFG.standalone if "TC" in s.owns_ids)
+    out = dp.render_engine(tg, mod, 1)
+    sources = CFG.id_atoms()["TC"]["traces_to"]
+    assert "/".join(sources) in out, f"the TC source list is not rendered from ids.atoms.TC.traces_to"

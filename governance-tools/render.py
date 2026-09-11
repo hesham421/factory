@@ -152,7 +152,9 @@ def block_profile_summary(cfg):
         ["Languages", ", ".join(langs["all"]) + (f" (all required, primary {langs['primary']})" if langs.get("require_all") else f" (primary {langs['primary']})")],
         ["Modules", ", ".join(f"`{k}`" for k in p.vocabulary["module_prefixes"])],
         ["Entity kinds", ", ".join(p.vocabulary["entity_kinds"])],
-        ["Backend plans", ", ".join(p.plans("backend"))], ["Frontend plans", ", ".join(p.plans("frontend"))],
+        # one row per track the FACTORY declares, never two rows naming two tracks:
+        # a factory that gains or renames a track must not need this line edited (F5b)
+        *[[f"{t.capitalize()} plans", ", ".join(p.plans(t)) or "—"] for t in cfg.tracks if t in p.tracks],
         ["Knowledge", ", ".join(f"`{f}`" for f in p.knowledge_files) or "—"],
     ], ["Fact", "Value"])
 

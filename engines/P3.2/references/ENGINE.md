@@ -97,7 +97,7 @@ traces → {{ atoms.SCR.traces_to | join(' + ') }}).
 Detail, Wizard) are ONE screen with ONE `SCR-*`; the sub-views are UX sub-screens under it.
 Each additional independent composite gets its own `SCR-*`.
 {%- else -%}
-The profile declares no composite-screen convention: each SRS screen entry is one `SCR-*`.
+`profile.conventions.composite_screen` is not set: each SRS screen entry is one `SCR-*`.
 {%- endif %}
 
 ### A.2 Flow diagram — `{{ st.produces[0].file.replace('{mod}', MOD | lower) }}`
