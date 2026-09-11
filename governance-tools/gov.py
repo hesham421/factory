@@ -364,7 +364,11 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     if stale:
         _say(f"stored verdict refused, re-analyzed: {stale}")
     c = rep.counts()
-    _say(f"analyze gate:{g['id']} → {counts_line(c)}")
+    vac = rep.vacuous()
+    # the gate is the one place a human signs off on "clean", so what the run did
+    # NOT examine belongs on the same line as what it did.
+    _say(f"analyze gate:{g['id']} → {counts_line(c)}"
+         + (f" · {len(vac)} clause(s) examined nothing ({', '.join(vac)})" if vac else ""))
     if g.get("requires_analyze") == "clean" and not rep.clean:
         for f in rep.findings[:25]:
             _say("  ", f)
@@ -1090,7 +1094,11 @@ def main(argv: list[str] | None = None) -> int:
             return BLOCKED
         rep = an.run(a.module, a.version, scope=a.scope)
         c = rep.counts()
-        _say(f"analyze {a.scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}")
+        vac = rep.vacuous()
+        # CLEAN over an empty set reads exactly like CLEAN over a full one, and
+        # that is the shape every silent-success defect in this repo has had.
+        tail = f" · {len(vac)} clause(s) examined nothing ({', '.join(vac)})" if vac else ""
+        _say(f"analyze {a.scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}{tail}")
         for f in rep.findings:
             _say("  ", f)
         return OK if rep.clean else BLOCKED

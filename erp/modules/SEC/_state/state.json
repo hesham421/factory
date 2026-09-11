@@ -2,7 +2,7 @@
   "module": "SEC",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-11T20:35:21+00:00",
+  "generated_at": "2026-09-11T20:35:36+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -60,5 +60,5 @@
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789158921.7616482
+  "inputs_mtime": 1789158936.721233
 }

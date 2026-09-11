@@ -64,6 +64,10 @@ def endpoint_ctx():
         def __init__(self, artifact: str, source: str | None, mod: str):
             self._t = {"plan": artifact, "docs": source}
             self.mod = mod
+            self._examined = 0
+
+        def saw(self, n):
+            self._examined += n
 
         def text(self, name):
             return self._t.get(name)

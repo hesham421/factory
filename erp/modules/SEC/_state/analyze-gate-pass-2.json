@@ -66,7 +66,7 @@
   "provenance": {
     "rules": {
       "contracts": "e44f19aa8816de9808c39fd84b63e1bcf939bf389029281d3a646951454956f7",
-      "checker": "dad35b37df2a41b64c880597436023f5e9402bf6f4f6d5ba7d33b4031a1b8104",
+      "checker": "d9d959ac7390500b2afb9f99cafa2eea71707199ea117c67a07b198fd6468c9f",
       "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
     },
     "resolvable": [
@@ -115,6 +115,6 @@
       "test-execution-manifest": "fe360a9c38baf2785c213cffdd24b06f9e68738419dd21fa96c66b588070f78c",
       "ui-ux-spec": "2773bd597812d0990990b231d5582e4461698eaa0294c15788db4c27a1896397"
     },
-    "at": "2026-09-11T20:35:22+00:00"
+    "at": "2026-09-11T20:35:37+00:00"
   }
 }

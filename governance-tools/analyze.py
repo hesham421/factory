@@ -64,6 +64,21 @@ class AnalyzeReport:
     findings: list[Finding] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
+    coverage: dict = field(default_factory=dict)     # clause id -> subjects examined
+    clause_checks: dict = field(default_factory=dict)  # clause id -> check name
+
+    def vacuous(self) -> list[str]:
+        """Clauses that ran and examined NOTHING.
+
+        A check reporting no finding over zero subjects is indistinguishable, in
+        every output this tool produces, from one reporting no finding over five
+        hundred. That is the shape behind every defect this file has had to grow a
+        guard for: `verify` called an empty digest compare ok, a plan with no phase
+        block split "successfully", and a DTO column resolved four wrong names by
+        substring. Zero is not always wrong — a ROOT module really does own no
+        cross-module id — but it is never something a reader should have to
+        reconstruct. Listed, always; judged by the reader."""
+        return sorted(k for k, v in self.coverage.items() if v == 0)
 
     def count(self, severity: str) -> int:
         return sum(1 for f in self.findings if f.severity == severity)
@@ -86,11 +101,17 @@ class Ctx:
         self.mod = mod.upper()
         self.version = version
         self._report: "AnalyzeReport | None" = None    # set by run(); read by deferred clauses
+        self._examined = 0                             # subjects the running clause has looked at
         self._texts: dict[str, str | None] = {}
         self._arts: dict[str, tuple[Stage, Artifact]] = {}
         for s in CFG.all_stages():
             for a in s.produces:
                 self._arts[a.artifact] = (s, a)
+
+    def saw(self, n: int) -> None:
+        """A check calls this with the number of subjects it actually examined.
+        `_evaluate` reads it per clause; see AnalyzeReport.vacuous()."""
+        self._examined += int(n)
 
     def artifact(self, name: str) -> tuple[Stage, Artifact] | None:
         return self._arts.get(name)
@@ -328,6 +349,7 @@ def _c_traces(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         if t is None:
             return [Finding(sev, "", "traces", f"`{frm}` missing", frm)]
         res = mk.parse_structure(t, a.track, a.plan)
+        ctx.saw(sum(1 for b in res.blocks() if b.kind in c["blocks"]))
         for b in res.blocks():
             if b.kind in c["blocks"] and len(b.traces) < mn:
                 out.append(Finding(sev, "", "traces", f"block `{b.kind}:{b.id}` carries {len(b.traces)} trace(s), needs ≥{mn}", frm, b.start_line))
@@ -339,13 +361,16 @@ def _c_traces(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         if src is not None:
             defs = idmodel.defined_ids(src) | idmodel.referenced_ids(src)
         for kind in c["to"]:
-            for rid in sorted({x for x in idmodel.find_ids(t) if idmodel.split_id(x)[0] == kind}):
+            cited = sorted({x for x in idmodel.find_ids(t) if idmodel.split_id(x)[0] == kind})
+            ctx.saw(len(cited))
+            for rid in cited:
                 if rid not in defs:
                     out.append(Finding(sev, "", "traces", f"`{rid}` cited in `{frm}` is not defined in `{c['defined_in']}`", frm))
         return out
     # from = an ID kind — mode "all" (default): every listed kind needs its own ≥min;
     # mode "any": ≥min in at least one listed kind (e.g. a TC may trace to AC, XM or UXD)
     mode = c.get("mode", "all")
+    ctx.saw(len(ctx.records_of(frm)))
     for r in ctx.records_of(frm):
         counts = {kind: sum(1 for x in r.traces if idmodel.split_id(x) and idmodel.split_id(x)[0] == kind) for kind in c.get("to", [])}
         if mode == "any":
@@ -364,6 +389,7 @@ def _c_orphans(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     kind = c["kind"]
     refby = c["referenced_by"]
     targets = ctx.records_of(kind)
+    ctx.saw(len(targets))
     # collectors: records of the listed kinds (their traces + mentions) and texts of listed artifacts
     kind_recs = [r for k in refby if not ctx.artifact(k) and k not in CFG.inputs for r in ctx.records_of(k)]
     art_texts = [ctx.text(k) or "" for k in refby if ctx.artifact(k) or k in CFG.inputs]
@@ -381,6 +407,7 @@ _STATEMENT = re.compile(r"^\s*\**Statement\**\s*:\s*(.+)$", re.I)
 def _c_ears(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     pats = [re.compile(p) for p in CFG.ids["ears"]["patterns"].values()]
     out = []
+    ctx.saw(len(ctx.records_of(c["kind"])))
     for r in ctx.records_of(c["kind"]):
         stmt = None
         for ln in r.text.splitlines():
@@ -410,6 +437,7 @@ def _c_registry_agree(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         return [Finding(sev, "", "registry-agree", f"registry `{c['registry']}` missing", c["registry"])]
     if c.get("categories") == "all":
         cats = _categories()
+        ctx.saw(len(cats))       # this branch examines categories, not ids
         missing = sorted(x for x in cats if x not in reg)
         if missing:
             out.append(Finding(sev, "", "registry-agree", f"registry does not map categories {missing}", c["registry"]))
@@ -435,6 +463,7 @@ def _c_registry_agree(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     label = "+".join(names)
     c = dict(c, artifact=label)
     in_reg = {x for x in idmodel.referenced_ids(reg) if mine(x)}
+    ctx.saw(len(in_art | in_reg))
     direction = c.get("direction", "both")
     if direction in ("both", "artifact→registry"):
         for x in sorted(in_art - in_reg):
@@ -951,6 +980,7 @@ def _c_forward_refs(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                                    f"`{token}` and let the stage that can resolve them fill them in. "
                                    f"Lines {where}", row["artifact"], unmarked[0][0]))
             continue
+        ctx.saw(len(unmarked))
         for n, bare in unmarked:
             if not _names_in(bare.replace("\\", ""), source):
                 out.append(Finding(sev, "", "forward-refs",
@@ -1108,6 +1138,7 @@ def _c_endpoint_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         if (aid, verb, path) in seen:
             continue
         seen.add((aid, verb, path))
+        ctx.saw(1)
         if any(v == verb and (q == path or q.endswith(path)) for v, q in published):
             continue
         served = sorted(f"{v} {q}" for v, q in published if q.endswith(path) or path.endswith(q.split("/")[-1]))
@@ -1147,6 +1178,14 @@ CHECKS = {
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
 }
+
+# Checks that report how many subjects they examined (ctx.saw). Only these appear
+# in the report's coverage map: a check absent from it reported no count, which is
+# different from having counted zero, and conflating the two would put noise in the
+# one list that has to stay trustworthy.
+for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
+            _c_endpoint_agrees, _c_ears):
+    _fn.counts_subjects = True
 
 
 # ── provenance — a verdict is only valid under the rules that produced it ────
@@ -1232,6 +1271,9 @@ def load_report(path: Path) -> AnalyzeReport:
     rep.contracts = list(data.get("contracts") or [])
     rep.skipped = list(data.get("skipped") or [])
     rep.provenance = data.get("provenance") or {}
+    # a reloaded verdict must carry what it did NOT examine, or the signal survives
+    # only until the first cache hit — which is where a silent pass would hide best.
+    rep.coverage = dict(data.get("coverage") or {})
     rep.findings = [Finding(**{k: f[k] for k in ("severity", "clause", "check", "message", "artifact", "line") if k in f})
                     for f in (data.get("findings") or [])]
     return rep
@@ -1286,11 +1328,20 @@ def select_contracts(scope: str, ctx: "Ctx | None" = None) -> list[dict]:
     raise ValueError(f"unknown analyze scope '{scope}'")
 
 
-def _evaluate(ctx: Ctx, fn, cl: dict, args: dict) -> list[Finding]:
+def _evaluate(ctx: Ctx, fn, cl: dict, args: dict, rep: "AnalyzeReport | None" = None) -> list[Finding]:
+    ctx._examined = 0
     try:
         fs = fn(ctx, args, cl["severity"])
     except Exception as e:  # a broken clause must be visible, never silent
         fs = [Finding(sev_at_rank(1), cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
+    else:
+        if rep is not None:
+            # only checks that report a count are tracked; one that reports none is
+            # absent from coverage rather than shown as zero, so the list stays a
+            # list of checks that really looked at nothing.
+            if getattr(fn, "counts_subjects", False):
+                rep.coverage[cl["id"]] = ctx._examined
+                rep.clause_checks[cl["id"]] = cl["check"]
     for f in fs:
         f.clause = f.clause or cl["id"]
     return fs
@@ -1337,9 +1388,9 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
             if getattr(fn, "reads_report", False):
                 deferred.append((cl, args))
                 continue
-            rep.findings += _evaluate(ctx, fn, cl, args)
+            rep.findings += _evaluate(ctx, fn, cl, args, rep)
     for cl, args in deferred:
-        rep.findings += _evaluate(ctx, CHECKS[cl["check"]], cl, args)
+        rep.findings += _evaluate(ctx, CHECKS[cl["check"]], cl, args, rep)
     # the same defect reached through two clauses (an interface re-checked with a
     # stronger argument downstream) is ONE finding — reported under the first clause
     # that names it, so the count is a count of defects, not of clauses.
@@ -1380,6 +1431,23 @@ def _write_report(rep: AnalyzeReport) -> Path:
         lines.append("No findings.")
     if rep.skipped:
         lines += ["", "Skipped: " + "; ".join(rep.skipped)]
+    if rep.coverage:
+        # "no findings" over zero subjects and over five hundred printed the same
+        # line until now. The count is the difference, so it is printed.
+        vac = rep.vacuous()
+        lines += ["", "## Coverage — subjects examined per clause", "",
+                  "| Clause | Check | Examined |", "|---|---|---|"]
+        by_clause = {cl: chk for cl, chk in rep.clause_checks.items()}
+        for cl in sorted(rep.coverage):
+            n = rep.coverage[cl]
+            mark = " ⚠ nothing" if n == 0 else ""
+            lines.append(f"| {cl} | {by_clause.get(cl, '—')} | {n}{mark} |")
+        if vac:
+            lines += ["", f"**{len(vac)} clause(s) examined nothing**: {', '.join(vac)}. "
+                          "A clause with no subject is not by itself a defect — a ROOT module "
+                          "really does own no cross-module id — but it enforced nothing on this "
+                          "run, so its verdict is a statement about an empty set. Confirm each is "
+                          "empty by nature and not because the check failed to find its subject."]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     # `skipped` used to reach the prose and stop there, so a programmatic reader
     # could not see that a clause never ran; `provenance` says what the verdict
@@ -1387,5 +1455,6 @@ def _write_report(rep: AnalyzeReport) -> Path:
     (path.parent / f"analyze-{tag}.json").write_text(json.dumps(
         {"module": rep.mod, "version": rep.version, "scope": rep.scope, "counts": c, "clean": rep.clean,
          "blocking": sorted(blocking_severities()), "contracts": rep.contracts, "skipped": rep.skipped,
+         "coverage": rep.coverage, "vacuous": rep.vacuous(),
          "findings": [f.__dict__ for f in rep.findings], "provenance": rep.provenance}, indent=2), encoding="utf-8")
     return path
