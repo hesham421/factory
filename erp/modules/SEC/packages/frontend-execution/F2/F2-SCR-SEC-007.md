@@ -11,6 +11,16 @@ Cache key    : `[dashboard]` — no filter exists, so the key carries none
 Errors       : `ACCESS_DENIED` (403) → the localized forbidden message, shown in place of the
                grid · `INTERNAL_ERROR` (500) → generic. A widget the caller may not see is not
                an error: it is simply absent from the response (ADR-SEC-005).
+Per-widget permission — **PENDING, one of six widgets documented.** REQ-SEC-023 is delegated
+               entirely to the server here, and the api-docs annotate only `recentActivity`
+               ("Most recent audit entries, requires SEC_AUDIT_LOG VIEW"). The other five —
+               `usersOverview`, `failedLogins24h`, `activeSessions`, `rolesPermissionsSummary`,
+               `onboardingFunnel` — are merely optional, as every property of
+               `DashboardResponse` is, and optional is not evidence of gating. This plan
+               **assumes** the omission is uniform across all six. If it is not, those five
+               leak and no client-side check catches it, because none is readable
+               (ADR-SEC-005). Resolve by having the backend annotate per-widget permission for
+               all six, or state that the omission is uniform; do not add a client-side test.
 Loading      : LOCAL, per widget — one slow figure must not hold the page. The SRS does not
                state that this call is slow, so no GLOBAL indicator.
 Cache policy : **no caching of the figures across visits** — REQ-SEC-022 requires every figure

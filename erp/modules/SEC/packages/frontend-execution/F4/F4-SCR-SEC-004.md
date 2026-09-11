@@ -5,7 +5,10 @@
 ### F4 · SCR-SEC-004 — المستخدمون / Users
 
 ### F4-SCREEN — SCR-SEC-004            traces=REQ-SEC-004,REQ-SEC-005,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-031,AC-SEC-004,AC-SEC-005,AC-SEC-009,AC-SEC-010,AC-SEC-011,AC-SEC-031,API-SEC-005,API-SEC-006,API-SEC-007,API-SEC-008,API-SEC-009,API-SEC-010,API-SEC-011
-Routes       : base slug `users`, under the module segment —
+Routes       : base slug `users`, under the flat module segment `/security` — SRS Part B's
+               `SEC → Authorization → Users` grouping is not rendered, because the two-tier
+               menu of REQ-SEC-021 and `ModuleMenuResponse` cannot carry it (ADR-SEC-011);
+               a route segment the menu cannot produce would disagree with the menu —
                `/security/users` (search) ·
                `/security/users/pending` (the pending sign-ups sub-view — a **static** segment,
                registered BEFORE the `:id` routes so it is never matched as an id) ·

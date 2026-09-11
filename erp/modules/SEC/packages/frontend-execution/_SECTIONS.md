@@ -8,7 +8,7 @@ Framework : react-ts-vite (profile.stack.frontend.framework) · routing react-ro
 Inputs : srs (v1, PRD-approved), prd (v1), api-docs (v1, published by the backend repo),
          registry-srs (v1), registry-exec-be (v1)
 Screens : 10 — SCR-SEC-001..010 · UXD : 0 (SEC is ROOT — SRS A8) · API bound : 27 / 27
-Open ADRs : 8 — erp/decisions/SEC/ (ADR-SEC-003..010, all ACCEPTED, all non-breaking)
+Open ADRs : 9 — erp/decisions/SEC/ (ADR-SEC-003..011, all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 ## API SURFACE — SEC v1   (source: `_inputs/api-docs-sec.md` — the ONLY endpoint source)
@@ -162,7 +162,8 @@ DECISIONS    ADR-SEC-003 (search shape) · ADR-SEC-004 (API id binding) · ADR-S
              ADR-SEC-007 (container pattern for screens with no entry sub-view) ·
              ADR-SEC-008 (operations with no endpoint) · ADR-SEC-009 (documented endpoints
              this frontend does not call) · ADR-SEC-010 (SCR-SEC-004's form vs SRS B3's input
-             list) — all ACCEPTED, all non-breaking
+             list) · ADR-SEC-011 (SRS Part B's navigation grouping vs the two-tier menu) —
+             all ACCEPTED, all non-breaking
 RESULT       PASSED ✓ — 0 findings
 ```
 

@@ -3,7 +3,7 @@
 Module : SEC   Version : v1   Profile : erp   Stage : P3.2 (Part A — UX design)
 Inputs : srs (v1), prd (v1, APPROVED), api-docs (v1), registry-srs (v1), registry-exec-be (v1)
 Screens: 10 — SCR-SEC-001..010 (one per SRS Part B screen requirement)
-Flows  : 11 · ADRs open : 8 — ADR-SEC-003..010 (all ACCEPTED, all non-breaking)
+Flows  : 11 · ADRs open : 9 — ADR-SEC-003..011 (all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 يصف هذا المستند مسارات التنقّل فقط: كل مسار يبدأ من شاشة معرّفة في متطلبات الشاشات

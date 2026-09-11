@@ -7,7 +7,7 @@ Framework : react-ts-vite (profile.stack.frontend.framework) · routing react-ro
 Inputs : srs (v1, PRD-approved), prd (v1), api-docs (v1, published by the backend repo),
          registry-srs (v1), registry-exec-be (v1)
 Screens : 10 — SCR-SEC-001..010 · UXD : 0 (SEC is ROOT — SRS A8) · API bound : 27 / 27
-Open ADRs : 8 — erp/decisions/SEC/ (ADR-SEC-003..010, all ACCEPTED, all non-breaking)
+Open ADRs : 9 — erp/decisions/SEC/ (ADR-SEC-003..011, all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 ## API SURFACE — SEC v1   (source: `_inputs/api-docs-sec.md` — the ONLY endpoint source)
@@ -759,6 +759,16 @@ Cache key    : `[dashboard]` — no filter exists, so the key carries none
 Errors       : `ACCESS_DENIED` (403) → the localized forbidden message, shown in place of the
                grid · `INTERNAL_ERROR` (500) → generic. A widget the caller may not see is not
                an error: it is simply absent from the response (ADR-SEC-005).
+Per-widget permission — **PENDING, one of six widgets documented.** REQ-SEC-023 is delegated
+               entirely to the server here, and the api-docs annotate only `recentActivity`
+               ("Most recent audit entries, requires SEC_AUDIT_LOG VIEW"). The other five —
+               `usersOverview`, `failedLogins24h`, `activeSessions`, `rolesPermissionsSummary`,
+               `onboardingFunnel` — are merely optional, as every property of
+               `DashboardResponse` is, and optional is not evidence of gating. This plan
+               **assumes** the omission is uniform across all six. If it is not, those five
+               leak and no client-side check catches it, because none is readable
+               (ADR-SEC-005). Resolve by having the backend annotate per-widget permission for
+               all six, or state that the omission is uniform; do not add a client-side test.
 Loading      : LOCAL, per widget — one slow figure must not hold the page. The SRS does not
                state that this call is slow, so no GLOBAL indicator.
 Cache policy : **no caching of the figures across visits** — REQ-SEC-022 requires every figure
@@ -1312,7 +1322,10 @@ the token field editable rather than blocking the route.
 ### F4 · SCR-SEC-004 — المستخدمون / Users
 
 ### F4-SCREEN — SCR-SEC-004            traces=REQ-SEC-004,REQ-SEC-005,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-031,AC-SEC-004,AC-SEC-005,AC-SEC-009,AC-SEC-010,AC-SEC-011,AC-SEC-031,API-SEC-005,API-SEC-006,API-SEC-007,API-SEC-008,API-SEC-009,API-SEC-010,API-SEC-011
-Routes       : base slug `users`, under the module segment —
+Routes       : base slug `users`, under the flat module segment `/security` — SRS Part B's
+               `SEC → Authorization → Users` grouping is not rendered, because the two-tier
+               menu of REQ-SEC-021 and `ModuleMenuResponse` cannot carry it (ADR-SEC-011);
+               a route segment the menu cannot produce would disagree with the menu —
                `/security/users` (search) ·
                `/security/users/pending` (the pending sign-ups sub-view — a **static** segment,
                registered BEFORE the `:id` routes so it is never matched as an id) ·
@@ -1679,7 +1692,8 @@ DECISIONS    ADR-SEC-003 (search shape) · ADR-SEC-004 (API id binding) · ADR-S
              ADR-SEC-007 (container pattern for screens with no entry sub-view) ·
              ADR-SEC-008 (operations with no endpoint) · ADR-SEC-009 (documented endpoints
              this frontend does not call) · ADR-SEC-010 (SCR-SEC-004's form vs SRS B3's input
-             list) — all ACCEPTED, all non-breaking
+             list) · ADR-SEC-011 (SRS Part B's navigation grouping vs the two-tier menu) —
+             all ACCEPTED, all non-breaking
 RESULT       PASSED ✓ — 0 findings
 ```
 

@@ -3,7 +3,7 @@
 Module : SEC   Version : v1   Profile : erp   Stage : P3.2 (Part A — UX design)
 Screens: 10 — SCR-SEC-001..010 · UXD : 0 (SEC is ROOT — SRS A8: no consumed entity)
 Fields : copied from SRS A3 per owning ENT, reconciled against the published DTOs
-ADRs   : ADR-SEC-003..010 (all ACCEPTED, all non-breaking)
+ADRs   : ADR-SEC-003..011 (all ACCEPTED, all non-breaking)
 ══════════════════════════════════════════════════════════════════
 
 كل كتلة أدناه تصف شاشة واحدة: حقولها وصلاحياتها منسوخة من SRS بلا إضافة ولا حذف، ونمط
@@ -372,6 +372,9 @@ Fields shown      : derived, read-only (SRS B3 "not applicable — read-only, de
                     الشاشة / Screen name (ENT-SEC-005)
                     Exactly two tiers, and only entries the caller's effective grants hold
                     (ENT-SEC-007/008 decide membership; neither is displayed).
+                    SRS Part B routes six screens through an intermediate `Authorization` /
+                    `Monitoring` grouping that neither REQ-SEC-021 nor `ModuleMenuResponse`
+                    can express; it is dropped in v1 and the requirement wins — ADR-SEC-011.
 Permissions       : no page code of its own — this is not a securable destination (SRS B4). Its
                     content is filtered per user by the same module and screen grants each
                     target page enforces for itself; the published endpoint requires only an

@@ -40,6 +40,15 @@ api-docs is never invented (engine §3.0).
   client: `API-SEC-022` returns only the widgets the caller may see, so a widget is rendered
   when and only when its field is present in `DashboardResponse`. The client renders what it
   is given and never asks for a permission it cannot read.
+  **This rests on an assumption, and it is the weakest point of this decision.** The api-docs
+  annotate per-widget permission for exactly one of the six widgets — `recentActivity`
+  ("requires SEC_AUDIT_LOG VIEW"). The other five carry no annotation; they are optional, and
+  every property of that response is optional, so optionality is not evidence of gating. If
+  the server gates only `recentActivity`, five widgets leak to a caller who should not see
+  them and REQ-SEC-023 fails silently — there is no client-side check left to catch it,
+  because clause 2 above establishes that none is readable. The F2 block for API-SEC-022
+  carries this as PENDING. The fix belongs to the backend: annotate all six, or state that
+  the omission is uniform. Adding a client-side test is not the fix and is not available.
 - A caller lacking, say, `PERM_SEC_USERS_CREATE` sees a "New user" button that fails with a
   localized forbidden message. This is the honest cost of the gap and is visible to the user
   rather than hidden from the reviewer.
