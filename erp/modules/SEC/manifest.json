@@ -3,32 +3,32 @@
   "version": 1,
   "profile": "erp",
   "markers_schema_version": 2,
-  "root": "erp/modules/SEC",
+  "paths_relative_to": "the directory holding this file",
+  "root": ".",
   "stages": {
-    "P0": "erp/modules/SEC/P0",
-    "P0.5": "erp/modules/SEC/P0_5",
-    "P1": "erp/modules/SEC/P1",
-    "P2": "erp/modules/SEC/P2",
-    "P3.1": "erp/modules/SEC/P3_1",
-    "P3.2": "erp/modules/SEC/P3_2",
-    "test-gen": "erp/modules/SEC/test_gen",
-    "api-verify": "erp/modules/SEC/api_verify"
+    "P0": "P0",
+    "P0.5": "P0_5",
+    "P1": "P1",
+    "P2": "P2",
+    "P3.1": "P3_1",
+    "P3.2": "P3_2",
+    "test-gen": "test_gen",
+    "api-verify": "api_verify"
   },
   "plans": {
-    "backend/exec": "erp/modules/SEC/P3_1/backend-execution-plan-sec.md",
-    "backend/test": "erp/modules/SEC/test_gen/backend-test-plan-sec.md",
-    "frontend/exec": "erp/modules/SEC/P3_2/frontend-execution-plan-sec.md",
-    "frontend/test": "erp/modules/SEC/test_gen/frontend-test-plan-sec.md"
+    "backend/exec": "P3_1/backend-execution-plan-sec.md",
+    "backend/test": "test_gen/backend-test-plan-sec.md",
+    "frontend/test": "test_gen/frontend-test-plan-sec.md"
   },
   "packages": {
-    "backend/exec": "erp/modules/SEC/packages/backend-execution",
-    "backend/test": "erp/modules/SEC/packages/backend-test",
-    "frontend/exec": "erp/modules/SEC/packages/frontend-execution",
-    "frontend/test": "erp/modules/SEC/packages/frontend-test"
+    "backend/exec": "packages/backend-execution",
+    "backend/test": "packages/backend-test",
+    "frontend/exec": "packages/frontend-execution",
+    "frontend/test": "packages/frontend-test"
   },
-  "state_dir": "erp/modules/SEC/_state",
-  "inputs_dir": "erp/modules/SEC/_inputs",
-  "decisions_dir": "erp/decisions/SEC",
+  "state_dir": "_state",
+  "inputs_dir": "_inputs",
+  "decisions_dir": "../../decisions/SEC",
   "status": {
     "archived": false,
     "split": {

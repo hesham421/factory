@@ -3,12 +3,76 @@
   "version": 1,
   "scope": "gate:pass-1",
   "counts": {
-    "CRITICAL": 0,
-    "MAJOR": 3,
-    "MINOR": 0
+    "CRITICAL": 8,
+    "MAJOR": 7,
+    "MINOR": 1
   },
-  "clean": true,
+  "clean": false,
   "findings": [
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-001` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 680
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-002` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 688
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-003` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 696
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-004` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 704
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-005` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 712
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-006` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 720
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-007` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 728
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C7.10",
+      "check": "value-agreement",
+      "message": "`DBF-SEC-064` is ['grant_at'] in `backend-execution-plan` but ['granted_at'] in `db-script` \u2014 one of them is a transcription slip",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    },
     {
       "severity": "MAJOR",
       "clause": "C4.4",
@@ -32,6 +96,46 @@
       "message": "`US-SEC-012` traces to 0 `POL` id(s), needs \u22651",
       "artifact": "",
       "line": 110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit-sequence>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 410
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "`SEC-001` is not an instance of the declared format `{MOD}-{http}[-{SLUG}]`",
+      "artifact": "backend-execution-plan",
+      "line": 411
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 1213
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 1267
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "does not state the declared code format `{MOD}-{http}[-{SLUG}]` (`stack.backend.api.error_code_format`)",
+      "artifact": "backend-execution-plan",
+      "line": 0
     }
   ]
 }
