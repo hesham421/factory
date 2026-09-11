@@ -85,6 +85,7 @@ class Ctx:
     def __init__(self, mod: str, version: int):
         self.mod = mod.upper()
         self.version = version
+        self._report: "AnalyzeReport | None" = None    # set by run(); read by deferred clauses
         self._texts: dict[str, str | None] = {}
         self._arts: dict[str, tuple[Stage, Artifact]] = {}
         for s in CFG.all_stages():
@@ -93,6 +94,12 @@ class Ctx:
 
     def artifact(self, name: str) -> tuple[Stage, Artifact] | None:
         return self._arts.get(name)
+
+    def report_findings(self) -> list[Finding]:
+        """What the run has produced SO FAR. Only a clause marked `reads_report`
+        sees this, and run() evaluates those last — a clause that judges the run's
+        own findings must not run before the clauses that produce them."""
+        return list(self._report.findings) if self._report else []
 
     def known_names(self) -> list[str]:
         """Every name this context can resolve a text for — the stage artifacts, the
@@ -747,6 +754,97 @@ def _c_paths_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+# ── the artifact's own verdict about itself ──────────────────────────────────
+# A model authors a verdict line inside the shipped artifact; the machine writes
+# its own into `_state/`. Nothing compared them, and the shipped plan asserted
+# zero findings over six real ones — the implementer reads the shipped plan.
+#
+# The preferred answer is to GENERATE the line (gov.py stamps it from the report,
+# `stamp_verdict` below); this check is the guard for anything still authored by
+# hand. It knows no block name, no label and no verdict wording: all five come
+# from the profile address in its clause's `args`, so a profile that names its
+# self-check differently — or declares none at all — is served unchanged.
+
+
+def self_check_spec(address: str) -> dict | None:
+    return CFG.profile.get(address) or None
+
+
+def _token_rx(token: str) -> re.Pattern:
+    return re.compile(rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])")
+
+
+def _verdict_line(text: str, spec: dict) -> tuple[int, str] | None:
+    """(line number, text) of the verdict line: the first line LABELLED
+    `verdict_label` at or after the first line that names the self-check `block`.
+
+    The block is located by its token appearing anywhere on a line — a heading, a
+    fence header, a table caption — because how a profile's engine frames the block
+    is the engine's business, not this checker's. The label must open its line, so a
+    longer word starting with it is not mistaken for it."""
+    block_rx, label_rx = _token_rx(spec["block"]), re.compile(rf"^{re.escape(spec['verdict_label'])}(\s|$)")
+    seen = False
+    for n, ln in enumerate(text.splitlines(), 1):
+        if not seen:
+            seen = bool(block_rx.search(ln))
+            continue
+        if label_rx.match(ln.strip()):
+            return n, ln
+    return None
+
+
+def render_verdict(spec: dict, findings: int) -> str:
+    """The verdict line's TEXT for a given finding count — one function, used both
+    to write the line (gov.py) and to judge one that was written by hand."""
+    token = spec["pass_token"] if findings == 0 else spec["fail_token"]
+    return f"{token} — {findings} {spec['findings_noun']}"
+
+
+def claimed_findings(line: str, spec: dict) -> int | None:
+    """How many findings the line claims. A pass token with no number claims none;
+    a line stating neither a number nor the pass token claims nothing knowable."""
+    body = line.strip()[len(spec["verdict_label"]):]
+    m = re.search(r"(\d+)", body)
+    if m:
+        return int(m.group(1))
+    return 0 if spec["pass_token"].split()[0] in body else None
+
+
+def _c_verdict_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """An artifact may not assert a verdict about itself that claims fewer findings
+    than the machine produced for it."""
+    spec = self_check_spec(c["spec"])
+    if not spec:
+        return []                       # this profile declares no self-check
+    out = []
+    for name in (c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]):
+        text = ctx.text(name)
+        if text is None:
+            continue
+        found = _verdict_line(text, spec)
+        if found is None:
+            out.append(Finding(sev, "", "verdict-agrees",
+                               f"`{name}` carries no `{spec['verdict_label']}` line inside its "
+                               f"`{spec['block']}` block — the artifact states no verdict about itself", name))
+            continue
+        n, line = found
+        machine = sum(1 for f in ctx.report_findings() if f.artifact == name and f.check != "verdict-agrees")
+        claimed = claimed_findings(line, spec)
+        if claimed is None:
+            out.append(Finding(sev, "", "verdict-agrees",
+                               f"the `{spec['verdict_label']}` line states no verdict this check can read "
+                               f"(expected `{spec['pass_token']}`/`{spec['fail_token']}` and a count)", name, n))
+        elif claimed < machine:
+            out.append(Finding(sev, "", "verdict-agrees",
+                               f"`{name}` claims {claimed} {spec['findings_noun']} but `gov.py analyze` "
+                               f"produced {machine} for it — the artifact the implementer reads contradicts "
+                               f"the report beside it. Correct line: `{render_verdict(spec, machine)}`", name, n))
+    return out
+
+
+_c_verdict_agrees.reads_report = True     # evaluated after every clause that PRODUCES findings
+
+
 def _walk_paths(node, key: str = "") -> list[tuple[str, str]]:
     """Every string in a generated index that is shaped like a path."""
     out: list[tuple[str, str]] = []
@@ -768,6 +866,7 @@ CHECKS = {
     "markers": _c_markers, "manifest": _c_manifest, "gate-approved": _c_gate_approved,
     "value-agreement": _c_value_agreement, "code-format": _c_code_format, "data-source": _c_data_source,
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
+    "verdict-agrees": _c_verdict_agrees,
 }
 
 
@@ -908,13 +1007,29 @@ def select_contracts(scope: str, ctx: "Ctx | None" = None) -> list[dict]:
     raise ValueError(f"unknown analyze scope '{scope}'")
 
 
+def _evaluate(ctx: Ctx, fn, cl: dict, args: dict) -> list[Finding]:
+    try:
+        fs = fn(ctx, args, cl["severity"])
+    except Exception as e:  # a broken clause must be visible, never silent
+        fs = [Finding(sev_at_rank(1), cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
+    for f in fs:
+        f.clause = f.clause or cl["id"]
+    return fs
+
+
 def run(mod: str, version: int | None = None, scope: str = "all", write: bool = True) -> AnalyzeReport:
     version = CFG.current_version(mod) if version is None else int(version)
     if not st_mod.is_fresh(mod, version):
         st_mod.build_state(mod, version)
     ctx = Ctx(mod, version)
     rep = AnalyzeReport(mod.upper(), version, scope)
-    for c in select_contracts(scope, ctx):
+    ctx._report = rep
+    # two passes: a clause whose check reads the run's own findings (a verdict
+    # reconciliation) is evaluated after every clause that produces them. The
+    # marker is an attribute on the check function, so no check name is spelled here.
+    selected = select_contracts(scope, ctx)
+    deferred: list[tuple[dict, dict]] = []
+    for c in selected:
         rep.contracts.append(c["id"])
         for cl in c.get("clauses", []):
             fn = CHECKS.get(cl["check"])
@@ -940,13 +1055,12 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
             args = dict(cl.get("args") or {})
             if not ctx.when(args.pop("when", None)):
                 continue
-            try:
-                fs = fn(ctx, args, cl["severity"])
-            except Exception as e:  # a broken clause must be visible, never silent
-                fs = [Finding(sev_at_rank(1), cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
-            for f in fs:
-                f.clause = f.clause or cl["id"]
-            rep.findings += fs
+            if getattr(fn, "reads_report", False):
+                deferred.append((cl, args))
+                continue
+            rep.findings += _evaluate(ctx, fn, cl, args)
+    for cl, args in deferred:
+        rep.findings += _evaluate(ctx, CHECKS[cl["check"]], cl, args)
     # the same defect reached through two clauses (an interface re-checked with a
     # stronger argument downstream) is ONE finding — reported under the first clause
     # that names it, so the count is a count of defects, not of clauses.

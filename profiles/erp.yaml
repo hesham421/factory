@@ -152,6 +152,13 @@ conventions:
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden
 
+self_check:                                # the verdict line inside the plan; the ORCHESTRATOR writes it
+  block: ALIGN                             # from the analyze report (gov.py), the author leaves it alone.
+  verdict_label: RESULT                    # `verdict-agrees` (C7.15/C9.12) guards it for anything still
+  pass_token: "PASSED ✓"                   # hand-authored: a plan may not claim fewer findings than the
+  fail_token: "BLOCKED ✗"                  # machine produced for it. The shipped SEC plan said
+  findings_noun: findings                  # "PASSED ✓ — 0 findings" over six real ones.
+
 knowledge:
   files:
     - profiles/erp/knowledge/erp-domain-standards.md   # replaces the former platform-standards.md §M

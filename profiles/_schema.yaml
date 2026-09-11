@@ -104,6 +104,18 @@ conventions?:                               # OPTIONAL — absent = not applied 
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
   workflow_engine?: "(forbidden|allowed)"
 
+self_check?:                                # OPTIONAL — the block a stage artifact carries its OWN
+                                             # verdict in. A profile that declares none simply has no
+                                             # self-check: the `verdict-agrees` clause never runs and the
+                                             # orchestrator stamps nothing. The engine renders these
+                                             # values; it never spells them (C2), and no checker knows
+                                             # them — they reach it through its clause's `args`.
+  block: "str"                              # token the block's header line starts with, e.g. ALIGN
+  verdict_label: "str"                      # label of the line that states the verdict, e.g. RESULT
+  pass_token: "str"                         # text of a verdict with no findings, e.g. "PASSED ✓"
+  fail_token: "str"                         # text of a verdict with findings, e.g. "BLOCKED ✗"
+  findings_noun: "str"                      # the word the count is written with, e.g. findings
+
 knowledge?:                                 # OPTIONAL — primary sources the engines may cite
   files?: "list[str]"                       # paths under profiles/<id>/knowledge/
 

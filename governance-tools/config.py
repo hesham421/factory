@@ -158,6 +158,16 @@ class Profile:
     def conventions(self) -> dict:
         return self.data.get("conventions") or {}
 
+    SELF_CHECK = "self_check"       # the profile address of the self-check declaration
+
+    @property
+    def self_check(self) -> dict | None:
+        """How this domain's artifacts state a verdict about themselves (block token,
+        verdict label, pass/fail wording) — or None when the domain has no self-check.
+        The one place the address is spelled; every reader goes through here or through
+        a contract clause's own `spec` arg."""
+        return self.data.get(self.SELF_CHECK) or None
+
     @property
     def knowledge_files(self) -> list[str]:
         return list((self.data.get("knowledge") or {}).get("files") or [])

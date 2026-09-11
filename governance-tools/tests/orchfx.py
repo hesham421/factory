@@ -141,6 +141,17 @@ def registry_db(mod: str) -> str:
     return registry_list("registry-db", [mid("DBF", mod, 1), mid("DBF", mod, 2), mid("XM", mod, 1)])
 
 
+def self_check_block() -> str:
+    """The self-check block the active profile declares — written with the verdict the
+    orchestrator will stamp over. A profile that declares none gets nothing (C7.15's
+    `when: profile.self_check` means the clause never runs there either)."""
+    spec = CFG.profile.self_check
+    if not spec:
+        return ""
+    return (f"\n## Self-check ({spec['block']})\n\n```\n"
+            f"{spec['verdict_label']}  {spec['pass_token']} — 0 {spec['findings_noun']}\n```\n")
+
+
 def _phase_atom_kind(phase) -> str | None:
     t = phase.split_threshold
     return t["kind"] if t else None
@@ -168,6 +179,7 @@ def backend_plan(mod: str) -> str:
             out.append(f"Work items for {p.key}.")
         out.append(f"<!-- PHASE:{p.key}:END -->")
         out.append("")
+    out.append(self_check_block())
     return "\n".join(out)
 
 
@@ -207,6 +219,7 @@ def frontend_plan(mod: str) -> str:
             out.append(f"Work items for {p.key} referencing {scr1}.")
         out.append(f"<!-- PHASE:{p.key}:END -->")
         out.append("")
+    out.append(self_check_block())
     return "\n".join(out)
 
 

@@ -21,6 +21,7 @@
 {%- set plan_art = st.produces | selectattr('plan', 'defined') | first -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sub_phases = phases | selectattr('sub_bearing', 'defined') | selectattr('sub_bearing') | list -%}
+{%- set sc = profile.self_check | default({}) -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
 PASS / TRACK  : pass {{ st['pass'] }} · track {{ track }} · lane {{ st.lane }} · questions {{ st.questions }}
@@ -208,7 +209,7 @@ Grammar: `factory.markers` (schema v{{ factory.markers.schema_version }}, syntax
   prefix the SUB ids would collide — the prefix is mandatory, always.
 - First line of a phase = its START marker; last = END. Threshold checked **while** writing.
   Unknown key → the toolkit refuses (`{{ factory.markers.rules.unknown_phase }}`).
-- Headings with the word PHASE use a profile key only; index, ALIGN table (unless a phase),
+- Headings with the word PHASE use a profile key only; index, {{ sc.block }} table (unless a phase),
   registry and hand-off are trailing content after the last END. Protocol: shared/MARKER-PROTOCOL.md.
 
 Phase table for `profile.tracks.{{ track }}.plans.exec` (plan order):
@@ -320,7 +321,7 @@ SECURITY     {% if sec %}every SCR has an RF5 block │ every permission name ex
 LANGUAGES    labels and messages in {{ langs.all | join(' + ') }}
 TRACES       every PHASE/SUB carries traces= │ every target exists (REQ/AC/API/UXD/SCR)
 DECISIONS    every non-obvious choice is an ADR in decisions/{{ MOD }}/
-RESULT       PASSED ✓ / ✗ list (each fixed)
+{{ sc.verdict_label }}       (written by the orchestrator from the analyze report — leave it alone)
 ```
 Operations coverage table (operation │ API │ SCR action │ route │ status) closes the section —
 a row with an empty route is a ✗.

@@ -294,3 +294,111 @@ def test_toy_sweep_takes_its_module_list_from_state(toy_analyzable):
     assert CFG.modules() == [mod], "only modules that actually exist"
     assert gov.cmd_analyze_all("all") == gov.OK
     assert an.stale_reason(mod, 1, "all") is None, "the sweep clears the backlog"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# F3 — the authored verdict is reconciled with (and generated from) the machine
+# ----------------------------------------------------------------------------
+# The toy clinic names its self-check block, its verdict label and its wording
+# nothing like the ERP profile does. The checker and the stamper know none of
+# those words: they arrive through `profile.self_check` and the clause's `spec`.
+# ════════════════════════════════════════════════════════════════════════════
+
+TOY_SELF_CHECK = {"block": "SIGNOFF", "verdict_label": "OUTCOME",
+                  "pass_token": "CLEAR", "fail_token": "HELD", "findings_noun": "issues"}
+
+
+@pytest.fixture
+def toy_self_check(toy_analyzable):
+    """The toy profile declares its own self-check, and its contract carries a
+    `verdict-agrees` clause pointing at the profile address that holds it."""
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    data = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    data["self_check"] = dict(TOY_SELF_CHECK)
+    prof.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    stage = spec["contracts"][0]["owner"]
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.2", "check": "verdict-agrees",
+         "args": {"artifact": ["prd"], "spec": "self_check", "when": "profile.self_check"}, "severity": "HALT"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an, stage
+
+
+def _plan(verdict_line: str) -> str:
+    return ("# toy prd\n\n## Sign-off (SIGNOFF) — v1\n\n```\n"
+            "ROWS      everything checked\n" + verdict_line + "\n```\n")
+
+
+def test_toy_self_check_vocabulary_is_live(toy_self_check):
+    mod, art, an, stage = toy_self_check
+    assert CFG.profile.self_check == TOY_SELF_CHECK
+    assert an.render_verdict(TOY_SELF_CHECK, 0) == "CLEAR — 0 issues"
+    assert an.render_verdict(TOY_SELF_CHECK, 3) == "HELD — 3 issues"
+    # the block is found by its token anywhere on a line; the label must open its line
+    found = an._verdict_line(_plan("OUTCOME  CLEAR — 0 issues"), TOY_SELF_CHECK)
+    assert found and found[1].strip() == "OUTCOME  CLEAR — 0 issues"
+    assert an.claimed_findings("OUTCOME  CLEAR — 0 issues", TOY_SELF_CHECK) == 0
+    assert an.claimed_findings("OUTCOME  CLEAR", TOY_SELF_CHECK) == 0
+    assert an.claimed_findings("OUTCOME  HELD — 4 issues", TOY_SELF_CHECK) == 4
+    assert an.claimed_findings("OUTCOME  pending", TOY_SELF_CHECK) is None
+
+
+def test_toy_verdict_that_understates_its_findings_is_a_finding(toy_self_check, monkeypatch):
+    """The shipped defect, reproduced under a profile whose words are all different:
+    an artifact claiming zero over findings the machine produced for it."""
+    import analyze as an
+    mod, art, an, stage = toy_self_check
+    art.write_text(_plan("OUTCOME  CLEAR — 0 issues"), encoding="utf-8")
+    # one real finding against the same artifact, injected through the check registry
+    monkeypatch.setitem(an.CHECKS, "exists",
+                        lambda ctx, c, sev: [an.Finding(sev, "", "exists", "toy defect", "prd", 2)])
+    rep = an.run(mod, 1, scope="all", write=False)
+    bad = [f for f in rep.findings if f.check == "verdict-agrees"]
+    assert bad and bad[0].severity == "HALT", [str(f) for f in rep.findings]
+    assert "claims 0 issues" in bad[0].message and "produced 1" in bad[0].message
+    assert "HELD — 1 issues" in bad[0].message, "the message names the correct line"
+
+
+def test_toy_verdict_stating_the_truth_passes(toy_self_check, monkeypatch):
+    import analyze as an
+    mod, art, an, stage = toy_self_check
+    art.write_text(_plan("OUTCOME  HELD — 1 issues"), encoding="utf-8")
+    monkeypatch.setitem(an.CHECKS, "exists",
+                        lambda ctx, c, sev: [an.Finding(sev, "", "exists", "toy defect", "prd", 2)])
+    rep = an.run(mod, 1, scope="all", write=False)
+    assert [f for f in rep.findings if f.check == "verdict-agrees"] == []
+
+
+def test_toy_orchestrator_generates_the_verdict_from_the_report(toy_self_check, monkeypatch):
+    """The preferred half: the line is WRITTEN from the report, so it cannot drift.
+    Nothing in gov.py knows the words SIGNOFF, OUTCOME, CLEAR or HELD."""
+    import gov
+    import analyze as an
+    mod, art, an, stage = toy_self_check
+    art.write_text(_plan("OUTCOME  CLEAR — 0 issues"), encoding="utf-8")
+    rep = an.AnalyzeReport(mod, 1, "all")
+    rep.findings = [an.Finding("HALT", "T1.1", "exists", "toy defect", "prd", 2),
+                    an.Finding("WARN", "T1.1", "exists", "another", "prd", 3)]
+    changed = gov._stamp_verdict(CFG.stage(stage), mod, 1, rep)
+    assert changed == [art]
+    assert "OUTCOME  HELD — 2 issues" in art.read_text(encoding="utf-8")
+    assert gov._stamp_verdict(CFG.stage(stage), mod, 1, rep) == [], "stamping is idempotent"
+    # and a clean report writes the pass wording back
+    rep.findings = []
+    gov._stamp_verdict(CFG.stage(stage), mod, 1, rep)
+    assert "OUTCOME  CLEAR — 0 issues" in art.read_text(encoding="utf-8")
+
+
+def test_a_profile_with_no_self_check_is_served_unchanged(toy_analyzable):
+    """No self-check declared → the clause never runs and nothing is stamped."""
+    import gov
+    mod, art, an = toy_analyzable
+    assert CFG.profile.self_check is None
+    assert an._c_verdict_agrees(an.Ctx(mod, 1), {"artifact": ["prd"], "spec": "self_check"}, "HALT") == []
+    stage = next(s for s in CFG.stages if any(a.artifact == "prd" for a in s.produces))
+    assert gov._stamp_verdict(stage, mod, 1, an.AnalyzeReport(mod, 1, "all")) == []

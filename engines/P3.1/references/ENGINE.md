@@ -19,6 +19,7 @@
 {%- set pkgen = db.pk_generation | default('identity') -%}
 {%- set seqpat = (db.naming or {}).get('sequence_pattern') -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
+{%- set sc = profile.self_check | default({}) -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
 PASS / TRACK  : pass {{ st['pass'] }} · track {{ track }} · lane {{ st.lane }} · questions {{ st.questions }}
@@ -389,7 +390,7 @@ phase carries XM atoms.
 - forbidden responses map through `{{ api.error_envelope | default('the error envelope') }}` with a catalog row.
 The frontend stage references these permission names — it never redeclares them.{% else %} No security model is declared in `profile.conventions.security_model`; write "no permission model — endpoints are open per the SRS" and cite the REQs that say so.{% endif %}
 
-**R8 — Alignment (self-check).** The ALIGN table of §9, written as the phase content of the
+**R8 — Alignment (self-check).** The {{ sc.block }} table of §9, written as the phase content of the
 alignment-role phase (never split). If the profile declares no alignment-role phase, the
 table is trailing content after the last PHASE END.
 
@@ -430,13 +431,13 @@ Review check: `profile.review.extra_checks` rows whose stage is `{{ stage.id }}`
 {% for c in (profile.review.extra_checks if profile.review is defined and profile.review else []) if c.stage == stage.id %}- `{{ c.id }}` ({{ c.severity }}): {{ c.check }}
 {% else %}- none declared for this stage.
 {% endfor %}
-## 9. Alignment self-check (ALIGN)
+## 9. Alignment self-check ({{ sc.block }})
 
 Validates the plan **against itself and its bindings**. Runs automatically after the last
 content phase; a ✗ is fixed in the plan before the run ends (the fix is an ADR if it was a
 choice).
 
-ALIGN is the *prose* half of the check and it is not the authority. The mechanical half is
+{{ sc.block }} is the *prose* half of the check and it is not the authority. The mechanical half is
 `gov.py analyze`, which resolves — across artifacts, and across modules — exactly the things
 a prose pass reads past:
 
@@ -448,14 +449,20 @@ a prose pass reads past:
 | `xref-resolve` | every id of another module cited here is defined in that module's own registry |
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
+| `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
-Write ALIGN so that a ✗ is **stated**, with the fix that was applied. `RESULT PASSED ✓ —
-0 findings` is only truthful when the run actually had none: a self-check that always prints
-PASSED transfers false confidence downstream and is worse than no self-check. When a row
-below cannot be confirmed from the inputs, that row is a finding, not a silent ✓.
+Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
+cannot be confirmed from the inputs, that row is a finding, not a silent ✓.
+
+**Do not author the `{{ sc.verdict_label }}` line.** Write the label and leave the rest as it
+stands; the orchestrator overwrites it from the analyze report after the stage completes
+(`gov.py` → `_stamp_verdict`), and `verdict-agrees` refuses any hand-written verdict that
+claims fewer findings than the machine produced. A self-check that always prints
+`{{ sc.pass_token }}` transfers false confidence downstream and is worse than no self-check —
+so the count is no longer a thing a model is asked to be honest about.
 
 ```
-ALIGN — {{ MOD }} v{{ ver }}
+{{ sc.block }} — {{ MOD }} v{{ ver }}
 TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
 BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
 MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM
@@ -466,14 +473,14 @@ CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFE
 SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix{% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared
 DECISIONS         every non-obvious inference is an ADR in decisions/{{ MOD }}/ │ no BLOCKED ADR left unsurfaced
-RESULT            PASSED ✓ (only with zero findings) / the list of ✗, each with the fix applied
+{{ sc.verdict_label }}            (written by the orchestrator from the analyze report — leave it alone)
 ```
 Coverage tables (ENT/DBF → phases → QR → XM; RULE → API → catalog code; XM → status → blocks
 → workaround) close the section.
 
 ## 10. Registry update — `{{ reg_art.file.replace('{mod}', MOD | lower) }}`
 
-Written in the same run, after ALIGN ✓ (categories: shared/REGISTRY-SCHEMA.md):
+Written in the same run, after {{ sc.block }} (categories: shared/REGISTRY-SCHEMA.md):
 
 ```
 REGISTRY — {{ stage.id }} — {{ MOD }} v{{ ver }}
@@ -481,7 +488,7 @@ ID RANGES        {% for x in st.owns_ids %}{{ x }}-{{ MOD }}-<first>..<last>{% i
 ENTITIES / TABLES bound   · lookups reused / new{% if conv.get('lookups') %} (keys){% endif %}
 XM STATUS        open / deferred list
 CATALOG          code count · rules without message → ADR ids
-ALIGN            PASSED ✓ · findings fixed
+{{ sc.block }}            verdict as stamped · findings fixed
 ADRs             decisions/{{ MOD }}/ADR-{{ MOD }}-<seq> … (status)
 TRACEABILITY     REQ covered by ≥1 API/DBF: <n>/<total> · orphan REQ: <list — a gate blocker>
 ```
@@ -520,7 +527,7 @@ Every "STOP and ask" of earlier engine generations is replaced by this rule.
 
 | Owns (mints) | References (read-only) | Never touches |
 |---|---|---|
-| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; DB Alignment Manifest; Error Catalog; QRC; ALIGN result; ADRs it raises | {% for a, spec in atoms.items() if spec.owner not in [stage.id, 'any', 'versioning'] and a not in ['UXD','SCR','TC'] %}`{{ a }}-*` ({{ spec.owner }}){% if not loop.last %}, {% endif %}{% endfor %} | frontend/UX atoms (`UXD`, `SCR` — {{ atoms.UXD.owner }}), `TC-*` ({{ atoms.TC.owner }}), any code, framework annotations, executable queries, test artifacts |
+| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; DB Alignment Manifest; Error Catalog; QRC; {{ sc.block }} rows; ADRs it raises | {% for a, spec in atoms.items() if spec.owner not in [stage.id, 'any', 'versioning'] and a not in ['UXD','SCR','TC'] %}`{{ a }}-*` ({{ spec.owner }}){% if not loop.last %}, {% endif %}{% endfor %} | frontend/UX atoms (`UXD`, `SCR` — {{ atoms.UXD.owner }}), `TC-*` ({{ atoms.TC.owner }}), any code, framework annotations, executable queries, test artifacts |
 
 Hand-off (the orchestrator prints it): the plan + registry are split by the toolkit into
 `{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/` and delivered on

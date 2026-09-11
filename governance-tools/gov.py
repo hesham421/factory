@@ -105,6 +105,47 @@ def _gate_blocking(stage, mod: str, version: int) -> str | None:
     return None
 
 
+def _stamp_verdict(stage, mod: str, version: int, rep) -> list[Path]:
+    """Write each produced artifact's own verdict line FROM the analyze report.
+
+    A verdict a model authors drifts from its evidence — the shipped plan said
+    "0 findings" over six. A verdict the orchestrator writes from the report cannot,
+    which removes the defect class instead of detecting it. `verdict-agrees` stays as
+    the guard for anything a model still authors by hand.
+
+    Everything about the line's shape is a profile fact (`profile.self_check`); a
+    profile that declares no self-check is stamped nothing, silently and correctly.
+    """
+    spec = CFG.profile.self_check
+    if not spec:
+        return []
+    changed = []
+    for a in stage.produces:
+        if a.dir:
+            continue
+        path = CFG.artifact_path(mod, stage.id, a.artifact, version)
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        found = an._verdict_line(text, spec)
+        if found is None:
+            continue
+        n, line = found
+        head = line[:len(line) - len(line.lstrip())] + spec["verdict_label"]
+        rest = line[len(head):]
+        pad = rest[:len(rest) - len(rest.lstrip())] or " "
+        count = sum(1 for f in rep.findings if f.artifact == a.artifact and f.check != "verdict-agrees")
+        new_line = head + pad + an.render_verdict(spec, count)
+        if new_line == line:
+            continue
+        lines = text.splitlines(keepends=True)
+        lines[n - 1] = new_line + ("\n" if lines[n - 1].endswith("\n") else "")
+        path.write_text("".join(lines), encoding="utf-8")
+        changed.append(path)
+        _say(f"  verdict stamped in {a.artifact}: {an.render_verdict(spec, count)}")
+    return changed
+
+
 def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
     """After the artifacts exist: outputs → question policy → analyze → commit."""
     missing = [a.artifact for a in stage.produces if not a.optional and not CFG.artifact_path(mod, stage.id, a.artifact, version).exists()]
@@ -117,6 +158,11 @@ def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
         return BLOCKED
     st.build_state(mod, version)
     rep = an.run(mod, version, scope=f"stage:{stage.id}")
+    if _stamp_verdict(stage, mod, version, rep):
+        # the artifacts changed, so the report just written is about the version
+        # before the stamp (F2's own rule) — rebuild the state and re-derive it
+        st.build_state(mod, version)
+        rep = an.run(mod, version, scope=f"stage:{stage.id}")
     c = rep.counts()
     _say(f"analyze stage:{stage.id} → {counts_line(c)}")
     for f in rep.findings[:25]:
