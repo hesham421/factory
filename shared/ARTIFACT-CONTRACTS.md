@@ -127,7 +127,7 @@ contracts:
       - {id: C9.1, check: markers,        args: {artifact: frontend-execution-plan, track: frontend, plan: exec},             severity: CRITICAL}
       - {id: C9.2, check: traces,         args: {from: frontend-execution-plan, blocks: [PHASE, SUB], min: 1},               severity: MAJOR}
       - {id: C9.3, check: traces,         args: {from: UXD, to: [REQ, AC], min: 1},                                          severity: MAJOR}
-      - {id: C9.4, check: traces,         args: {from: SCR, to: [REQ, UXD], min: 1},                                         severity: MAJOR}
+      - {id: C9.4, check: traces,         args: {from: SCR, to: [REQ, UXD], min: 1, mode: any},                              severity: MAJOR}
       - {id: C9.5, check: traces,         args: {from: frontend-execution-plan, to: [API], defined_in: api-docs},             severity: CRITICAL}
       - {id: C9.6, check: orphans,        args: {kind: UXD, referenced_by: [frontend-execution-plan], min: 1},               severity: MAJOR}
       - {id: C9.7, check: orphans,        args: {kind: SCR, referenced_by: [frontend-execution-plan], min: 1},               severity: MAJOR}
