@@ -238,6 +238,8 @@ class FactoryConfig:
     @property
     def review(self) -> dict:       return self.data["review"]
     @property
+    def analyze(self) -> dict:      return self.data["analyze"]
+    @property
     def ambiguity(self) -> dict:    return self.data["ambiguity"]
     @property
     def versioning(self) -> dict:   return self.data["versioning"]

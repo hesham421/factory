@@ -373,7 +373,11 @@ these are mechanical clauses here and not a checklist line there.
 | `refs-exist` | every id of `kind` cited anywhere in the module has the file it is cited as, at `dir`/`<MOD>`/`naming[file_pattern]` | `kind`, `dir`, `file_pattern`, `per_module?` |
 | `paths-resolve` | every path-shaped string in each generated index (`files`, by `paths.module.*` key) resolves to something that exists, relative to the index's own directory | `files`, `required?` |
 
-Severity semantics are `factory.review` + `factory.gates[*].requires_analyze`:
-a gate opens only with zero CRITICAL; MAJOR findings return REVISE; MINOR
-findings are recorded in the gate record. The report lives at
+Severity semantics are **`factory.analyze`** + `factory.gates[*].requires_analyze`:
+`analyze.severities` is the vocabulary a clause's `severity:` must name (a clause
+naming one it does not declare is itself a finding at the top rank, because such a
+clause can never block), and `analyze.blocking` is the set that closes a stage or a
+gate. Both `gov.py analyze` and `gov.py lint` read that one declaration — the
+threshold is not spelled in Python. Findings below the blocking set are recorded
+in the report and in the gate record. The report lives at
 `paths.module.analyze_report`.

@@ -18,11 +18,14 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from config import CFG, FactoryConfig, Profile
+# sev(rank): the severity at that rank of factory.yaml → analyze.severities
+# (0 = most severe). lint charges by rank, never by a name spelled here.
+from toolkit.common import blocks, counts_line, sev, severities, severity_rank
 
 
 @dataclass
 class Finding:
-    severity: str          # CRITICAL | MAJOR | MINOR
+    severity: str          # one of factory.yaml → analyze.severities
     rule: str
     path: str
     line: int
@@ -84,24 +87,24 @@ def _check_type(value: Any, spec: str, path: str, types: dict, out: list[Finding
     if m and "|" in m.group(1) and not spec.startswith("{"):
         allowed = [a.strip() for a in m.group(1).split("|")]
         if str(value) not in allowed:
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"must be one of {allowed}, got {value!r}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"must be one of {allowed}, got {value!r}"))
         return
     if spec == "str":
         if not isinstance(value, str):
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected str, got {type(value).__name__}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"expected str, got {type(value).__name__}"))
         return
     if spec == "int":
         if not isinstance(value, int) or isinstance(value, bool):
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected int, got {type(value).__name__}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"expected int, got {type(value).__name__}"))
         return
     if spec == "bool":
         if not isinstance(value, bool):
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected bool, got {type(value).__name__}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"expected bool, got {type(value).__name__}"))
         return
     m = _LIST.match(spec)
     if m:
         if not isinstance(value, list):
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected list, got {type(value).__name__}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"expected list, got {type(value).__name__}"))
             return
         for i, item in enumerate(value):
             _check_type(item, m.group(1), f"{path}[{i}]", types, out)
@@ -109,7 +112,7 @@ def _check_type(value: Any, spec: str, path: str, types: dict, out: list[Finding
     m = _MAP.match(spec)
     if m:
         if not isinstance(value, dict):
-            out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected map, got {type(value).__name__}"))
+            out.append(Finding(sev(1), "C5-profile", path, 0, f"expected map, got {type(value).__name__}"))
             return
         for k, v in value.items():
             _check_type(v, m.group(2), f"{path}.{k}", types, out)
@@ -123,7 +126,7 @@ def _check_type(value: Any, spec: str, path: str, types: dict, out: list[Finding
 
 def _check_obj(value: Any, schema: dict, path: str, types: dict, out: list[Finding]) -> None:
     if not isinstance(value, dict):
-        out.append(Finding("MAJOR", "C5-profile", path, 0, f"expected mapping, got {type(value).__name__}"))
+        out.append(Finding(sev(1), "C5-profile", path, 0, f"expected mapping, got {type(value).__name__}"))
         return
     declared = {}
     for key, spec in schema.items():
@@ -134,7 +137,7 @@ def _check_obj(value: Any, schema: dict, path: str, types: dict, out: list[Findi
         declared[name] = (optional, spec)
         if name not in value:
             if not optional:
-                out.append(Finding("CRITICAL", "C5-profile", f"{path}.{name}", 0, "required key missing"))
+                out.append(Finding(sev(0), "C5-profile", f"{path}.{name}", 0, "required key missing"))
             continue
         v = value[name]
         if isinstance(spec, dict):
@@ -143,7 +146,7 @@ def _check_obj(value: Any, schema: dict, path: str, types: dict, out: list[Findi
             _check_type(v, str(spec), f"{path}.{name}", types, out)
     for key in value:
         if key not in declared and key != "schema_version":
-            out.append(Finding("MINOR", "C5-profile", f"{path}.{key}", 0, "key not declared in the schema"))
+            out.append(Finding(sev(2), "C5-profile", f"{path}.{key}", 0, "key not declared in the schema"))
 
 
 def validate_profile(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
@@ -154,37 +157,37 @@ def validate_profile(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
     # semantic checks that a type system cannot express
     langs = profile.languages
     if langs.get("primary") not in (langs.get("all") or []):
-        out.append(Finding("MAJOR", "C5-profile", f"{profile.id}.languages.primary", 0, "primary must be in languages.all"))
+        out.append(Finding(sev(1), "C5-profile", f"{profile.id}.languages.primary", 0, "primary must be in languages.all"))
     if profile.id != profile.path.stem:
-        out.append(Finding("MAJOR", "C5-profile", f"{profile.id}.identity.id", 0, f"id must equal filename stem '{profile.path.stem}'"))
+        out.append(Finding(sev(1), "C5-profile", f"{profile.id}.identity.id", 0, f"id must equal filename stem '{profile.path.stem}'"))
     try:
         _phase_checks(cfg, profile, out)
     except Exception as e:   # a malformed tracks block (e.g. an unfilled scaffold) is a finding, never a crash
-        out.append(Finding("CRITICAL", "C5-profile", f"{profile.id}.tracks", 0, f"tracks block is not well-formed: {e}"))
+        out.append(Finding(sev(0), "C5-profile", f"{profile.id}.tracks", 0, f"tracks block is not well-formed: {e}"))
     for f in profile.knowledge_files:
         if not (cfg.root / f).exists():
-            out.append(Finding("MAJOR", "C5-profile", f, 0, "knowledge file does not exist"))
+            out.append(Finding(sev(1), "C5-profile", f, 0, "knowledge file does not exist"))
     core_atoms = set(cfg.ids["atoms"])
     for atom in profile.extra_ids:
         if atom in core_atoms:
-            out.append(Finding("CRITICAL", "C5-profile", f"{profile.id}.ids.atoms.{atom}", 0, "profiles may ADD atoms, never redefine core atoms"))
+            out.append(Finding(sev(0), "C5-profile", f"{profile.id}.ids.atoms.{atom}", 0, "profiles may ADD atoms, never redefine core atoms"))
     return out
 
 
 def _phase_checks(cfg: FactoryConfig, profile: Profile, out: list[Finding]) -> None:
     for tr in profile.tracks:
         if tr not in cfg.tracks:
-            out.append(Finding("MAJOR", "C5-profile", f"{profile.id}.tracks.{tr}", 0, "track not declared in factory.yaml"))
+            out.append(Finding(sev(1), "C5-profile", f"{profile.id}.tracks.{tr}", 0, "track not declared in factory.yaml"))
             continue
         for plan in profile.plans(tr):
             keys = profile.phase_keys(tr, plan)
             if len(keys) != len(set(keys)):
-                out.append(Finding("CRITICAL", "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}", 0, "duplicate phase keys"))
+                out.append(Finding(sev(0), "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}", 0, "duplicate phase keys"))
             for p in profile.phases(tr, plan):
                 if not re.fullmatch(r"[A-Z0-9][A-Z0-9-]*", p.key):
-                    out.append(Finding("MAJOR", "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}.{p.key}", 0, "phase key must match [A-Z0-9-]+"))
+                    out.append(Finding(sev(1), "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}.{p.key}", 0, "phase key must match [A-Z0-9-]+"))
                 if p.never_split and (p.split_threshold or p.sub_labels):
-                    out.append(Finding("MAJOR", "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}.{p.key}", 0, "never_split phase cannot declare split_threshold/sub_labels"))
+                    out.append(Finding(sev(1), "C5-profile", f"{profile.id}.tracks.{tr}.plans.{plan}.{p.key}", 0, "never_split phase cannot declare split_threshold/sub_labels"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -264,11 +267,11 @@ def scan_literals(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
                 # allow the lint list itself and explicit "removed" notes in history-style lines
                 if "removed" in line.lower() or "deleted" in line.lower() or "forbidden_terms" in line:
                     continue
-                out.append(Finding("CRITICAL", "C2-removed-concept", str(rel), n, f"removed concept referenced: {forb_rx.search(line).group(0)!r}"))
+                out.append(Finding(sev(0), "C2-removed-concept", str(rel), n, f"removed concept referenced: {forb_rx.search(line).group(0)!r}"))
             if pterm_rx and in_profile_scope and not is_generated:
                 m = pterm_rx.search(line)
                 if m and "{{" not in line:
-                    out.append(Finding("MAJOR", "C2-profile-literal", str(rel), n, f"domain literal {m.group(1)!r} must come from the profile"))
+                    out.append(Finding(sev(1), "C2-profile-literal", str(rel), n, f"domain literal {m.group(1)!r} must come from the profile"))
     return out
 
 
@@ -290,9 +293,9 @@ def scan_code_literals(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
             for m in literal_rx.finditer(line):
                 lit = m.group(2)
                 if lit in stage_ids or lit in phase_keys:
-                    out.append(Finding("MAJOR", "C2-code-literal", rel, n, f"{lit!r} must come from factory.yaml / profile"))
+                    out.append(Finding(sev(1), "C2-code-literal", rel, n, f"{lit!r} must come from factory.yaml / profile"))
                 elif lit in prefixes and len(lit) >= 2 and lit.isupper():
-                    out.append(Finding("MAJOR", "C2-code-literal", rel, n, f"ID prefix {lit!r} must come from factory.yaml ids"))
+                    out.append(Finding(sev(1), "C2-code-literal", rel, n, f"ID prefix {lit!r} must come from factory.yaml ids"))
     return out
 
 
@@ -304,20 +307,20 @@ def scan_structure(cfg: FactoryConfig) -> list[Finding]:
     out: list[Finding] = []
     legacy_cmds = cfg.root / "commands"
     if legacy_cmds.exists():
-        out.append(Finding("CRITICAL", "C4-duplicate", "commands/", 0, f"second command tree; only {cfg.paths['commands']} may exist"))
+        out.append(Finding(sev(0), "C4-duplicate", "commands/", 0, f"second command tree; only {cfg.paths['commands']} may exist"))
     for st in cfg.stages:
         d = cfg.dir("engines") / st.id
         if not (d / "SKILL.md").exists():
-            out.append(Finding("MAJOR", "C1-structure", f"engines/{st.id}/SKILL.md", 0, "missing (run gov.py render)"))
+            out.append(Finding(sev(1), "C1-structure", f"engines/{st.id}/SKILL.md", 0, "missing (run gov.py render)"))
         if not (d / "references").exists():
-            out.append(Finding("MAJOR", "C1-structure", f"engines/{st.id}/references", 0, "missing"))
+            out.append(Finding(sev(1), "C1-structure", f"engines/{st.id}/references", 0, "missing"))
     for st in cfg.standalone:
         d = cfg.dir("standalone") / st.id
         if not (d / "SKILL.md").exists():
-            out.append(Finding("MAJOR", "C1-structure", f"standalone/{st.id}/SKILL.md", 0, "missing (run gov.py render)"))
+            out.append(Finding(sev(1), "C1-structure", f"standalone/{st.id}/SKILL.md", 0, "missing (run gov.py render)"))
     for extra in (cfg.dir("engines")).glob("*"):
         if extra.is_dir() and extra.name not in cfg.stage_ids():
-            out.append(Finding("CRITICAL", "C1-structure", f"engines/{extra.name}", 0, "engine folder not declared in factory.yaml stages"))
+            out.append(Finding(sev(0), "C1-structure", f"engines/{extra.name}", 0, "engine folder not declared in factory.yaml stages"))
     return out
 
 
@@ -338,9 +341,13 @@ def run(cfg: FactoryConfig | None = None, profile_id: str | None = None, render_
             findings += render.check_fresh(cfg)
         except ImportError:
             pass
-    order = {"CRITICAL": 0, "MAJOR": 1, "MINOR": 2}
-    findings.sort(key=lambda f: (order[f.severity], f.path, f.line))
+    findings.sort(key=lambda f: (severity_rank(f.severity), f.path, f.line))
     return findings
+
+
+def counts(findings: list[Finding]) -> dict:
+    """Tally by the configured severity vocabulary — the shape `counts_line` prints."""
+    return {s: sum(1 for f in findings if f.severity == s) for s in severities()}
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -348,5 +355,5 @@ if __name__ == "__main__":  # pragma: no cover
     fs = run(profile_id=sys.argv[1] if len(sys.argv) > 1 else None)
     for f in fs:
         print(f)
-    print(f"\n{sum(f.severity=='CRITICAL' for f in fs)} critical · {sum(f.severity=='MAJOR' for f in fs)} major · {sum(f.severity=='MINOR' for f in fs)} minor")
-    sys.exit(1 if any(f.severity == "CRITICAL" for f in fs) else 0)
+    print("\n" + counts_line(counts(fs)))
+    sys.exit(1 if blocks(fs) else 0)

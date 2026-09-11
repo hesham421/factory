@@ -29,7 +29,7 @@ from pathlib import Path
 
 from config import CFG, Phase
 
-from .common import CRITICAL, MAJOR, MINOR
+from .common import sev   # sev(rank): 0 = most severe declared level (factory.yaml → analyze.severities)
 
 _ACTION_START, _ACTION_END = "START", "END"
 _SYNTAX_HTML_COMMENT = "html-comment"
@@ -40,7 +40,7 @@ _MAX_AUTOFIX_PASSES = 50
 
 @dataclass
 class Finding:
-    severity: str          # CRITICAL | MAJOR | MINOR
+    severity: str          # one of factory.yaml → analyze.severities
     rule: str
     message: str
     line: int = 0
@@ -120,8 +120,8 @@ class ParseResult:
         return [c for c in phase.children if self.grammar.is_sub(c.kind)]
 
     def blocking(self, strict: bool = False) -> list[Finding]:
-        """CRITICAL findings block always; MAJOR ones block under --strict."""
-        levels = {CRITICAL, MAJOR} if strict else {CRITICAL}
+        """Rank-0 findings block always; rank-1 ones block under --strict."""
+        levels = {sev(0), sev(1)} if strict else {sev(0)}
         return [f for f in self.findings if f.severity in levels]
 
     def outside_phases(self) -> str:
@@ -229,12 +229,12 @@ def _parse_attrs(tok: _Token, g: Grammar, out: list[Finding]) -> dict[str, list[
     for item in tok.attrs.split():
         key, _, value = item.partition("=")
         if key not in g.attributes:
-            out.append(Finding(MAJOR, "marker-attribute", f"unknown attribute {key!r} on {tok.kind}:{tok.id} (allowed: {g.attributes})", tok.line))
+            out.append(Finding(sev(1), "marker-attribute", f"unknown attribute {key!r} on {tok.kind}:{tok.id} (allowed: {g.attributes})", tok.line))
             continue
         ids = [v for v in value.split(",") if v]
         for v in ids:
             if not g.id_rx.fullmatch(v):
-                out.append(Finding(MAJOR, "marker-trace-id", f"{tok.kind}:{tok.id} {key}= carries an invalid id {v!r}", tok.line))
+                out.append(Finding(sev(1), "marker-trace-id", f"{tok.kind}:{tok.id} {key}= carries an invalid id {v!r}", tok.line))
         attrs.setdefault(key, []).extend(ids)
     return attrs
 
@@ -247,35 +247,35 @@ def _build_tree(text: str, tokens: list[_Token], g: Grammar, check_nesting: bool
     roots: list[Block] = []
     for t in tokens:
         if t.kind not in g.kinds:
-            findings.append(Finding(CRITICAL, "marker-unknown-kind", f"unknown marker kind {t.kind!r} ({t.kind}:{t.id}:{t.action})", t.line))
+            findings.append(Finding(sev(0), "marker-unknown-kind", f"unknown marker kind {t.kind!r} ({t.kind}:{t.id}:{t.action})", t.line))
             continue
         why = g.foreign(t.kind)
         if why:
-            findings.append(Finding(CRITICAL, "marker-foreign-kind", f"{t.kind}:{t.id} does not belong in a {g.track}/{g.plan} plan — {why}", t.line))
+            findings.append(Finding(sev(0), "marker-foreign-kind", f"{t.kind}:{t.id} does not belong in a {g.track}/{g.plan} plan — {why}", t.line))
             continue
         if t.action == _ACTION_START:
             parent = stack[-1] if stack else None
             if check_nesting and (parent.kind if parent else None) not in (g.allowed_parents[t.kind] or {None}):
-                findings.append(Finding(CRITICAL, "marker-nesting", f"{t.kind}:{t.id} may not open inside {parent.kind + ':' + parent.id if parent else 'the document root'} (allowed parents: {sorted(g.allowed_parents[t.kind]) or 'root'})", t.line))
+                findings.append(Finding(sev(0), "marker-nesting", f"{t.kind}:{t.id} may not open inside {parent.kind + ':' + parent.id if parent else 'the document root'} (allowed parents: {sorted(g.allowed_parents[t.kind]) or 'root'})", t.line))
             if g.is_atom(t.kind) and not g.atom_rx[t.kind].fullmatch(t.id):
-                findings.append(Finding(CRITICAL, "atom-id", f"{t.kind}:{t.id} is not a well-formed {g.atom_kinds[t.kind]} id ({CFG.ids['pattern']})", t.line))
+                findings.append(Finding(sev(0), "atom-id", f"{t.kind}:{t.id} is not a well-formed {g.atom_kinds[t.kind]} id ({CFG.ids['pattern']})", t.line))
             b = Block(kind=t.kind, id=t.id, start_line=t.line, attrs=_parse_attrs(t, g, findings),
                       open_off=t.start, content_off=t.end, open_text=text[t.start:t.end], parent=parent)
             (parent.children if parent else roots).append(b)
             stack.append(b)
             continue
         if not stack:
-            findings.append(Finding(CRITICAL, "marker-unmatched-end", f"{t.kind}:{t.id}:{_ACTION_END} has no open {_ACTION_START}", t.line))
+            findings.append(Finding(sev(0), "marker-unmatched-end", f"{t.kind}:{t.id}:{_ACTION_END} has no open {_ACTION_START}", t.line))
             continue
         top = stack[-1]
         if (top.kind, top.id) != (t.kind, t.id):
-            findings.append(Finding(CRITICAL, "marker-mismatched-end", f"expected {top.kind}:{top.id}:{_ACTION_END} (opened line {top.start_line}) but found {t.kind}:{t.id}:{_ACTION_END}", t.line))
+            findings.append(Finding(sev(0), "marker-mismatched-end", f"expected {top.kind}:{top.id}:{_ACTION_END} (opened line {top.start_line}) but found {t.kind}:{t.id}:{_ACTION_END}", t.line))
             continue
         top.end_line, top.close_off, top.end_off = t.line, t.start, t.end
         top.content, top.close_text = text[top.content_off:t.start], text[t.start:t.end]
         stack.pop()
     for b in stack:
-        findings.append(Finding(CRITICAL, "marker-unclosed", f"{b.kind}:{b.id}:{_ACTION_START} (line {b.start_line}) has no {_ACTION_END}", b.start_line))
+        findings.append(Finding(sev(0), "marker-unclosed", f"{b.kind}:{b.id}:{_ACTION_START} (line {b.start_line}) has no {_ACTION_END}", b.start_line))
     return roots, findings
 
 
@@ -284,7 +284,7 @@ def _check_uniqueness(roots: list[Block]) -> list[Finding]:
     for r in roots:
         for b in r.walk():
             seen.setdefault((b.kind, b.id), []).append(b)
-    return [Finding(CRITICAL, "marker-duplicate", f"{k}:{i} appears {len(bs)} times (lines {', '.join(str(b.start_line) for b in bs)})", bs[0].start_line)
+    return [Finding(sev(0), "marker-duplicate", f"{k}:{i} appears {len(bs)} times (lines {', '.join(str(b.start_line) for b in bs)})", bs[0].start_line)
             for (k, i), bs in seen.items() if len(bs) > 1]
 
 
@@ -292,23 +292,23 @@ def _check_uniqueness(roots: list[Block]) -> list[Finding]:
 
 def _check_semantics(res: ParseResult, strict: bool) -> list[Finding]:
     g, out = res.grammar, []
-    adv = MAJOR if strict else MINOR
+    adv = sev(1) if strict else sev(2)
     for ph in res.phases():
         spec = g.phase_by_key.get(ph.id)
         if spec is None:
-            out.append(Finding(CRITICAL, "phase-unknown", f"{ph.kind}:{ph.id} is not a phase of {g.track}/{g.plan} (canonical: {', '.join(g.phase_by_key)}) — refusing (rules.unknown_phase)", ph.start_line))
+            out.append(Finding(sev(0), "phase-unknown", f"{ph.kind}:{ph.id} is not a phase of {g.track}/{g.plan} (canonical: {', '.join(g.phase_by_key)}) — refusing (rules.unknown_phase)", ph.start_line))
             continue
         subs = res.subs_of(ph)
         if not g.sub_exempt:
             for s in subs:
                 if not s.id.startswith(ph.id + "-"):
-                    out.append(Finding(CRITICAL, "sub-unqualified", f"{s.kind}:{s.id} must be phase-qualified as {ph.id}-<LABEL>", s.start_line))
+                    out.append(Finding(sev(0), "sub-unqualified", f"{s.kind}:{s.id} must be phase-qualified as {ph.id}-<LABEL>", s.start_line))
         if subs:
             for c in ph.children:
                 if g.is_atom(c.kind):
-                    out.append(Finding(MAJOR, "atom-orphan", f"{c.kind}:{c.id} sits directly under {ph.kind}:{ph.id} which also has {g.sub_kind} blocks — it would reach no package file", c.start_line))
+                    out.append(Finding(sev(1), "atom-orphan", f"{c.kind}:{c.id} sits directly under {ph.kind}:{ph.id} which also has {g.sub_kind} blocks — it would reach no package file", c.start_line))
         if spec.never_split and subs:
-            out.append(Finding(MAJOR, "never-split", f"{ph.kind}:{ph.id} is never_split but carries {len(subs)} {g.sub_kind} block(s)", ph.start_line))
+            out.append(Finding(sev(1), "never-split", f"{ph.kind}:{ph.id} is never_split but carries {len(subs)} {g.sub_kind} block(s)", ph.start_line))
         thr = spec.split_threshold
         if thr and not subs and thr.get("kind") in g.kinds:
             count = sum(1 for b in ph.walk() if b.kind == thr["kind"])
@@ -322,7 +322,7 @@ def _check_semantics(res: ParseResult, strict: bool) -> list[Finding]:
 
 def parse(text: str, track: str, plan: str, *, strict: bool = False) -> ParseResult:
     """Tokenise → tree → uniqueness → semantics. Never raises on bad input;
-    everything is a Finding. `strict` escalates threshold advisories to MAJOR."""
+    everything is a Finding. `strict` escalates threshold advisories one rank."""
     g = Grammar(track, plan)
     roots, findings = _build_tree(text, _tokenize(text, g), g)
     res = ParseResult(text=text, track=track, plan=plan, grammar=g, roots=roots, findings=findings)

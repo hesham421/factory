@@ -16,8 +16,53 @@ from typing import Any
 
 from config import CFG, Stage
 
-SEVERITIES = ("CRITICAL", "MAJOR", "MINOR")
-CRITICAL, MAJOR, MINOR = SEVERITIES
+# ── severity policy — factory.yaml → analyze (the ONE source) ────────────────
+# The severity vocabulary and the set that blocks are factory facts. They used
+# to be a tuple here, a dict in analyze.py and a comparison in gov.py: three
+# literals, one policy, and no way for an operator to see or change it. Every
+# reader below goes through these helpers, so `analyze`'s stage/gate verdict and
+# `lint`'s verdict are the same question asked twice and cannot disagree.
+# Rank 0 is the most severe declared level.
+
+
+def severities() -> tuple[str, ...]:
+    return tuple(CFG.analyze["severities"])
+
+
+def sev(rank: int) -> str:
+    """The severity at `rank` in the configured order (0 = most severe), clamped
+    so a factory that declares fewer levels than a caller asks for still resolves."""
+    s = severities()
+    return s[min(max(rank, 0), len(s) - 1)]
+
+
+def severity_rank(severity: str) -> int:
+    """Sort key. A severity the vocabulary does not declare sorts after every one
+    that it does — it is a defect in the contract, not a level in the scale."""
+    s = severities()
+    return s.index(severity) if severity in s else len(s)
+
+
+def known_severity(severity: str) -> bool:
+    return severity in severities()
+
+
+def blocking_severities() -> frozenset[str]:
+    return frozenset(CFG.analyze["blocking"])
+
+
+def blocks(findings) -> bool:
+    """THE predicate: does this set of findings close the stage, gate or run it
+    belongs to? Every caller asks it here; nobody re-spells the comparison."""
+    blocking = blocking_severities()
+    return any(getattr(f, "severity", None) in blocking for f in findings)
+
+
+def counts_line(counts: dict) -> str:
+    """A counts mapping → "1 critical · 4 major" — the operator-facing
+    tally, written from the configured vocabulary rather than from three names
+    spelled in a format string."""
+    return " · ".join(f"{n} {name.lower()}" for name, n in counts.items())
 
 
 def now_iso() -> str:

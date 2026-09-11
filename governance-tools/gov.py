@@ -42,7 +42,7 @@ import idmodel                              # noqa: E402
 import render as rd                         # noqa: E402
 import state as st                          # noqa: E402
 from toolkit import archive as tk_archive, splitter as tk_split, structure as tk_struct   # noqa: E402
-from toolkit.common import now_iso, write_json   # noqa: E402
+from toolkit.common import blocks, counts_line, now_iso, write_json   # noqa: E402
 
 OK, BLOCKED, AWAITING = 0, 1, 2
 
@@ -118,7 +118,7 @@ def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
     st.build_state(mod, version)
     rep = an.run(mod, version, scope=f"stage:{stage.id}")
     c = rep.counts()
-    _say(f"analyze stage:{stage.id} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor")
+    _say(f"analyze stage:{stage.id} → {counts_line(c)}")
     for f in rep.findings[:25]:
         _say("  ", f)
     if not rep.clean:
@@ -311,7 +311,7 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     _prepare(mod, version)
     rep = an.run(mod, version, scope=f"gate:{g['id']}")
     c = rep.counts()
-    _say(f"analyze gate:{g['id']} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor")
+    _say(f"analyze gate:{g['id']} → {counts_line(c)}")
     if g.get("requires_analyze") == "clean" and not rep.clean:
         for f in rep.findings[:25]:
             _say("  ", f)
@@ -891,7 +891,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "analyze":
         rep = an.run(a.module, a.version, scope=a.scope)
         c = rep.counts()
-        _say(f"analyze {a.scope} → {c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor · {'CLEAN' if rep.clean else 'BLOCKED'}")
+        _say(f"analyze {a.scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}")
         for f in rep.findings:
             _say("  ", f)
         return OK if rep.clean else BLOCKED
@@ -939,8 +939,9 @@ def main(argv: list[str] | None = None) -> int:
         fs = lint.run(profile_id=a.profile)
         for f in fs:
             _say(f)
-        _say(f"{sum(f.severity=='CRITICAL' for f in fs)} critical · {sum(f.severity=='MAJOR' for f in fs)} major · {sum(f.severity=='MINOR' for f in fs)} minor")
-        return BLOCKED if any(f.severity == "CRITICAL" for f in fs) else OK
+        _say(counts_line(lint.counts(fs)))
+        # the same blocking policy analyze gates on — one declaration, two readers
+        return BLOCKED if blocks(fs) else OK
     if a.cmd == "new-domain":
         return cmd_new_domain(a.id, yes=a.yes, module=a.module)
     return OK

@@ -69,7 +69,7 @@ gates:
     after: P3.1
     type: review                   # one human review per pass (scorecard + analyze report)
     lanes: [review-per-engine, review-holistic]   # both review the same brief; merged below
-    requires_analyze: clean        # no CRITICAL findings
+    requires_analyze: clean        # no finding at a severity in `analyze.blocking`
     on_revise: merge-review-notes  # lane used to apply findings; re-gate once, then escalate
   - id: pass-2
     after: P3.2
@@ -352,6 +352,19 @@ lanes:
     implementers: ["claude:opus"]
     effort: high                       # a dedicated lane so its model can be swapped independently
                                         # of `analysis` — same shape, own identity (factory.yaml lanes)
+
+# ── Analyze — severity vocabulary and the blocking policy ──────────────────
+# The one policy that decides what ships, and the one factory fact that used to
+# live as a literal in Python instead of here (analyze.py's severity map and its
+# `clean` predicate, gov.py's lint verdict). Ordered, MOST SEVERE FIRST: rank 0
+# is what a check reaches for when it has nothing else to say, and the severity
+# a contract clause is charged with when it names one this list does not declare.
+# `blocking` is the set that closes a stage or a gate. Narrow it and findings
+# become advisory; every defect that shipped from this factory was detected and
+# then ignored because MAJOR was not in this set.
+analyze:
+  severities: [CRITICAL, MAJOR, MINOR]
+  blocking: [CRITICAL, MAJOR]
 
 # ── Review rubric (ISO/IEC/IEEE 29148 attributes) used by every gate ────────
 review:

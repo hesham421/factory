@@ -9,7 +9,7 @@ Source  : CFG.plan_path(mod, track, plan, version)
 Target  : CFG.packages_dir(mod, track, plan, version)   (the "container")
 
 Stages (all non-interactive; `yes=False` or `dry_run=True` = plan only):
-  1. parse + validate  — block on CRITICAL (and on MAJOR under `strict`);
+  1. parse + validate  — block on the most severe level (and on the next under `strict`);
                          `fix_safe` runs the safe auto-fixer first
   2. split             — per phase: with SUBs → one `<SUB-ID>.md` per SUB plus
                          `<PHASE>-HEADER.md` for the preamble; without → `<PHASE>.md`.
@@ -270,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plan", required=True, help="plan key as declared by the profile (e.g. one of the packages keys)")
     ap.add_argument("--version", "-v", type=int, default=None, help="default: current version (filesystem)")
     ap.add_argument("--dry-run", action="store_true", help="show the write plan; write nothing")
-    ap.add_argument("--strict", action="store_true", help="MAJOR findings (thresholds, orphans …) block too")
+    ap.add_argument("--strict", action="store_true", help="second-rank findings (thresholds, orphans …) block too")
     ap.add_argument("--fix-safe", action="store_true", help="run the safe auto-fixer on the source first (<file>.orig kept)")
     ap.add_argument("--validate-only", metavar="FILE", help="validate this file for --track/--plan and exit")
     a = ap.parse_args(argv)

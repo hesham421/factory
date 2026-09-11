@@ -15,7 +15,8 @@ module is defined in that module, that a generated path points at something, and
 that a rule has a source for the data it reads. A check that only ever passes is
 worse than no check: it transfers false confidence to whoever reads the report.
 
-A gate cannot open with a CRITICAL. The report is written to
+A gate cannot open with a finding at a blocking severity (factory.yaml →
+analyze.blocking — one declaration, read here and by gov.py). The report is written to
 `paths.module.analyze_report` inside `_state/`, prose and JSON side by side, so a
 pipeline can gate on the JSON instead of reading a paragraph.
 """
@@ -32,9 +33,11 @@ import idmodel
 import render
 import state as st_mod
 from toolkit import markers as mk
-from toolkit.common import now_iso
-
-SEV = {"CRITICAL": 0, "MAJOR": 1, "MINOR": 2}
+# `sev_at_rank(n)` — the severity at rank n of factory.yaml → analyze.severities
+# (0 = most severe). Aliased because every clause function below takes the
+# severity it is charged with in a parameter named `sev`.
+from toolkit.common import (blocking_severities, blocks, counts_line, known_severity,
+                            now_iso, sev as sev_at_rank, severities, severity_rank)
 
 
 @dataclass
@@ -60,15 +63,18 @@ class AnalyzeReport:
     findings: list[Finding] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
 
-    def count(self, sev: str) -> int:
-        return sum(1 for f in self.findings if f.severity == sev)
+    def count(self, severity: str) -> int:
+        return sum(1 for f in self.findings if f.severity == severity)
 
     @property
     def clean(self) -> bool:
-        return self.count("CRITICAL") == 0
+        """No finding at a severity `factory.yaml → analyze.blocking` declares.
+        The threshold is config, not code: a MAJOR that blocks nothing is how
+        four findings naming a defect by line number were written down and shipped."""
+        return not blocks(self.findings)
 
     def counts(self) -> dict:
-        return {k: self.count(k) for k in SEV}
+        return {k: self.count(k) for k in severities()}
 
 
 # ── context helpers ─────────────────────────────────────────────────────────
@@ -406,9 +412,9 @@ def _c_markers(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     res = mk.parse(t, c["track"], c["plan"])
     out = []
     for f in res.findings:
-        s = f.severity if f.severity in SEV else "MAJOR"
-        if SEV[s] > SEV[sev]:
-            s = s  # keep the parser's own severity (never escalate above the parser)
+        # the parser's own severity stands; one it does not declare is charged a
+        # rank down from the top rather than silently dropped
+        s = f.severity if known_severity(f.severity) else sev_at_rank(1)
         out.append(Finding(s, "", "markers", f"{f.rule}: {f.message}", c["artifact"], f.line))
     return out
 
@@ -423,10 +429,10 @@ def _c_manifest(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     if man["type"] not in ("ADDITIVE", "BREAKING"):
         out.append(Finding(sev, "", "manifest", "Change type must be ADDITIVE or BREAKING", ctx.change_manifest_name()))
     if not man["cs"]:
-        out.append(Finding("MAJOR", "", "manifest", "no change-set id stamped in the manifest", ctx.change_manifest_name()))
+        out.append(Finding(sev_at_rank(1), "", "manifest", "no change-set id stamped in the manifest", ctx.change_manifest_name()))
     for art, rows in man["artifacts"].items():
         if not ctx.artifact(art):
-            out.append(Finding("MAJOR", "", "manifest", f"manifest names unknown artifact `{art}`", ctx.change_manifest_name()))
+            out.append(Finding(sev_at_rank(1), "", "manifest", f"manifest names unknown artifact `{art}`", ctx.change_manifest_name()))
             continue
         if rows.get("REMOVED") and man["type"] != "BREAKING":
             out.append(Finding(sev, "", "manifest", f"`{art}` lists REMOVED ids but change type is not BREAKING", ctx.change_manifest_name()))
@@ -512,7 +518,7 @@ def _c_value_agreement(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
             declared = truth.get(rid)
             if not declared:
                 if c.get("require_binding"):
-                    out.append(Finding("MAJOR", "", "value-agreement",
+                    out.append(Finding(sev_at_rank(1), "", "value-agreement",
                                        f"`{rid}` names {sorted(names)} here but `{truth_name}` binds it to no physical name", name))
                 continue
             if not (names & declared):
@@ -580,7 +586,7 @@ def _c_code_format(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                     out.append(Finding(sev, "", "code-format",
                                        f"`{val}` is not an instance of the declared format `{fmt}`", name, n))
         if not stated and c.get("require_declaration", True):
-            out.append(Finding("MINOR", "", "code-format",
+            out.append(Finding(sev_at_rank(2), "", "code-format",
                                f"does not state the declared code format `{fmt}` (`{c['format']}`)", name))
     return out
 
@@ -668,7 +674,7 @@ def _c_xref_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                 if fmod not in cache:
                     cache[fmod] = _module_ids(fmod)
                 if not cache[fmod]:
-                    out.append(Finding("MAJOR", "", "xref-resolve",
+                    out.append(Finding(sev_at_rank(1), "", "xref-resolve",
                                        f"`{rid}` is a contract with `{fmod}`, whose artifacts do not exist yet — "
                                        f"the dependency cannot be resolved", name, n))
                 elif rid not in cache[fmod]:
@@ -804,9 +810,20 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
                 # a clause naming a check nobody implements would otherwise make the
                 # contract look enforced while enforcing nothing — that is a finding.
                 rep.skipped.append(f"{cl['id']}: unknown check {cl['check']}")
-                rep.findings.append(Finding("MAJOR", cl["id"], cl["check"],
+                rep.findings.append(Finding(sev_at_rank(1), cl["id"], cl["check"],
                                             f"contract clause names a check `gov.py analyze` does not implement — "
                                             f"this clause enforces nothing"))
+                continue
+            if not known_severity(cl["severity"]):
+                # a clause charged at a severity the vocabulary does not declare is
+                # charged at nothing: it can never reach `analyze.blocking`, so the
+                # clause enforces nothing. Same defensive shape as the unknown check
+                # above — the contract is wrong, and that is itself a top-rank finding.
+                rep.skipped.append(f"{cl['id']}: unknown severity {cl['severity']}")
+                rep.findings.append(Finding(sev_at_rank(0), cl["id"], cl["check"],
+                                            f"contract clause declares severity `{cl['severity']}`, which "
+                                            f"`factory.yaml → analyze.severities` {list(severities())} does not "
+                                            f"declare — this clause can never block"))
                 continue
             args = dict(cl.get("args") or {})
             if not ctx.when(args.pop("when", None)):
@@ -814,7 +831,7 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
             try:
                 fs = fn(ctx, args, cl["severity"])
             except Exception as e:  # a broken clause must be visible, never silent
-                fs = [Finding("MAJOR", cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
+                fs = [Finding(sev_at_rank(1), cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
             for f in fs:
                 f.clause = f.clause or cl["id"]
             rep.findings += fs
@@ -830,7 +847,7 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
         seen.add(key)
         unique.append(f)
     rep.findings = unique
-    rep.findings.sort(key=lambda f: (SEV[f.severity], f.clause, f.artifact, f.line))
+    rep.findings.sort(key=lambda f: (severity_rank(f.severity), f.clause, f.artifact, f.line))
     if write:
         _write_report(rep)
     return rep
@@ -843,7 +860,8 @@ def _write_report(rep: AnalyzeReport) -> Path:
     c = rep.counts()
     lines = [CFG.data["lint"]["generated_marker"], f"# Analyze report — {rep.mod} v{rep.version} — scope `{rep.scope}`", "",
              f"Generated {now_iso()} · contracts {', '.join(rep.contracts) or '—'} · "
-             f"**{c['CRITICAL']} critical · {c['MAJOR']} major · {c['MINOR']} minor** · verdict: {'CLEAN' if rep.clean else 'BLOCKED'}", ""]
+             f"**{counts_line(c)}** · blocking {sorted(blocking_severities())} · "
+             f"verdict: {'CLEAN' if rep.clean else 'BLOCKED'}", ""]
     if rep.findings:
         lines += ["| Severity | Clause | Check | Artifact | Line | Finding |", "|---|---|---|---|---|---|"]
         for f in rep.findings:
