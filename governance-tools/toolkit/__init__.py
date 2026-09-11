@@ -26,6 +26,13 @@ _TOOLS_DIR = str(Path(__file__).resolve().parent.parent)
 if _TOOLS_DIR not in sys.path:
     sys.path.insert(0, _TOOLS_DIR)
 
+# CAUTION: `archive` is BOTH a submodule of this package and a function exported
+# here, and the function wins — binding it on the package shadows the submodule,
+# so even `import toolkit.archive as m` hands back the function and
+# `m.archive(...)` raises AttributeError (gov.py fell into exactly that trap).
+# Import the FUNCTION from its own path — `from toolkit.archive import archive` —
+# and never assume `toolkit.archive` is the module. `split` / `verify` /
+# `ensure_structure` are safe because their names differ from their submodules'.
 from .archive import ArchiveReport, archive                                   # noqa: E402
 from .markers import (AutofixReport, Block, Finding, Grammar, ParseResult,     # noqa: E402
                       parse, parse_structure, safe_autofix, validate)

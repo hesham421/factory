@@ -41,8 +41,13 @@ import dispatch as dp                       # noqa: E402
 import idmodel                              # noqa: E402
 import render as rd                         # noqa: E402
 import state as st                          # noqa: E402
-from toolkit import archive as tk_archive, splitter as tk_split, structure as tk_struct   # noqa: E402
-from toolkit.common import blocks, counts_line, now_iso, write_json   # noqa: E402
+import toolkit.splitter as tk_split           # noqa: E402
+import toolkit.structure as tk_struct         # noqa: E402
+# The FUNCTION, by its own path: `toolkit.archive` resolves to the re-exported
+# function, not the submodule, so `tk_archive.archive(...)` would raise
+# AttributeError (see the caution in toolkit/__init__.py).
+from toolkit.archive import archive as tk_archive   # noqa: E402
+from toolkit.common import blocks, counts_line, now_iso, rel, write_json   # noqa: E402
 
 OK, BLOCKED, AWAITING = 0, 1, 2
 
@@ -1109,22 +1114,54 @@ def main(argv: list[str] | None = None) -> int:
         created = tk_struct.ensure_structure(a.module, a.version, dry_run=a.dry_run)
         _say(f"structure: {len(created)} folder(s) {'would be ' if a.dry_run else ''}created"); return OK
     if a.cmd == "archive":
-        rep = tk_archive.archive(a.module, a.version, Path(a.source), force=a.force, dry_run=a.dry_run)
-        _say(rep); return OK
+        rep = tk_archive(a.module, a.version, Path(a.source), force=a.force, dry_run=a.dry_run)
+        _say(f"archive [{rep.module}] v{rep.version} ← {rep.source_dir}"
+             f"{' [dry-run]' if rep.dry_run else ''}: {len(rep.copied)} copied, "
+             f"{len(rep.overwritten)} overwritten, {len(rep.kept_existing)} kept, "
+             f"{len(rep.skipped_missing)} missing")
+        for w in rep.warnings:
+            _say("  WARN", w)
+        for e in rep.errors:
+            _say("  ERROR", e)
+        # The report's verdict IS the exit code. Returning OK unconditionally
+        # reported a successful archive even when nothing was copied.
+        return OK if rep.ok else BLOCKED
     if a.cmd == "split":
         plans = [a.plan] if a.plan else [pl for pl in CFG.tracks[a.track]["packages"] if pl in CFG.profile.plans(a.track)]
         rc = OK
+        if not plans:
+            _say(f"BLOCKED: track {a.track} declares no plan that the active profile also declares — nothing to split.")
+            return BLOCKED
+        # A plan the operator NAMED must exist; when iterating a whole track,
+        # a plan the pipeline has not generated yet is a legitimate "not yet".
+        # What is never legitimate is splitting NOTHING and reporting success —
+        # that is how a split silently never happened.
+        named = a.plan is not None
+        split_any = False
         for pl in plans:
-            if not (CFG.plan_path(a.module, a.track, pl, a.version)).exists():
+            src = CFG.plan_path(a.module, a.track, pl, a.version)
+            if not src.exists():
+                _say(f"split {a.track}/{pl}: skipped — plan not found at {rel(src)}"
+                     + (" (generate it, then archive it into the module)." if named else " (not generated yet)."))
+                if named:
+                    rc = BLOCKED
                 continue
+            split_any = True
             rep = tk_split.split(a.module, a.track, pl, a.version, dry_run=a.dry_run, strict=a.strict, fix_safe=a.fix_safe)
             v = rep.verification or {}
             _say(f"split {a.track}/{pl} v{rep.version}: {len(rep.written)} file(s), {len(rep.findings)} finding(s), "
                  f"verify {'ok' if v.get('ok') else 'FAILED'} ({v.get('checked', 0)} checked){' [dry-run]' if a.dry_run else ''}")
             for f in rep.findings[:20]:
                 _say("  ", f)
+            for e in rep.errors:
+                _say("  ERROR", e)
             if rep.blocked or rep.errors or (v and not v.get("ok", True)):
                 rc = BLOCKED
+        if not split_any:
+            _say(f"BLOCKED: no plan of track {a.track} exists for [{a.module}] v"
+                 f"{_version(a.module, a.version)} — nothing was split. Looked for: "
+                 + ", ".join(rel(CFG.plan_path(a.module, a.track, pl, a.version)) for pl in plans))
+            rc = BLOCKED
         return rc
     if a.cmd == "render":
         for pth in rd.render_all():

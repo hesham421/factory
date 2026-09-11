@@ -87,6 +87,15 @@ def archive(mod: str, version: int | None, source_dir: Path, force: bool = False
             shutil.copy2(op["src"], op["dst"])
         except OSError as e:
             rep.errors.append(f"{op['file']}: {e}")
+    # Archiving a source that yielded NOTHING is a failure, not an empty success.
+    # Without this the module is stamped `archived: true` with `archived_files: []`
+    # and the operator is told the artifacts are in place when none arrived.
+    if not (rep.copied or rep.overwritten or rep.kept_existing):
+        rep.errors.append(
+            f"no artifact of this module was found in {source_dir} — nothing was "
+            f"archived. Expected one of: "
+            f"{', '.join(op['file'] for op in plan_operations(mod, version, source_dir)) or '(none declared)'}. "
+            f"Check the source folder, or the stage that should have generated them.")
     if not dry_run and rep.ok:
         set_status(mod, version, "archived", True)
         set_status(mod, version, "archived_at", now_iso())

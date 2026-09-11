@@ -1,0 +1,412 @@
+{
+  "module": "SEC",
+  "version": 1,
+  "scope": "gate:pass-2",
+  "counts": {
+    "CRITICAL": 9,
+    "MAJOR": 31,
+    "MINOR": 1
+  },
+  "clean": false,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "C8",
+    "C9",
+    "C12"
+  ],
+  "skipped": [],
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-001` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 680
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-002` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 688
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-003` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 696
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-004` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 704
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-005` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 712
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-006` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 720
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C5.12",
+      "check": "data-source",
+      "message": "`RULE-SEC-007` declares no `Data source` \u2014 the data its check reads has no stated origin",
+      "artifact": "",
+      "line": 728
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C7.10",
+      "check": "value-agreement",
+      "message": "`DBF-SEC-064` is ['grant_at'] in `backend-execution-plan` but ['granted_at'] in `db-script` \u2014 one of them is a transcription slip",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    },
+    {
+      "severity": "CRITICAL",
+      "clause": "C7.15",
+      "check": "verdict-agrees",
+      "message": "`backend-execution-plan` claims 0 findings but `gov.py analyze` produced 30 for it \u2014 the artifact the implementer reads contradicts the report beside it. Correct line: `BLOCKED \u2717 \u2014 30 findings`",
+      "artifact": "backend-execution-plan",
+      "line": 1269
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-006` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 56
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-011` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 101
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C4.4",
+      "check": "traces",
+      "message": "`US-SEC-012` traces to 0 `POL` id(s), needs \u22651",
+      "artifact": "",
+      "line": 110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit-sequence>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 410
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "`SEC-001` is not an instance of the declared format `{MOD}-{http}[-{SLUG}]`",
+      "artifact": "backend-execution-plan",
+      "line": 411
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 1213
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "declares the code format `SEC-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "artifact": "backend-execution-plan",
+      "line": 1267
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `SignupRequestDto`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1107
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `ResetRequestDto`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1108
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `ResetCompleteDto`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1109
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `Page\\<UserResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `DeactivateConfirmation`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1114
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `ReactivateConfirmation`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1115
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1117
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `Page\\<RoleResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1117
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `RevokeConfirmation`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1120
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `ModuleRegisterRequest`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1123
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `ScreenRegisterRequest`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1124
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `ActionRegisterRequest`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1125
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1126
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `Page\\<RegistryRowResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1126
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1128
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `Page\\<AuditLogEntryResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1128
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1129
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `text/csv`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1129
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Request DTO` names `(query params)`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1130
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `Page\\<ActiveSessionResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1130
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `TerminateConfirmation`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1131
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.16",
+      "check": "forward-refs",
+      "message": "`Response DTO` names `List\\<ModuleMenuResponse\\>`, which `api-docs` does not define \u2014 either it is `(proposed)`, or the two disagree",
+      "artifact": "backend-execution-plan",
+      "line": 1132
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.17",
+      "check": "xref-surface",
+      "message": "`/api/v1/mdl/lookups` consumes `MDL`'s surface in prose but cites no API of `MDL` \u2014 a dependency with no id resolves nowhere, and `MDL`'s own checks never see it",
+      "artifact": "backend-execution-plan",
+      "line": 509
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "does not state the declared code format `{MOD}-{http}[-{SLUG}]` (`stack.backend.api.error_code_format`)",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    }
+  ],
+  "provenance": {
+    "rules": {
+      "contracts": "1b5259070f48bdd0db3a24419d63f7d98cb8d3ce2f5b009e41770e2e47f89e23",
+      "checker": "89a25bcf88c712db227b897fdb811ac4717e27b34c022696ca566dbf06232a2d",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "api-docs",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "f622cbbf15a046331f24f819f7bb2fe14c724a720f09f235ae3de68adb9fe43c",
+      "backend-execution-plan": "c934cc6823e5bb8a2d7e85c468f72d3a87ab17f9b3fa3a0e7d6e1bf08b94ade6",
+      "backend-test-plan": "22cd268bcf01b35c3a1741bd93aa287bd272047a287fcf500d476ada8be8c68e",
+      "business-policies": "aa84e4fa34c5d3e1b7ef71e2055bdd4b81980bcf4a1b53f81351cd120566d35a",
+      "db-script": "4ebf14c9d44b51e764aa87b0a567bb82e0ca0788a750eba5e3b7bf4288d4f640",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "b0725a17866f967e3f735529cfa1571825dc66750535e7a8907d4448c77ec0ca",
+      "frontend-execution-plan": "6b44fc14973aa38d7f44a752691eadaa4f9afc43e8a37c69a798d1d74c67bd9c",
+      "frontend-test-plan": "e447bcec7e8144b0e958a85d93a12505a01a524af2ed36a7cadc137284696566",
+      "module-registry": "fdee1eb1c5a9ae0be45579eddf863b41859474f9c1b75f2df76d06c830c9cbdc",
+      "platform-summary": "ef423becc4481e307d98de8960f8416cb02212571d518daa3f2015c4ddf6a44e",
+      "prd": "dc418b01290699f190912e9824a28e60285ab5d1c76f1e95baa234677601a59d",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "2d115ca2ad26a9df6a7d7ffbdfaef181b5189d4f2c637047790cba90a92425d1",
+      "registry-exec-be": "91e753058a5dd1a4548522c17010c10e5573db7a2bf3b565db8f11a277ede044",
+      "registry-exec-fe": "221fbbee963a602eb7a53c65545df987f3931874b6f9ea2e01ab2a3eab3407b7",
+      "registry-srs": "735121f843b9ea9b8ac8ccfbcf2955273204e67d4959077606b37df59088f167",
+      "srs": "df71297b2100d39251ca128fb27eec9a24fb3ee3eb7d90d05e642f33876fa0cb",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "fe360a9c38baf2785c213cffdd24b06f9e68738419dd21fa96c66b588070f78c",
+      "ui-ux-spec": "50fcf3aa506e8375a485730b67013c57ed6f4f7dfe89887d72ae4c4411491059"
+    },
+    "at": "2026-09-11T15:54:18+00:00"
+  }
+}

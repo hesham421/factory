@@ -43,7 +43,7 @@ from config import CFG
 from .common import (flat_plan, generated_marker, markers_schema_version, now_iso,
                      plan_key, plan_path_or_none, read_json, rel, write_json)
 from .markers import AutofixReport, Block, Finding, ParseResult, parse_structure, safe_autofix, validate
-from .structure import set_status
+from .structure import MarkerSchemaError, require_supported_marker_schema, set_status
 
 INDEX_FILE = "index.md"
 STATE_FILE = "state.json"
@@ -201,6 +201,13 @@ def verify(mod: str, track: str, plan: str, version: int | None = None) -> dict:
             out["missing"].append(f"{b.kind}:{b.id}")
         elif _digest(hit[0]) != _digest(b):
             out["mismatched"].append(f"{b.kind}:{b.id} in {rel(hit[1])}")
+    # A verification that checked NOTHING is not a pass. Without this, a plan
+    # carrying no split units verifies "ok" over an empty set and the caller
+    # records a successful split of nothing.
+    if out["checked"] == 0:
+        out["missing"].append(
+            "no split unit found in the source plan — nothing was verified, "
+            "so this is a failure, not a clean verification")
     out["ok"] = not out["missing"] and not out["mismatched"]
     return out
 
@@ -220,12 +227,30 @@ def split(mod: str, track: str, plan: str, version: int | None = None, *, yes: b
     if not src.exists():
         rep.errors.append(f"plan not found: {rel(src)} (archive it first)")
         return rep
+    # Grammar-version precondition, BEFORE any parsing (see structure.py).
+    try:
+        require_supported_marker_schema(mod, version)
+    except MarkerSchemaError as e:
+        rep.errors.append(str(e))
+        return rep
     if fix_safe and not rep.dry_run:
         rep.autofix = safe_autofix(src, track, plan)
     res = validate(src, track, plan, strict=strict)
     rep.findings = res.findings
     if res.blocking(strict):
         rep.blocked = True
+        return rep
+    # A plan with no phase block has nothing to split. It must NOT fall through
+    # to the write plan, where the whole unsplit file would be emitted as one
+    # sections file and recorded as a successful split of zero units.
+    if not res.phases():
+        g = res.grammar
+        rep.errors.append(
+            f"no {g.phase_kind} block found in {rel(src)} — the plan was not "
+            f"marker-annotated by the engine that owns {track}/{plan}, so there is "
+            f"nothing to split. Expected one of: {', '.join(g.phase_by_key) or '(none declared)'}. "
+            f"Fix at the source by regenerating the plan through that engine; this "
+            f"tool detects and reports marker drift and never injects markers.")
         return rep
     container = CFG.packages_dir(mod, track, plan, version)
     try:
@@ -289,6 +314,15 @@ def main(argv: list[str] | None = None) -> int:
         blocking = res.blocking(a.strict)
         print(f"  {path.name}: {len(res.phases())} phase(s), {len(res.atoms())} atom(s), "
               f"{len(res.findings)} finding(s), {len(blocking)} blocking")
+        # Validating a file in which nothing was found is a failure to validate,
+        # not a clean bill of health — the single most misreadable "pass" there is.
+        if not res.phases():
+            g = res.grammar
+            print(f"  ERROR no {g.phase_kind} block found in {path} — this file is not "
+                  f"marker-annotated for {a.track}/{a.plan}. Expected one of: "
+                  f"{', '.join(g.phase_by_key) or '(none declared)'}. Regenerate it through "
+                  f"the engine that owns the plan; this tool never injects markers.")
+            return 1
         return 1 if blocking else 0
 
     if not a.module:

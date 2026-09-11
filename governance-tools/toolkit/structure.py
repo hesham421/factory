@@ -112,6 +112,48 @@ def load_manifest(mod: str, version: int | None = None) -> dict | None:
     return read_json(_manifest_path(mod.upper(), version))
 
 
+class MarkerSchemaError(RuntimeError):
+    """A module was emitted with a marker grammar this toolkit cannot read."""
+
+
+def require_supported_marker_schema(mod: str, version: int | None = None) -> int:
+    """
+    Refuse, BEFORE parsing, a module whose manifest declares a marker grammar
+    newer than the one factory.yaml gives this toolkit.
+
+    A newer grammar may carry marker syntax this parser does not recognise. The
+    failure mode is not an error — it is SILENCE: unrecognised markers simply do
+    not tokenise, the block tree comes back empty, and the split writes nothing
+    while reporting success. That is exactly how a frontend split silently did
+    not happen. The version is stamped into every manifest precisely so it can be
+    checked here; nothing read it back until now.
+
+    Returns the module's declared version (the factory's own when the module
+    predates the stamp — such a module cannot be from a newer factory).
+    """
+    man = load_manifest(mod, version) or {}
+    ours = markers_schema_version()
+    declared = man.get("markers_schema_version", ours)
+    try:
+        declared = int(declared)
+    except (TypeError, ValueError):
+        raise MarkerSchemaError(
+            f"[{mod.upper()}] {CFG.paths['module']['manifest_file']} declares a "
+            f"non-numeric markers_schema_version: {declared!r}."
+        ) from None
+    if declared > ours:
+        raise MarkerSchemaError(
+            f"[{mod.upper()}] was emitted with marker grammar schema v{declared}, "
+            f"but this toolkit implements v{ours} (factory.yaml → markers.schema_version).\n"
+            f"Refusing to parse: a newer grammar can carry marker syntax this parser "
+            f"does not recognise, which makes blocks invisible and produces an empty "
+            f"split that looks like a success.\n"
+            f"Fix at the source: upgrade factory.yaml → markers to schema v{declared} "
+            f"(the toolkit reads the grammar from there), then re-run."
+        )
+    return declared
+
+
 def write_manifest(mod: str, version: int | None = None) -> Path:
     """Write a fresh manifest, preserving `status` and `created_at` of an
     existing one (the layout is regenerated, the history is kept)."""
