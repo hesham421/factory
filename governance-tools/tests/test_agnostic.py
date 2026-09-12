@@ -1069,3 +1069,97 @@ def test_a_profile_with_no_operation_vocabulary_is_served_unchanged(toy_analyzab
     assert CFG.profile.get("conventions.security_model.actions") is None
     assert an._c_operation_resolves(an.Ctx(mod, 1), {
         "artifact": "prd", "resolves_to": "API", "actions": "conventions.security_model.actions"}, "WARN") == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G5 — plan the bootstrap data, then check it exists
+# ----------------------------------------------------------------------------
+# The toy's section token, its item labels, its source words and its grant
+# vocabulary are all its own. One item enumerates by a table column, the other by
+# the toy's own permission template — the checker knows neither mechanism's words.
+# ════════════════════════════════════════════════════════════════════════════
+
+TOY_BOOTSTRAP = {
+    "section": "OPENING STOCK",
+    "items": [
+        {"label": "roster code", "column": "Roster code", "declared_in": "prd", "source_label": "filled from"},
+        {"label": "clearance", "names": "conventions.security_model.permission_pattern",
+         "declared_in": "prd", "source_label": "handed to"},
+    ],
+}
+
+
+@pytest.fixture
+def toy_bootstrap(toy_ops):
+    import render
+    mod, art, an = toy_ops
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["conventions"]["security_model"]["grant_target"] = "duty rota"
+    pdata["bootstrap_data"] = yaml.safe_load(yaml.safe_dump(TOY_BOOTSTRAP))
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"] = [cl for cl in spec["contracts"][0]["clauses"] if cl["id"] != "T1.8"]
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.9", "check": "bootstrap-complete",
+         "args": {"artifact": "prd", "spec": "bootstrap_data", "when": "profile.bootstrap_data"},
+         "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _boot_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "bootstrap-complete"]
+
+
+_DECLARES = ("# toy prd\n\n| Roster code | Used by |\n|---|---|\n| NIGHT_SHIFT | the ward |\n\n"
+             "The calendar screen needs CAN_CALENDAR_BOOK.\n")
+
+
+def test_toy_lookup_key_with_no_seed_source_is_a_finding(toy_bootstrap):
+    mod, art, an = toy_bootstrap
+    art.write_text(_DECLARES + "\n## OPENING STOCK\n\nCLEARANCE  CAN_CALENDAR_BOOK │ handed to: the ward rota\n",
+                   encoding="utf-8")
+    fs = _boot_findings(mod, an)
+    assert len(fs) == 1 and "NIGHT_SHIFT" in fs[0].message and "roster code" in fs[0].message, [str(f) for f in fs]
+    assert "fails on a fresh deployment" in fs[0].message
+
+
+def test_toy_row_that_names_no_source_creates_nothing(toy_bootstrap):
+    mod, art, an = toy_bootstrap
+    art.write_text(_DECLARES + "\n## OPENING STOCK\n\nROSTER CODE  NIGHT_SHIFT\n"
+                                "CLEARANCE  CAN_CALENDAR_BOOK │ handed to: the ward rota\n", encoding="utf-8")
+    fs = _boot_findings(mod, an)
+    assert len(fs) == 1 and "names no `filled from`" in fs[0].message, [str(f) for f in fs]
+
+
+def test_toy_bootstrap_that_covers_everything_passes(toy_bootstrap):
+    mod, art, an = toy_bootstrap
+    art.write_text(_DECLARES + "\n## OPENING STOCK\n\nROSTER CODE  NIGHT_SHIFT │ filled from: the ward seed script\n"
+                                "CLEARANCE  CAN_CALENDAR_BOOK │ handed to: the ward rota\n", encoding="utf-8")
+    assert _boot_findings(mod, an) == []
+
+
+def test_toy_missing_bootstrap_section_is_one_finding_per_item(toy_bootstrap):
+    """The shipped shape: the plan carries structure and behaviour and nothing at
+    all about the data either depends on."""
+    mod, art, an = toy_bootstrap
+    art.write_text(_DECLARES, encoding="utf-8")
+    fs = _boot_findings(mod, an)
+    assert len(fs) == 2 and all("carries no `OPENING STOCK` section" in f.message for f in fs), [str(f) for f in fs]
+
+
+def test_the_toy_grant_target_is_the_toys_own_word(toy_bootstrap):
+    """`grant_target` is the thing a permission is granted TO, and it is the
+    project's word — the schema and the engines never spell it."""
+    assert CFG.profile.get("conventions.security_model.grant_target") == "duty rota"
+
+
+def test_a_profile_with_no_bootstrap_data_is_served_unchanged(toy_analyzable):
+    mod, art, an = toy_analyzable
+    assert CFG.profile.get("bootstrap_data") is None
+    assert an._c_bootstrap_complete(an.Ctx(mod, 1), {"artifact": "prd", "spec": "bootstrap_data"}, "WARN") == []

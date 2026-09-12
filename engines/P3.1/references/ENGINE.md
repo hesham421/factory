@@ -20,6 +20,7 @@
 {%- set seqpat = (db.naming or {}).get('sequence_pattern') -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sc = profile.self_check | default({}) -%}
+{%- set boot = profile.bootstrap_data | default(none) -%}
 {%- set fwd = (profile.forward_columns | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set totals = (profile.declared_totals | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set proposed = factory.forward_reference.proposed_token -%}
@@ -195,7 +196,16 @@ statement of a total against the same row set, so two statements that disagree w
 are two findings, not one. A hand-counted total was the smallest completeness defect this
 factory shipped and the one nothing in it counted.
 {% endif %}
-## 4. DB Alignment Manifest
+{% if conv.get('lookups') and boot %}
+**LOOKUP REGISTRY** — a markdown table, not a fence row: `gov.py analyze` →
+`bootstrap-complete` reads the `Lookup key` column and requires a bootstrap row for every
+value in it.
+
+| Lookup key | Used in field (`DBF-*`) | `ENT-*` | Table owner module |
+|---|---|---|---|
+| <exact key string from the SRS> | DBF-{{ MOD }}-<seq> | ENT-{{ MOD }}-<seq> | <the module whose script creates the table> |
+
+{% endif %}## 4. DB Alignment Manifest
 
 The manifest is the canonical binding between plan fields and db-script fields. It contains
 **only** these columns — column names, DB types and SRS references are *sourced by lookup*
@@ -437,6 +447,25 @@ phase carries XM atoms.
   the shipped module answered forbidden to every caller behind exactly such a matrix
   (`gov.py analyze` → `operation-resolves`). Leave the cell blank rather than mark it hopefully.
 
+{% if boot %}
+**{{ boot.section }}.** Structure and behaviour are not enough: a module is unusable until the rows
+its first call reads already exist. State them here, one row each, every row naming **who produces
+it** — not only that it is needed:
+
+```
+{{ boot.section }} — {{ MOD }} v{{ ver }}
+{% for it in boot['items'] %}{{ it.label | upper }}{{ ' ' * (14 - it.label | length if it.label | length < 14 else 1) }}<the {{ it.label }}, exactly as `{{ it.declared_in }}` states it> │ {{ it.source_label }}: <who produces it, and where>
+{% endfor %}```
+- A {{ (boot['items'] | first).label }} whose table belongs to **another module** is still this module's
+  to seed. The seeding block of the structural stage only covers tables this module's own script
+  creates, so a row left to that block is a row nothing anywhere in the pipeline ever creates —
+  the delivered module failed its very first create call against an empty table.
+{% if sec and sec.get('grant_target') %}- Registering a page and minting a permission name is **not** a grant. Every permission this
+  module declares carries its `{{ sec.grant_target }}` here (profile.conventions.security_model.grant_target)
+  and the seed rows that make the grant real; without it every endpoint answers through
+  `{{ api.error_envelope | default('the error envelope') }}` to every caller, the administrator included.
+{% endif %}- A required column that no endpoint writes (R3) is seeded here or it is a `required-writer` finding.
+{% endif %}
 The frontend stage references these permission names — it never redeclares them.{% else %} No security model is declared in `profile.conventions.security_model`; write "no permission model — endpoints are open per the SRS" and cite the REQs that say so.{% endif %}
 
 **R8 — Alignment (self-check).** The {{ sc.block }} table of §9, written as the phase content of the
@@ -509,6 +538,8 @@ a prose pass reads past:
 | `count-agrees` | every total this plan states equals the rows it heads, and two statements of the same total agree with each other |
 | `required-writer` | every column the db-script requires is written by at least one endpoint's request or orchestration, or carries a stated reason why not |
 | `operation-resolves` | every operation an entity declares is answered by an `API-*`, and every marked permission-matrix cell names an `API-*` and the permission for that action |
+{% if boot %}| `bootstrap-complete` | every {{ boot['items'] | map(attribute='label') | join(' and every ') }} this plan declares has a row in {{ boot.section }} naming who produces it |
+{% endif %}
 | `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
 Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
@@ -530,7 +561,8 @@ QRC (§5)          every API with a DB operation has a QR │ every QR carries t
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
 CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every REST row names a target-module `API-*` id that the target module's registry actually defines
-SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
+{% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it (`bootstrap-complete`)
+{% endif %}SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared
 DECISIONS         every non-obvious inference is an ADR in decisions/{{ MOD }}/ │ no BLOCKED ADR left unsurfaced
 {{ sc.verdict_label }}            (written by the orchestrator from the analyze report — leave it alone)

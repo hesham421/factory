@@ -1175,6 +1175,91 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+_MD_HEADING = re.compile(r"^(#{1,6})\s")
+
+
+def _section(text: str, token: str) -> str | None:
+    """The block of text a named section covers: from the first line carrying
+    `token` to the next heading that closes it — the next heading at or above the
+    token line's own level when it is a heading, the next heading of any level
+    otherwise. The token is found anywhere on a line, because how an engine frames
+    its sections is the engine's business, not this checker's — the same rule
+    `_verdict_line` already uses to locate a self-check block."""
+    rx = _token_rx(token)
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if rx.search(ln)), None)
+    if start is None:
+        return None
+    hm = _MD_HEADING.match(lines[start])
+    level = len(hm.group(1)) if hm else 0
+    for j in range(start + 1, len(lines)):
+        h = _MD_HEADING.match(lines[j])
+        if h and (not level or len(h.group(1)) <= level):
+            return "\n".join(lines[start:j])
+    return "\n".join(lines[start:])
+
+
+def _c_bootstrap_complete(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """The data that must EXIST before any of the planned structure or behaviour
+    can work is itself planned, and covers what the other registries declare.
+
+    The largest hole the factory had. It plans structure and it plans behaviour,
+    and it had no artifact section at all for the rows a fresh deployment needs:
+    the lookup values a module's own keys resolve against live in another module's
+    tables, so the seeding block that only covers tables THIS script creates was
+    empty and nothing anywhere ever seeded them — the first create call of the
+    delivered module failed validating a code against an empty table. Registering
+    a permission is not granting it, and nothing named a grant target, so every
+    endpoint answered forbidden to every caller including the administrator.
+
+    Everything is profile data (`spec`): the section token, what each item
+    enumerates (a name template, or a table column), where those names are
+    declared, and the word that names the source. The checker knows no item."""
+    spec = CFG.profile.get(c["spec"])
+    if not spec:
+        return []                       # this profile declares no bootstrap data
+    text = ctx.text(c["artifact"])
+    if text is None:
+        return []
+    section = _section(text, spec["section"])
+    out, seen = [], 0
+    for item in (spec.get("items") or []):
+        src = ctx.text(item["declared_in"])
+        if src is None:
+            continue
+        if item.get("names"):
+            pattern = CFG.profile.get(item["names"])
+            if not pattern:
+                continue                # an optional convention this profile does not declare (C5)
+            needed = set(_name_template_rx(pattern).findall(src))
+        else:
+            needed = {cell.strip("`*_ ") for _, cell in _column_cells(src, item["column"])} - _EMPTY
+        seen += len(needed)
+        if not needed:
+            continue
+        if section is None:
+            out.append(Finding(sev, "", "bootstrap-complete",
+                               f"`{item['declared_in']}` declares {len(needed)} {item['label']}(s) but "
+                               f"`{c['artifact']}` carries no `{spec['section']}` section — the module "
+                               f"plans its structure and its behaviour and nothing at all about the data "
+                               f"that must exist before either can work", c["artifact"]))
+            continue
+        for name in sorted(needed):
+            line = next((ln for ln in section.splitlines() if name in ln), None)
+            if line is None:
+                out.append(Finding(sev, "", "bootstrap-complete",
+                                   f"the {item['label']} `{name}` has no row in `{spec['section']}` — "
+                                   f"nothing anywhere in the pipeline creates it, so every operation "
+                                   f"that reads it fails on a fresh deployment", c["artifact"]))
+            elif item["source_label"].lower() not in line.lower():
+                out.append(Finding(sev, "", "bootstrap-complete",
+                                   f"the {item['label']} `{name}` is listed in `{spec['section']}` but "
+                                   f"names no `{item['source_label']}` — a row that says a thing is "
+                                   f"needed, and not who produces it, creates nothing", c["artifact"]))
+    ctx.saw(seen)
+    return out
+
+
 # ── forward references — a fact a stage cannot verify at its own stage ───────
 # A planning stage runs before any implementation exists, so a name it invents for
 # an implementation artifact is a guess. In a table of facts a guess is
@@ -1467,7 +1552,7 @@ CHECKS = {
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
     "count-agrees": _c_count_agrees, "required-writer": _c_required_writer,
-    "operation-resolves": _c_operation_resolves,
+    "operation-resolves": _c_operation_resolves, "bootstrap-complete": _c_bootstrap_complete,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -1476,7 +1561,7 @@ CHECKS = {
 # one list that has to stay trustworthy.
 for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
             _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer,
-            _c_operation_resolves):
+            _c_operation_resolves, _c_bootstrap_complete):
     _fn.counts_subjects = True
 
 

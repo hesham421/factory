@@ -156,12 +156,26 @@ conventions:
     permission_pattern: "PERM_<PAGE_CODE>_<ACTION>"
     actions: [VIEW, CREATE, UPDATE, DELETE]
     gateway_action: VIEW                     # without VIEW no other permission applies
+    grant_target: role                       # a permission is granted TO a role. Registering a page and
+                                             # minting a permission name is not a grant: the shipped
+                                             # module did both and every endpoint answered forbidden to
+                                             # every caller, the administrator included.
   composite_screen: true
   numbering: "document numbers come from the platform numbering engine; never generated in a module"
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden
   domain_behaviour_placement: domain_classes   # consistent with stack.backend.layers, which already
                                                # declares `domain` as its own layer
+
+bootstrap_data:                            # what must exist in the database before any endpoint of the
+                                           # module can succeed. Absent this section the delivered module
+                                           # was unusable on a fresh database: its lookup tables belong to
+                                           # another module, so the seed block that only covers tables this
+                                           # script creates was empty and nothing ever seeded them.
+  section: BOOTSTRAP DATA
+  items:
+    - {label: lookup key, column: "Lookup key", declared_in: backend-execution-plan, source_label: seed source}
+    - {label: permission, names: conventions.security_model.permission_pattern, declared_in: backend-execution-plan, source_label: grant target}
 
 declared_totals:                           # every total the plan hand-counts, and the rows it heads.
                                            # One shipped file asserted "147 DBF" and "Total: 146" in the

@@ -178,6 +178,13 @@ Lookup-backed field (SRS A6, control = lookup) → the stored value is the looku
   the SRS lookup key; the shared lookup tables (if the platform uses them) are created
   once by the first module that needs them and only seeded afterwards — never
   re-created in a later module's script.
+SEED ROWS FOR A TABLE THIS SCRIPT DOES NOT CREATE — required, not optional. The common
+  case is that the lookup tables belong to ANOTHER module, and a seed block written only
+  for tables this script creates is then EMPTY: nothing anywhere in the pipeline ever
+  creates the values, and the module's first create call fails validating a code against
+  an empty table. Emit the INSERT block for every key this module owns, against the owning
+  module's table by its exact name, and say which module owns it. Whichever module owns the
+  table, the module that owns the KEY owns the seed.
 Reference entity (SRS decided: its own ENT) → an ordinary table per §4; consumers
   hold an FK.
 ```

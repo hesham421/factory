@@ -120,6 +120,14 @@ conventions?:                               # OPTIONAL — absent = not applied 
     permission_pattern: "str"               # e.g. PERM_<PAGE_CODE>_<ACTION>
     actions: "list[str]"
     gateway_action: "str"                   # e.g. VIEW
+    grant_target?: "str"                    # WHAT a permission is granted TO — the subject a caller
+                                             # is recognised as. Registering a permission is not
+                                             # granting it: the shipped module registered every
+                                             # permission it needed and every endpoint still answered
+                                             # forbidden to every caller, because nothing named a
+                                             # target and no bootstrap row granted anything. The word
+                                             # is the project's (a role, a group, a principal type) —
+                                             # engines render it, never spell it.
   composite_screen?: "bool"                 # Search + Entry (+Master/Detail, Wizard) = ONE SCR-ID
   numbering?: "str"                         # numbering-engine rule
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
@@ -129,6 +137,23 @@ conventions?:                               # OPTIONAL — absent = not applied 
                                             # Declared here, never chosen per module: a free per-plan
                                             # choice produced plans that placed multi-entity rules in the
                                             # service layer — a placement neither value permits.
+
+bootstrap_data?:                            # OPTIONAL — the data that must EXIST before any of the
+                                            # planned structure or behaviour can work, and which the
+                                            # factory had no artifact section for at all (analyze:
+                                            # bootstrap-complete). A module whose lookup tables belong
+                                            # to another module seeded nothing, anywhere.
+  section: "str"                            # the token that names the section carrying it
+  items: "list[{label: str, declared_in: str, source_label: str, names?: str, column?: str}]"
+                                            #   label        — what one row is, in this project's words
+                                            #   declared_in  — artifact/input the needed names appear in
+                                            #   source_label — the word a row must carry naming who
+                                            #                  produces the data (a seed source, a grant
+                                            #                  target); a row that says a thing is needed
+                                            #                  and not who produces it creates nothing
+                                            #   names        — profile address of a NAME template whose
+                                            #                  instances are the needed set, or
+                                            #   column       — a table column header whose cells are it
 
 declared_totals?: "list[{artifact: str, label: str, kind: str, rows_in?: str}]"
                                             # OPTIONAL — totals a generated artifact states in prose,
