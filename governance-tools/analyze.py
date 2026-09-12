@@ -1068,6 +1068,113 @@ def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+def _name_template_rx(template: str, **binds: str) -> re.Pattern:
+    """A profile's NAME template → the regex matching an instance of it, verbatim.
+    Every `{…}`/`<…>` slot matches one identifier word, except a slot whose name is
+    given in `binds`, which must hold exactly that value. Nothing about the
+    template's shape is assumed beyond the slot syntax — the same rule
+    `_locator_rx` uses for a surface address."""
+    out, i = [], 0
+    while i < len(template):
+        m = re.compile(r"\{([^}]*)\}|<([^>]*)>").match(template, i)
+        if m:
+            key = (m.group(1) if m.group(1) is not None else m.group(2)).strip().lower()
+            out.append(re.escape(binds[key]) if key in binds else r"[A-Za-z0-9_]+")
+            i = m.end()
+        else:
+            out.append(re.escape(template[i]))
+            i += 1
+    return re.compile(r"(?<![A-Za-z0-9_])" + "".join(out) + r"(?![A-Za-z0-9_])")
+
+
+def _table_rows(text: str):
+    """(line number, headers, cells) for every data row of every markdown table."""
+    headers = None
+    for n, ln in enumerate(text.splitlines(), 1):
+        cells = _cells(ln)
+        if not cells:
+            headers = None
+            continue
+        if headers is None:
+            headers = cells
+            continue
+        if _is_separator(cells):
+            continue
+        yield n, headers, cells
+
+
+def _word_rx(word: str) -> re.Pattern:
+    return re.compile(rf"(?<![A-Za-z]){re.escape(word)}(?![A-Za-z])", re.I)
+
+
+def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Every operation the plan DECLARES resolves to an endpoint — in both directions.
+
+    The existing clauses run plan → registry only. Nothing ran the other way, and
+    nothing ran the subject → endpoint direction at all: two operations were
+    specified for an entity and never built (nobody could deactivate one through
+    the API), and the security matrix shipped cells marked present with no endpoint
+    and no permission behind them. A ✓ that grants nothing and is enforced by
+    nothing is worse than a blank: it reads as a decision that was implemented.
+
+    The operation vocabulary is a profile address (`actions`), never a list here;
+    the permission name is checked against the profile's own template with the
+    action slot bound, so a cell claiming an action must carry the permission for
+    THAT action, not merely some permission-shaped word."""
+    text = ctx.text(c["artifact"])
+    if text is None:
+        return []
+    actions = [str(a) for a in (CFG.profile.get(c["actions"]) or [])]
+    if not actions:
+        return []                       # this profile declares no operation vocabulary
+    kind = c["resolves_to"]
+    recs = idmodel.records(text)
+    endpoints = idmodel.by_prefix(recs, kind)
+    out, seen = [], 0
+
+    d = c.get("declared")
+    if d:
+        label_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(d["label"]) + r"\s*\**\s*:?\s*(.+)$", re.I)
+        for r in idmodel.by_prefix(recs, d["kind"]):
+            stated = " ".join(m.group(1) for ln in r.text.splitlines() if (m := label_rx.match(ln)))
+            for a in actions:
+                if not _word_rx(a).search(stated):
+                    continue
+                seen += 1
+                if not any(r.id in e.text and _word_rx(a).search(e.text) for e in endpoints):
+                    out.append(Finding(sev, "", "operation-resolves",
+                                       f"`{r.id}` declares the operation `{a}` on its `{d['label']}` line "
+                                       f"but no `{kind}` block names both that operation and `{r.id}` — "
+                                       f"the operation was specified and never built, and no shape check "
+                                       f"can see the gap because every id in both halves resolves",
+                                       c["artifact"], r.line))
+
+    mx = c.get("matrix")
+    if mx:
+        pattern = CFG.profile.get(mx["permission"]) if mx.get("permission") else None
+        for n, headers, cells in _table_rows(text):
+            row = " ".join(cells)
+            for h, cell in zip(headers, cells):
+                a = next((x for x in actions if x.lower() == h.strip().lower()), None)
+                if a is None or mx["present"] not in cell:
+                    continue
+                seen += 1
+                missing = []
+                if not [x for x in idmodel.find_ids(row)
+                        if (parts := idmodel.split_id(x)) and parts[0] == kind]:
+                    missing.append(f"no `{kind}` id")
+                if pattern and not _name_template_rx(pattern, action=a).search(row):
+                    missing.append(f"no name matching `{pattern}` for `{a}`")
+                if missing:
+                    out.append(Finding(sev, "", "operation-resolves",
+                                       f"the `{a}` cell is marked `{mx['present']}` but the row carries "
+                                       f"{' and '.join(missing)} — a matrix cell with nothing behind it "
+                                       f"grants nothing and is enforced by nothing, while reading as a "
+                                       f"decision that was implemented", c["artifact"], n))
+    ctx.saw(seen)
+    return out
+
+
 # ── forward references — a fact a stage cannot verify at its own stage ───────
 # A planning stage runs before any implementation exists, so a name it invents for
 # an implementation artifact is a guess. In a table of facts a guess is
@@ -1360,6 +1467,7 @@ CHECKS = {
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
     "count-agrees": _c_count_agrees, "required-writer": _c_required_writer,
+    "operation-resolves": _c_operation_resolves,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -1367,7 +1475,8 @@ CHECKS = {
 # different from having counted zero, and conflating the two would put noise in the
 # one list that has to stay trustworthy.
 for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
-            _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer):
+            _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer,
+            _c_operation_resolves):
     _fn.counts_subjects = True
 
 

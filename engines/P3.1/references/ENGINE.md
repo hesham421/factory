@@ -333,7 +333,12 @@ DTO MEMBERSHIP  create-request excludes / update-request excludes / response inc
 DOMAIN RULES   RULE-* full text: trigger · statement · message per language · scope (CREATE|UPDATE|DELETE|ALL) · DB enforcement (constraint name | app-level) · owner layer
 STATE MACHINE  (if status-bearing) status column (DBF) · values · initial · transitions (trigger, actor) · terminal · invalid-transition RULE
 CROSS-MODULE   XM-* rows touching this entity (kind, local column, target, status)
-REPOSITORY OPS → QR-* list (FIND_ONE, FIND_BY_CRITERIA, SAVE, UPDATE, EXISTS, …)
+{% if sec %}OPERATIONS     the operations this entity exposes, drawn from {% for a in sec.actions %}`{{ a }}`{% if not loop.last %} / {% endif %}{% endfor %} — every one
+               listed here must be named by an `API-*` block that also names this `ENT-*`. An
+               operation stated here and built nowhere is a promise the module never keeps
+               (`gov.py analyze` → `operation-resolves`); an operation this entity does not
+               expose is simply left off the line.
+{% endif %}REPOSITORY OPS → QR-* list (FIND_ONE, FIND_BY_CRITERIA, SAVE, UPDATE, EXISTS, …)
 ```
 {% for p in phases if p.get('sub_labels') and not p.get('split_threshold') -%}
 Grouping for `{{ p.key }}`: when the entity count justifies a split (engine self-check — not
@@ -343,6 +348,7 @@ marker-countable), group under `{% for l in p.get('sub_labels') %}SUB:{{ p.key }
 ```
 <!-- API:API-{{ MOD }}-<seq>:START traces=REQ-{{ MOD }}-<seq>,DBF-{{ MOD }}-<seq> -->
 ### API-{{ MOD }}-<seq> — <operation>
+Entity       : ENT-{{ MOD }}-<seq>   (the entity whose OPERATIONS line this endpoint answers){% if sec %} · operation <{{ sec.actions | join('|') }}>{% endif %}
 Endpoint     : <instance of {{ api.base_path }}>   verb: <{{ api.verbs.keys() | join('|') }}>
 Layers       : <entry layer → method> ; <service layer → method>        (names per R1)
 Request      : path params · query params (filter names = properties from R2) · body DTO fields — each names its `DBF-*` (type, required, constraint) · excluded system fields
@@ -417,7 +423,20 @@ phase carries XM atoms.
 **R7 — Security (backend half).**{% if sec %} Enforced by the profile's security model:
 - one block per screen the SRS declares: every API serving it verifies its permission before processing;
 - seed data: one row per {% if conv.get('composite_screen') %}composite {% endif %}screen in `{{ sec.page_registry }}` (page code, name, parent) and one permission row per action `{{ sec.actions | join('/') }}` following `{{ sec.permission_pattern }}`, `{{ sec.gateway_action }}` being the gateway (without it no other permission applies); column names come from the db-script, not from here;
-- forbidden responses map through `{{ api.error_envelope | default('the error envelope') }}` with a catalog row.
+- forbidden responses map through `{{ api.error_envelope | default('the error envelope') }}` with a catalog row;
+- the permission matrix, as a table whose action columns are the profile's own, one row per {% if conv.get('composite_screen') %}composite {% endif %}screen:
+
+```
+| Screen | ENT-* | API-* serving it | {% for a in sec.actions %}{{ a }} | {% endfor %}
+
+| <screen> | ENT-{{ MOD }}-<seq> | API-{{ MOD }}-<seq>, … | {% for a in sec.actions %}✓ {{ sec.permission_pattern.replace('<ACTION>', a) }} | {% endfor %}
+```
+  A cell is marked only when the row also names the `API-*` that serves it **and** the
+  permission name for *that* action. A ✓ with nothing behind it grants nothing and is enforced
+  by nothing, while reading downstream as a decision that was implemented — every endpoint of
+  the shipped module answered forbidden to every caller behind exactly such a matrix
+  (`gov.py analyze` → `operation-resolves`). Leave the cell blank rather than mark it hopefully.
+
 The frontend stage references these permission names — it never redeclares them.{% else %} No security model is declared in `profile.conventions.security_model`; write "no permission model — endpoints are open per the SRS" and cite the REQs that say so.{% endif %}
 
 **R8 — Alignment (self-check).** The {{ sc.block }} table of §9, written as the phase content of the
@@ -489,6 +508,7 @@ a prose pass reads past:
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
 | `count-agrees` | every total this plan states equals the rows it heads, and two statements of the same total agree with each other |
 | `required-writer` | every column the db-script requires is written by at least one endpoint's request or orchestration, or carries a stated reason why not |
+| `operation-resolves` | every operation an entity declares is answered by an `API-*`, and every marked permission-matrix cell names an `API-*` and the permission for that action |
 | `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
 Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
@@ -510,7 +530,7 @@ QRC (§5)          every API with a DB operation has a QR │ every QR carries t
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
 CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every REST row names a target-module `API-*` id that the target module's registry actually defines
-SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix{% else %}n/a — no security model in profile{% endif %}
+SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared
 DECISIONS         every non-obvious inference is an ADR in decisions/{{ MOD }}/ │ no BLOCKED ADR left unsurfaced
 {{ sc.verdict_label }}            (written by the orchestrator from the analyze report — leave it alone)

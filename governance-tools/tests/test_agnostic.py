@@ -972,3 +972,100 @@ def test_toy_stated_exclusion_is_not_a_finding_but_silence_is(toy_writer):
     _write_art(mod, "backend-execution-plan",
                _endpoint(mod, "Intake : nothing") + f"\n| {col} | filled-by-the-clinic |\n")
     assert _writer_findings(mod, an) == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G4 — a declared operation must resolve to an endpoint (both directions)
+# ----------------------------------------------------------------------------
+# The toy's operation vocabulary, its permission template and its present-token
+# are all its own; the checker knows none of them.
+# ════════════════════════════════════════════════════════════════════════════
+
+TOY_ACTIONS = ["BOOK", "CANCEL", "REBOOK"]
+TOY_PERM = "CAN_<AREA>_<ACTION>"
+
+
+@pytest.fixture
+def toy_ops(toy_analyzable):
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["conventions"] = {"security_model": {
+        "page_registry": "CLINIC_VIEWS", "permission_pattern": TOY_PERM,
+        "actions": list(TOY_ACTIONS), "gateway_action": "BOOK"}}
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.8", "check": "operation-resolves",
+         "args": {"artifact": "prd", "resolves_to": "API",
+                  "actions": "conventions.security_model.actions",
+                  "declared": {"kind": "ENT", "label": "OFFERS"},
+                  "matrix": {"present": "yes", "permission": "conventions.security_model.permission_pattern"}},
+         "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _op_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "operation-resolves"]
+
+
+def test_toy_declared_operation_with_no_endpoint_is_a_finding(toy_ops):
+    mod, art, an = toy_ops
+    ent, api = CFG.make_id("ENT", mod, 1), CFG.make_id("API", mod, 1)
+    art.write_text(f"# toy prd\n\n### {ent} — Visit\nOFFERS : BOOK, CANCEL\n\n"
+                   f"### {api} — BOOK a visit for {ent}\nbody\n", encoding="utf-8")
+    fs = _op_findings(mod, an)
+    assert len(fs) == 1 and "CANCEL" in fs[0].message and ent in fs[0].message, [str(f) for f in fs]
+    assert "specified and never built" in fs[0].message
+
+
+def test_toy_every_declared_operation_built_passes(toy_ops):
+    mod, art, an = toy_ops
+    ent = CFG.make_id("ENT", mod, 1)
+    a1, a2 = CFG.make_id("API", mod, 1), CFG.make_id("API", mod, 2)
+    art.write_text(f"# toy prd\n\n### {ent} — Visit\nOFFERS : BOOK, CANCEL\n\n"
+                   f"### {a1} — BOOK a visit for {ent}\nbody\n\n"
+                   f"### {a2} — CANCEL a visit for {ent}\nbody\n", encoding="utf-8")
+    assert _op_findings(mod, an) == []
+
+
+def _matrix(mod: str, api_cell: str, perm_cell: str) -> str:
+    return ("# toy prd\n\n| Screen | Served by | BOOK | CANCEL |\n|---|---|---|---|\n"
+            f"| Calendar | {api_cell} | yes {perm_cell} | |\n")
+
+
+def test_toy_marked_matrix_cell_with_nothing_behind_it_is_a_finding(toy_ops):
+    mod, art, an = toy_ops
+    api = CFG.make_id("API", mod, 1)
+    art.write_text(_matrix(mod, "—", ""), encoding="utf-8")
+    fs = _op_findings(mod, an)
+    assert len(fs) == 1 and "no `API` id" in fs[0].message and TOY_PERM in fs[0].message, [str(f) for f in fs]
+
+    # an endpoint but no permission — still a finding, and only the missing half named
+    art.write_text(_matrix(mod, api, ""), encoding="utf-8")
+    fs = _op_findings(mod, an)
+    assert len(fs) == 1 and "no `API` id" not in fs[0].message and TOY_PERM in fs[0].message
+
+    # a permission for the WRONG action does not satisfy the cell
+    art.write_text(_matrix(mod, api, "CAN_CALENDAR_CANCEL"), encoding="utf-8")
+    fs = _op_findings(mod, an)
+    assert len(fs) == 1 and "for `BOOK`" in fs[0].message, [str(f) for f in fs]
+
+
+def test_toy_matrix_cell_with_endpoint_and_the_right_permission_passes(toy_ops):
+    mod, art, an = toy_ops
+    art.write_text(_matrix(mod, CFG.make_id("API", mod, 1), "CAN_CALENDAR_BOOK"), encoding="utf-8")
+    assert _op_findings(mod, an) == []
+
+
+def test_a_profile_with_no_operation_vocabulary_is_served_unchanged(toy_analyzable):
+    mod, art, an = toy_analyzable
+    assert CFG.profile.get("conventions.security_model.actions") is None
+    assert an._c_operation_resolves(an.Ctx(mod, 1), {
+        "artifact": "prd", "resolves_to": "API", "actions": "conventions.security_model.actions"}, "WARN") == []
