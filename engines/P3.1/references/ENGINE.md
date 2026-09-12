@@ -406,8 +406,14 @@ tell which columns were derived and which were imagined. The stage that CAN reso
 them in from the built artifact. `gov.py analyze` → `forward-refs`.
 {% endif %}
 
-**R5 — Cross-module consume (contracts).** The plan never mints `XM-*`; it places every XM
-from the db-script register:
+**R5 — Cross-module consume (contracts).** Place **every** XM the db-script register declares.
+Where this stage's own content — a security role, a rule turned into a runtime check — is the
+first thing that reads another module's data, **mint** the `XM-*` here, continuing the atom's
+sequence: the register was frozen before that dependency existed, and a dependency that may not
+be written down is one that nothing tracks. The orchestrator back-registers the minted row into
+`{{ factory.paths.module.state_dir }}`'s register in the same run (shared/XM-PROTOCOL.md §3);
+a minted row left out of the register is a finding (`gov.py analyze` → C7.5b), minting itself is
+not:
 ```
 <!-- XM:XM-{{ MOD }}-<seq>:START traces=REQ-{{ MOD }}-<seq> -->
 ### XM-{{ MOD }}-<seq> — <dependency>
@@ -573,7 +579,7 @@ MANIFEST (§4)     only the manifest's columns │ every DBF of every bound tabl
 QRC (§5)          every API with a DB operation has a QR │ every QR is reached by ≥1 API (`orphans`) │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
-CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every row's interface is {% if conv.get('module_interface') %}`{{ conv.get('module_interface') }}`{% else %}the one mechanism the profile declares{% endif %} and names something the target module's own registry defines (`xref-resolve`)
+CROSS-MODULE      every XM from the db-script placed exactly once │ every XM minted here back-registered (C7.5b) │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every row's interface is {% if conv.get('module_interface') %}`{{ conv.get('module_interface') }}`{% else %}the one mechanism the profile declares{% endif %} and names something the target module's own registry defines (`xref-resolve`)
 {% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it (`bootstrap-complete`)
 {% endif %}SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared

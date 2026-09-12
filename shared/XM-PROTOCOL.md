@@ -48,11 +48,23 @@ deviation is an ADR.
 | Level | Where | Owner |
 |---|---|---|
 | structural detail (target, type, traces) | `db-script` XM register + `registry-db` | the DB stage of the consuming module |
-| execution detail (state, blocked `API`s, workaround, unblock condition) | the `XM` marker block in `backend-execution-plan` | the backend exec stage; the block's ID set must equal the registry's (C7.5) |
+| execution detail (state, blocked `API`s, workaround, unblock condition) | the `XM` marker block in `backend-execution-plan` | the backend exec stage; every registered `XM` must be placed here (C7.5), and a row this stage MINTS is back-registered into the register (C7.5b) |
 | platform view (all modules) | project registry, cross-component dependency index | `gov.py` registry step |
 
 The execution block never restates structural detail (table or column names);
 it binds by ID (C6, "what does not cross").
+
+**A later stage may mint an XM.** A dependency is not always visible when the
+register is written: a rule or a security role introduced downstream can be the
+first thing that reads another module's data, and the register is frozen by
+then. Requiring the two sets to be *equal* made the right answer illegal, so the
+row was left out and nothing tracked it at all. A stage that discovers such a
+dependency mints the `XM` in its own artifact, continuing the atom's sequence,
+and the orchestrator's registry step **back-registers** it into the register
+that owns the atom in the same run ([GOVERNANCE-CORE.md §6](GOVERNANCE-CORE.md)
+step 4). Minting is allowed; leaving the minted row untracked is the finding
+(C7.5b). Everything else about the row — type, target, traces, state — is
+unchanged: a minted XM is an XM.
 
 ## 4. States inside the factory
 

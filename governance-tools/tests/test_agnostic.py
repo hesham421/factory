@@ -1254,3 +1254,67 @@ def test_toy_catalog_reached_in_both_directions_passes(toy_catalog):
     art.write_text(f"# toy prd\n\n### {qr} — find the visit\n\n"
                    f"### {api} — book a visit\nRepository : {qr}\n", encoding="utf-8")
     assert _orphan_findings(mod, an) == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G8 — a later stage may mint a cross-module row, and must back-register it
+# ----------------------------------------------------------------------------
+# Equality made the right answer illegal: the dependency is introduced AFTER the
+# register is frozen, so the row was simply left out and nothing tracked it.
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_xm(toy_analyzable):
+    """Two `registry-agree` clauses over one atom, in the two directions: the
+    register ⊆ the plan (placement), and the plan ⊆ the register (back-registration)."""
+    import render
+    mod, art, an = toy_analyzable
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"] += [
+        {"id": "T1.11", "check": "registry-agree",
+         "args": {"artifact": "prd", "registry": "registry-db", "kinds": ["XM"],
+                  "direction": "registry→artifact"}, "severity": "WARN"},
+        {"id": "T1.12", "check": "registry-agree",
+         "args": {"artifact": "prd", "registry": "registry-db", "kinds": ["XM"],
+                  "direction": "artifact→registry"}, "severity": "WARN"},
+    ]
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _xm_findings(mod, an, clause):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.clause == clause]
+
+
+def test_toy_minted_cross_module_row_passes_placement_and_fails_back_registration(toy_xm):
+    mod, art, an = toy_xm
+    declared, minted = CFG.make_id("XM", mod, 1), CFG.make_id("XM", mod, 2)
+    _write_art(mod, "registry-db", f"# toy register\n\n- {declared}\n")
+    art.write_text(f"# toy prd\n\n### {declared} — the frozen one\n\n### {minted} — found by a later role\n",
+                   encoding="utf-8")
+    assert _xm_findings(mod, an, "T1.11") == [], "placement: every registered row IS placed"
+    fs = _xm_findings(mod, an, "T1.12")
+    assert len(fs) == 1 and minted in fs[0].message and "absent from" in fs[0].message, [str(f) for f in fs]
+
+
+def test_toy_minted_row_that_is_back_registered_passes_both(toy_xm):
+    mod, art, an = toy_xm
+    declared, minted = CFG.make_id("XM", mod, 1), CFG.make_id("XM", mod, 2)
+    _write_art(mod, "registry-db", f"# toy register\n\n- {declared}\n- {minted}\n")
+    art.write_text(f"# toy prd\n\n### {declared} — the frozen one\n\n### {minted} — found by a later role\n",
+                   encoding="utf-8")
+    assert _xm_findings(mod, an, "T1.11") == [] and _xm_findings(mod, an, "T1.12") == []
+
+
+def test_toy_registered_row_the_plan_never_places_is_still_a_finding(toy_xm):
+    """Relaxing to a superset must not relax the direction that was doing work."""
+    mod, art, an = toy_xm
+    declared = CFG.make_id("XM", mod, 1)
+    _write_art(mod, "registry-db", f"# toy register\n\n- {declared}\n")
+    art.write_text("# toy prd\n\nnothing placed here\n", encoding="utf-8")
+    fs = _xm_findings(mod, an, "T1.11")
+    assert len(fs) == 1 and declared in fs[0].message, [str(f) for f in fs]

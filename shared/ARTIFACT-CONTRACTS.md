@@ -97,7 +97,8 @@ contracts:
       - {id: C7.2, check: traces,         args: {from: backend-execution-plan, blocks: [PHASE, SUB, API, XM], min: 1},          severity: MAJOR}
       - {id: C7.3, check: traces,         args: {from: API, to: [REQ, DBF], min: 1},                                            severity: MAJOR}
       - {id: C7.4, check: registry-agree, args: {artifact: backend-execution-plan, registry: registry-exec-be, kinds: [API, QR]}, severity: MAJOR}
-      - {id: C7.5, check: registry-agree, args: {artifact: backend-execution-plan, registry: registry-db, kinds: [XM]},           severity: MAJOR}
+      - {id: C7.5, check: registry-agree, args: {artifact: backend-execution-plan, registry: registry-db, kinds: [XM], direction: registry→artifact}, severity: MAJOR}
+      - {id: C7.5b, check: registry-agree, args: {artifact: backend-execution-plan, registry: registry-db, kinds: [XM], direction: artifact→registry}, severity: MAJOR}
       - {id: C7.6, check: orphans,        args: {kind: REQ, referenced_by: [API, DBF], min: 1},                                 severity: MAJOR}
       - {id: C7.7, check: ids-owned,      args: {stage: P3.1},                                                                  severity: CRITICAL}
       - {id: C7.8, check: no-questions,   args: {stage: P3.1},                                                                  severity: CRITICAL}
@@ -203,7 +204,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 22 |
+| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 23 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 13 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
@@ -303,8 +304,19 @@ unenforceable rule is not.
 | Consumer | `gov.py split` / `deliver` (tools lane); the pass-1 gate reads it first |
 | What crosses | `backend-execution-plan` wrapped in markers per [MARKER-PROTOCOL.md](MARKER-PROTOCOL.md) — every `PHASE`/`SUB`/`API`/`XM` block carries `traces=`; `API` → `REQ` + `DBF`; `XM` blocks mirror `registry-db` entries with execution state; `registry-exec-be` with `API`/`QR` |
 | What does not cross | DDL or column definitions (bound by `DBF`), test cases (standalone `test-gen`), any content for the frontend track |
-| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 plan `XM` set == registry-db `XM` set · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, carries a status the platform can emit, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves · C7.18 every total the plan hand-counts equals the rows it heads · C7.19 every required column has an endpoint that writes it, or a stated reason why not · C7.20 every declared operation resolves to an endpoint, and every permission-matrix cell to an endpoint and a permission · C7.21 every lookup key and permission the plan declares has a named seed source / grant target in the bootstrap section · C7.22 every catalogued query is reached by ≥1 `API` |
+| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 every `XM` the register declares is placed in the plan · C7.5b every `XM` the plan carries is registered in `registry-db` (back-registration) · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, carries a status the platform can emit, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves · C7.18 every total the plan hand-counts equals the rows it heads · C7.19 every required column has an endpoint that writes it, or a stated reason why not · C7.20 every declared operation resolves to an endpoint, and every permission-matrix cell to an endpoint and a permission · C7.21 every lookup key and permission the plan declares has a named seed source / grant target in the bootstrap section · C7.22 every catalogued query is reached by ≥1 `API` |
 | Violation | C7.1/C7.7/C7.8/C7.9/C7.10/C7.12/C7.13/C7.14 CRITICAL; the rest MAJOR |
+
+**C7.5 / C7.5b — a later stage may MINT a cross-module row.** C7.5 used to require the
+plan's `XM` set to *equal* the register's, and a real dependency — one module's rule reading
+another module's data through its published interface — was therefore illegal to write down: the
+dependency is *introduced* by this stage's own security role, after the DB stage has frozen the
+register. The check fired correctly and the contract forbade the right answer, so the row was
+simply left out and nothing tracked it. C7.5 is now a superset: every registered `XM` must be
+placed, and a row this stage mints is legal. C7.5b is the obligation that comes with it — the
+minted row is **back-registered** into the register that owns the atom, by the orchestrator's
+registry step in the same run ([GOVERNANCE-CORE.md §6](GOVERNANCE-CORE.md) step 4). A minted row
+that is not back-registered fails C7.5b: minting is allowed, leaving it untracked is not.
 
 C7.22 is the reverse of C7.4 and of the plan's own QRC self-check, all four of whose
 assertions pointed one way (API → QR) and none of which asserted that a catalogued query is
