@@ -410,17 +410,27 @@ from the db-script register:
 <!-- XM:XM-{{ MOD }}-<seq>:START traces=REQ-{{ MOD }}-<seq> -->
 ### XM-{{ MOD }}-<seq> — <dependency>
 Target        : module · entity (ENT of the owner) · classification (HARD-FK | SOFT-READ | EVENT | READ-ONLY)
-Interface     : DB foreign key | REST call — cite the TARGET module's own `{{ 'API' }}-<TARGET>-<seq>` id **and**
-                its path (an instance of {{ api.base_path }} on the target); an endpoint that the target
-                module's API registry does not define may not be named here (`gov.py analyze` →
-                `xref-resolve` resolves every foreign id against that module's registry). If the
-                endpoint does not exist yet, the row is DEFERRED with the unblock condition — never a
-                prose promise such as "through the target's read APIs" | message
+Interface     : {% if conv.get('module_interface') == 'in_process' %}the target module's published in-process interface, injected (`profile.conventions.module_interface: in_process`) —
+                name the interface and the operation on it. This platform is ONE deployable: there is no
+                HTTP client, no base path, no timeout and no network error path, so no Error Catalog row
+                (§7) may describe a network failure that cannot occur{% elif conv.get('module_interface') == 'rest' %}a call to the target module's published API
+                (`profile.conventions.module_interface: rest`) — cite the TARGET's own `API-<TARGET>-<seq>` id
+                **and** its path (an instance of {{ api.base_path }} on the target){% elif conv.get('module_interface') == 'database' %}a direct read of the target module's
+                tables (`profile.conventions.module_interface: database`) — name the exact table and columns{% else %}the single access mechanism
+                `profile.conventions.module_interface` declares — state it verbatim; this is not a per-row
+                choice, and a mechanism the platform's architecture does not have propagates into every
+                file that reads the row{% endif %}.
+                A structural (foreign-key) row's access is the key itself and follows from its
+                classification, not from this line. Whatever the mechanism, the thing named must be one
+                the target module really publishes — `gov.py analyze` → `xref-resolve` resolves every
+                foreign id against that module's own registry. If it does not exist yet, the row is
+                DEFERRED with the unblock condition — never a prose promise such as "through the
+                target's read APIs" | message
 Contract      : data required · fallback if absent · retry / timeout / idempotency
 Blocks        : DBF-* / API-* blocked while DEFERRED · unblock condition · deferred strategy
 <!-- XM:XM-{{ MOD }}-<seq>:END -->
 ```
-Summary table first (XM │ classification │ target │ interface │ target `API-*` (REST rows) │ status). Inbound
+Summary table first (XM │ classification │ target │ interface │ the thing the target publishes │ status) — the interface column carries the same mechanism on every row, because {% if conv.get('module_interface') %}`profile.conventions.module_interface` is `{{ conv.get('module_interface') }}`{% else %}`profile.conventions.module_interface` declares one{% endif %}. Inbound
 dependencies from future consumers use `XM-INBOUND-STUB-<n>` notation (consumer, entity
 exposed, "assigned by the consumer"), never `TODO`. Lifecycle and RXE handling:
 shared/XM-PROTOCOL.md — the factory ends at DELIVERED; CLOSED belongs to the consumer repo.
@@ -560,7 +570,7 @@ MANIFEST (§4)     only the manifest's columns │ every DBF of every bound tabl
 QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
-CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every REST row names a target-module `API-*` id that the target module's registry actually defines
+CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every row's interface is {% if conv.get('module_interface') %}`{{ conv.get('module_interface') }}`{% else %}the one mechanism the profile declares{% endif %} and names something the target module's own registry defines (`xref-resolve`)
 {% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it (`bootstrap-complete`)
 {% endif %}SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
 CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared

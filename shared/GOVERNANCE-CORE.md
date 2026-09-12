@@ -227,6 +227,7 @@ and no prose anywhere may add a convention that is not a profile field:
 | `conventions.lookups` is set | follows that rule for list-of-values handling |
 | `conventions.workflow_engine` is `forbidden` | models approvals as explicit states and rules inside the module; a generic workflow engine is a CRITICAL finding |
 | `conventions.domain_behaviour_placement` is set | puts EVERY rule answering "is this operation allowed?" in that one placement, whatever the rule's entity or table count; the service layer is never a placement, and a per-module split between placements is a CRITICAL finding |
+| `conventions.module_interface` is set | states that ONE mechanism as the access path of every cross-module row — never a per-row choice between mechanisms. A template that offers the author a menu gets an answer that contradicts the platform's own architecture, and no check knows what the right answer was: one wrong word propagated into six files, a planned HTTP client and an error-catalog row for a network failure that cannot occur. A structural (foreign-key) dependency's access follows from its classification and is not this choice |
 
 Violations of an applied convention are scored as `profile.review.extra_checks`
 data at the pass gate ([QUALITY-RUBRIC.md](QUALITY-RUBRIC.md)); there is no

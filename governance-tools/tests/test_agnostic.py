@@ -43,6 +43,9 @@ TOY = {
             ]},
         }},
     },
+    # G6 — the toy states the OPPOSITE access mechanism to the ERP profile, so an
+    # engine still carrying an answer of its own emits the wrong one here.
+    "conventions": {"module_interface": "rest"},
     "stack": {
         # F5a — the toy states the OPPOSITE answer to the ERP profile for every
         # stated choice. An engine that still carried a default of its own would
@@ -1163,3 +1166,47 @@ def test_a_profile_with_no_bootstrap_data_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("bootstrap_data") is None
     assert an._c_bootstrap_complete(an.Ctx(mod, 1), {"artifact": "prd", "spec": "bootstrap_data"}, "WARN") == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G6 — the last free choice in a template, removed
+# ----------------------------------------------------------------------------
+# A template that offers the author "A | B" gets an answer that contradicts the
+# platform's own architecture, and no check knows what the right answer was.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _exec_brief(toy, stage_id: str) -> str:
+    import shutil
+    import dispatch as dp
+    from conftest import REAL_ROOT
+    if not (toy.root / "engines").exists():
+        shutil.copytree(REAL_ROOT / "engines", toy.root / "engines")
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    return dp.render_engine(CFG.stage(stage_id), mod, 1)
+
+
+def test_the_cross_module_interface_is_rendered_not_offered(toy):
+    """The rendered line states the profile's declared mechanism and offers the
+    author no menu. The toy declares the opposite value to the profile on disk."""
+    out = _exec_brief(toy, "P3.1")
+    assert "{{" not in out and "{%" not in out
+    mine = TOY["conventions"]["module_interface"]
+    assert f"profile.conventions.module_interface: {mine}" in out, "the toy's own answer is not rendered"
+    other = toy.load_profile(toy.data["factory"]["active_profile"]).get("conventions.module_interface")
+    assert other and other != mine
+    assert f"module_interface: {other}" not in out, "the brief carries the OTHER profile's answer"
+    assert "DB foreign key | REST call" not in out, "the author is still offered a menu"
+
+
+def test_a_profile_declaring_no_interface_still_gets_a_sensible_instruction(toy):
+    """The else-branch: no declaration → an instruction, never a silent default
+    and never a choice."""
+    import yaml as _y
+    prof = CFG.profiles_dir() / "toy.yaml"
+    data = _y.safe_load(prof.read_text(encoding="utf-8"))
+    data["conventions"].pop("module_interface")
+    prof.write_text(_y.safe_dump(data, sort_keys=False), encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    out = _exec_brief(toy, "P3.1")
+    assert "the single access mechanism" in out and "profile.conventions.module_interface" in out
+    assert "DB foreign key | REST call" not in out

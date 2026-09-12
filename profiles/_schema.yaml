@@ -132,6 +132,19 @@ conventions?:                               # OPTIONAL — absent = not applied 
   numbering?: "str"                         # numbering-engine rule
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
   workflow_engine?: "(forbidden|allowed)"
+  module_interface?: "(in_process|rest|database)"
+                                            # HOW one module reaches another module's data at runtime.
+                                            # Declared here, never chosen per dependency: the template
+                                            # used to offer the author "DB foreign key | REST call" and
+                                            # the answer given contradicted the platform's own
+                                            # architecture — one wrong word propagated into six files,
+                                            # a planned HTTP client and an error-catalog row for a
+                                            # network failure that cannot occur. `in_process` = the
+                                            # target's published interface, injected inside one
+                                            # deployable; `rest` = a call to the target's published API;
+                                            # `database` = a direct read of the target's tables. A
+                                            # structural (foreign-key) dependency's access follows from
+                                            # its own classification and is not this choice.
   domain_behaviour_placement?: "(entity_methods|domain_classes)"
                                             # WHERE a rule answering "is this operation allowed?" lives.
                                             # Declared here, never chosen per module: a free per-plan

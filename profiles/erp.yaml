@@ -164,6 +164,12 @@ conventions:
   numbering: "document numbers come from the platform numbering engine; never generated in a module"
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden
+  module_interface: in_process               # this platform is ONE deployable: modules reach each other
+                                             # through published in-process interfaces, injected. The
+                                             # template used to offer "DB foreign key | REST call" and a
+                                             # plan answered "REST call" — six files, a planned HTTP
+                                             # client and an error-catalog row for a network failure that
+                                             # cannot occur followed from that one word.
   domain_behaviour_placement: domain_classes   # consistent with stack.backend.layers, which already
                                                # declares `domain` as its own layer
 
@@ -212,3 +218,4 @@ review:
     - {id: ERP-3, stage: P2,   check: "every flag column ends with the flag_suffix", severity: MINOR}
     - {id: ERP-4, stage: P3.1, check: "every mutation endpoint declares its PERM_* requirement", severity: MAJOR}
     - {id: ERP-5, stage: P3.1, check: "CORE states domain-behaviour placement as the single value conventions.domain_behaviour_placement declares, for every rule alike — no split by entity count, and the service layer never named as a placement", severity: CRITICAL}
+    - {id: ERP-6, stage: P3.1, check: "every cross-module row states the access mechanism conventions.module_interface declares — no per-row choice, no HTTP client and no network error path where the platform is one deployable", severity: CRITICAL}
