@@ -209,6 +209,8 @@ DBF-{{ MOD }}-001 │ ENT-{{ MOD }}-001 │ <property>    │ <type>    │ — 
 DBF-{{ MOD }}-007 │ ENT-{{ MOD }}-001 │ <property>    │ <type>    │ XM-{{ MOD }}-001 ⏸           │ ⏸
 Legend  ✓ aligned · ✗ type mismatch (finding) · ⏸ deferred XM
 Derived / computed properties (no DBF) are listed with DBF = "— (derived)" and an ADR id.
+A required column that no endpoint writes carries its reason on the row (system-generated ·
+derived · seeded) — see R3 and `gov.py analyze` → `required-writer`.
 ```
 
 ## 5. Query Reference Catalog (QR-*)
@@ -343,16 +345,25 @@ marker-countable), group under `{% for l in p.get('sub_labels') %}SUB:{{ p.key }
 ### API-{{ MOD }}-<seq> — <operation>
 Endpoint     : <instance of {{ api.base_path }}>   verb: <{{ api.verbs.keys() | join('|') }}>
 Layers       : <entry layer → method> ; <service layer → method>        (names per R1)
-Request      : path params · query params (filter names = properties from R2) · body DTO fields (type, required, constraint) · excluded system fields
+Request      : path params · query params (filter names = properties from R2) · body DTO fields — each names its `DBF-*` (type, required, constraint) · excluded system fields
 Response     : status · DTO fields · paginated? ({{ api.paging | default('per profile') }}) · envelope {{ api.envelope | default('per profile') }}
 Validations  : RULE-* full text (statement, trigger, message per language) — every RULE listed here has a catalog row (§7)
 Errors       : catalog rows this endpoint can raise (code, HTTP, RULE-*)
-Orchestration: load → validate (RULE-*) → integrate (XM-*) → persist (QR-*, table, generation object)   — WHAT in sequence, layer placement per R1
+Orchestration: load → validate (RULE-*) → integrate (XM-*) → persist (QR-*, table, generation object)   — WHAT in sequence, layer placement per R1; every column this endpoint writes that the request does not carry (a flag it flips, a status it advances) names its `DBF-*` here
 Repository   : QR-* · operation · join (NONE | ADR) · transaction
 Security     : screen · permission name{% if sec %} (`{{ sec.permission_pattern }}`){% endif %} — enforced before processing
 Localization : every message in {{ langs.all | join(' + ') }}; every name field per language
 <!-- API:API-{{ MOD }}-<seq>:END -->
 ```
+**Every required column needs a writer.** A column the db-script declares NOT NULL and the
+platform does not fill itself must be named by at least one `API-*` block, on its `Request` line
+(the caller supplies it) or its `Orchestration` line (the endpoint sets it). A required column no
+endpoint writes cannot be satisfied on a fresh deployment, so the first call to every endpoint
+that depends on it fails — and no shape check can see it, because the manifest lists the column
+and the endpoint lists its fields and nothing joins the two. Where no endpoint should write it,
+say so on the manifest row with the reason (system-generated · derived · seeded — the seed then
+belongs in BOOTSTRAP DATA, R7); silence is the defect. `gov.py analyze` → `required-writer`.
+
 Completeness rules: a RULE whose SRS `Data source` is DEFERRED is **not** enforced here — it is
 listed once in the entity block as `DEFERRED (no declaration surface in v{{ ver }})` with no catalog
 row, no QR and no enforcing endpoint, because the data its check would read has no column to read
@@ -477,6 +488,7 @@ a prose pass reads past:
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
 | `count-agrees` | every total this plan states equals the rows it heads, and two statements of the same total agree with each other |
+| `required-writer` | every column the db-script requires is written by at least one endpoint's request or orchestration, or carries a stated reason why not |
 | `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
 Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
@@ -493,7 +505,7 @@ so the count is no longer a thing a model is asked to be honest about.
 {{ sc.block }} — {{ MOD }} v{{ ver }}
 TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
 BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
-MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`)
+MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`) │ every required column has an endpoint that writes it or a stated reason why not (`required-writer`)
 QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted

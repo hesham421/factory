@@ -870,3 +870,105 @@ def test_a_profile_that_declares_no_status_set_checks_only_the_shape(toy_codes):
     # …and the shape half still holds
     art.write_text(f"# toy prd\n\n| {mod}-9 | not a status at all |\n", encoding="utf-8")
     assert [f for f in _code_findings(mod, an) if "not an instance" in f.message]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G3 — required data must have a writer
+# ----------------------------------------------------------------------------
+# The toy's structural artifact, its required marker, its writing labels and its
+# exclusion tokens are all its own words, and the exempt platform-filled fields
+# come from the toy profile's own naming block.
+# ════════════════════════════════════════════════════════════════════════════
+
+TOY_WRITER_ARGS = {
+    "kind": "DBF", "declared_in": "db-script", "required_marker": "MANDATORY",
+    "writer_kind": "API", "writer_in": "backend-execution-plan",
+    "writer_labels": ["Intake", "Follow-up"],
+    "exempt_names": "stack.db.naming.audit_fields",
+    "exempt_pattern": "stack.db.naming.pk_pattern",
+    "exclusions": ["filled-by-the-clinic"],
+}
+
+
+@pytest.fixture
+def toy_writer(toy_analyzable):
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["db"]["naming"] = {"audit_fields": ["loggedBy"], "pk_pattern": "{record}Ref"}
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.7", "check": "required-writer", "args": dict(TOY_WRITER_ARGS), "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _write_art(mod: str, artifact: str, text: str) -> None:
+    stage = next(s for s in CFG.stages if any(a.artifact == artifact for a in s.produces))
+    p = CFG.artifact_path(mod, stage.id, artifact, 1)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+
+
+def _columns(mod: str, *rows: str) -> str:
+    return "# toy db\n\n" + "\n".join(rows) + "\n"
+
+
+def _endpoint(mod: str, *lines: str) -> str:
+    api = CFG.make_id("API", mod, 1)
+    return f"# toy plan\n\n### {api} — book a visit\n" + "\n".join(lines) + "\n"
+
+
+def _writer_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "required-writer"]
+
+
+def test_toy_required_column_with_no_writer_is_a_finding(toy_writer):
+    mod, art, an = toy_writer
+    col = CFG.make_id("DBF", mod, 1)
+    _write_art(mod, "db-script", _columns(mod, f"| {col} | visit_reason | MANDATORY |"))
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, "Intake : nothing much"))
+    fs = _writer_findings(mod, an)
+    assert len(fs) == 1 and col in fs[0].message, [str(f) for f in fs]
+    assert "MANDATORY" in fs[0].message and "Intake" in fs[0].message
+
+
+def test_toy_required_column_written_by_an_endpoint_passes(toy_writer):
+    mod, art, an = toy_writer
+    col = CFG.make_id("DBF", mod, 1)
+    _write_art(mod, "db-script", _columns(mod, f"| {col} | visit_reason | MANDATORY |"))
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, f"Intake : body carries {col}"))
+    assert _writer_findings(mod, an) == []
+    # …and a column the endpoint sets itself rather than accepting counts too
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, "Intake : —", f"Follow-up : flips {col}"))
+    assert _writer_findings(mod, an) == []
+
+
+def test_toy_platform_filled_and_key_columns_are_exempt_by_profile(toy_writer):
+    """The exemptions are profile ADDRESSES, and they match across spellings: the
+    toy declares `loggedBy` and the database holds `logged_by`."""
+    mod, art, an = toy_writer
+    audit, pk = CFG.make_id("DBF", mod, 1), CFG.make_id("DBF", mod, 2)
+    _write_art(mod, "db-script", _columns(mod, f"| {audit} | logged_by | MANDATORY |",
+                                          f"| {pk} | visit_ref | MANDATORY |"))
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, "Intake : nothing"))
+    assert _writer_findings(mod, an) == []
+
+
+def test_toy_stated_exclusion_is_not_a_finding_but_silence_is(toy_writer):
+    mod, art, an = toy_writer
+    col = CFG.make_id("DBF", mod, 1)
+    _write_art(mod, "db-script", _columns(mod, f"| {col} | visit_reason | MANDATORY | filled-by-the-clinic |"))
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, "Intake : nothing"))
+    assert _writer_findings(mod, an) == []
+    # the same reason stated on the PLAN's row for that column counts too
+    _write_art(mod, "db-script", _columns(mod, f"| {col} | visit_reason | MANDATORY |"))
+    _write_art(mod, "backend-execution-plan",
+               _endpoint(mod, "Intake : nothing") + f"\n| {col} | filled-by-the-clinic |\n")
+    assert _writer_findings(mod, an) == []

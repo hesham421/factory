@@ -970,6 +970,104 @@ def _c_count_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+def _squash(name: str) -> str:
+    """A physical/logical name reduced to what two spellings of it have in common:
+    camelCase, snake_case and SCREAMING_SNAKE of one name collapse to one string. A
+    profile declares its platform-filled fields in the language's spelling while the
+    database holds the database's; comparing the raw strings exempts neither."""
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _template_rx(template: str) -> re.Pattern:
+    """A profile's NAME template (`{entity}Pk`, `PERM_<PAGE>_<ACTION>`) → the regex
+    matching an instance of it, over squashed names. Every `{…}`/`<…>` slot matches
+    one word; nothing else about the template's shape is assumed."""
+    out, i = [], 0
+    while i < len(template):
+        m = re.compile(r"\{[^}]*\}|<[^>]*>").match(template, i)
+        if m:
+            out.append(r"[a-z0-9]+")
+            i = m.end()
+        else:
+            out.append(re.escape(_squash(template[i])))
+            i += 1
+    return re.compile("".join(out))
+
+
+def _single_id_lines(text: str, kind: str, mod: str) -> dict[str, list[tuple[int, str]]]:
+    """id → the lines that name exactly that one id of `kind` and no other.
+
+    A line naming two ids of the kind (a traces list, a range) is a statement about
+    neither, so it is skipped — the same rule `_binding_lines` already uses for the
+    physical-name dictionary."""
+    out: dict[str, list[tuple[int, str]]] = {}
+    for n, ln in enumerate(text.splitlines(), 1):
+        ids = {x for x in idmodel.find_ids(ln)
+               if (p := idmodel.split_id(x)) and p[0] == kind and p[1] == mod}
+        if len(ids) == 1:
+            out.setdefault(ids.pop(), []).append((n, ln))
+    return out
+
+
+def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """Data the module REQUIRES must have something that writes it.
+
+    Both halves were already in the plan — the structural artifact declares every
+    column and marks which are required, and each endpoint block lists what its
+    request carries — and nothing joined them. A column added as semantically
+    required that no endpoint sets can never be satisfied on a fresh deployment, so
+    the endpoint depending on it fails its first call; a flag no operation flips is
+    the same defect wearing a different column name. Neither is visible to any
+    shape check: every id resolves, every trace lands, every registry agrees.
+
+    The exemptions are profile facts (`exempt_names`, `exempt_pattern` — addresses,
+    not lists), because a system-assigned key or an audit column is written by the
+    platform and naming either here would hardcode one profile's conventions."""
+    src = ctx.text(c["declared_in"])
+    plan = ctx.text(c["writer_in"])
+    if src is None or plan is None:
+        return []
+    kind, mod = c["kind"], ctx.mod
+    marker_rx = re.compile(r"(?<![A-Za-z])" + re.escape(c["required_marker"]) + r"(?![A-Za-z])", re.I)
+    tokens = list(c.get("exclusions") or [])
+    excl_rx = re.compile("|".join(re.escape(x) for x in tokens), re.I) if tokens else None
+    exempt = {_squash(x) for x in (CFG.profile.get(c["exempt_names"]) or [])} if c.get("exempt_names") else set()
+    pat = CFG.profile.get(c["exempt_pattern"]) if c.get("exempt_pattern") else None
+    pk_rx = _template_rx(pat) if pat else None
+    labels = c["writer_labels"] if isinstance(c.get("writer_labels"), list) else [c["writer_labels"]]
+    label_rx = re.compile(r"^\s*[-*]?\s*\**\s*(?:" + "|".join(re.escape(l) for l in labels) +
+                          r")\s*\**\s*:\s*(.+)$", re.I)
+    # what the plan WRITES: every id cited on a writing line of an endpoint block
+    written: set[str] = set()
+    for r in idmodel.by_prefix(idmodel.records(plan), c["writer_kind"]):
+        for ln in r.text.splitlines():
+            if (m := label_rx.match(ln)):
+                written |= set(idmodel.find_ids(m.group(1)))
+    plan_lines = _single_id_lines(plan, kind, mod)
+    out, seen = [], 0
+    for rid, lines in sorted(_single_id_lines(src, kind, mod).items()):
+        required = [(n, ln) for n, ln in lines if marker_rx.search(ln)]
+        if not required:
+            continue
+        names = {_squash(x) for n, ln in required for x in _physical_names(ln)}
+        if names & exempt or (pk_rx and any(pk_rx.fullmatch(x) for x in names)):
+            continue                       # written by the platform, not by a caller
+        if excl_rx and (any(excl_rx.search(ln) for _, ln in required)
+                        or any(excl_rx.search(ln) for _, ln in plan_lines.get(rid, []))):
+            continue                       # an explicit, stated reason — not a silent gap
+        seen += 1
+        if rid not in written:
+            out.append(Finding(sev, "", "required-writer",
+                               f"`{rid}` is {c['required_marker']} in `{c['declared_in']}` but no "
+                               f"`{c['writer_kind']}` block names it on a `{'`/`'.join(labels)}` line — "
+                               f"nothing in this module writes it, so every operation that depends on it "
+                               f"fails on a fresh deployment. Either an endpoint writes it, or the row "
+                               f"states why not ({', '.join(tokens) or 'an exclusion token'})",
+                               c["declared_in"], required[0][0]))
+    ctx.saw(seen)
+    return out
+
+
 # ── forward references — a fact a stage cannot verify at its own stage ───────
 # A planning stage runs before any implementation exists, so a name it invents for
 # an implementation artifact is a guess. In a table of facts a guess is
@@ -1261,7 +1359,7 @@ CHECKS = {
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
-    "count-agrees": _c_count_agrees,
+    "count-agrees": _c_count_agrees, "required-writer": _c_required_writer,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -1269,7 +1367,7 @@ CHECKS = {
 # different from having counted zero, and conflating the two would put noise in the
 # one list that has to stay trustworthy.
 for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
-            _c_endpoint_agrees, _c_ears, _c_count_agrees):
+            _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer):
     _fn.counts_subjects = True
 
 
