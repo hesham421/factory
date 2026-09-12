@@ -21,6 +21,14 @@
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sc = profile.self_check | default({}) -%}
 {%- set boot = profile.bootstrap_data | default(none) -%}
+{#- The line labels the checks READ come from one declaration, so the template and
+    the checker cannot drift apart. An undeclared one renders as its own address. -#}
+{%- set vocab = profile.plan_vocabulary | default({}) -%}
+{%- set L_req = vocab.get('request_line') or '<profile.plan_vocabulary.request_line — not declared>' -%}
+{%- set L_eff = vocab.get('effect_line') or '<profile.plan_vocabulary.effect_line — not declared>' -%}
+{%- set L_ops = vocab.get('operations_line') or '<profile.plan_vocabulary.operations_line — not declared>' -%}
+{%- set T_yes = vocab.get('present_token') or '<profile.plan_vocabulary.present_token — not declared>' -%}
+{%- set R_why = vocab.get('exclusion_reasons') or [] -%}
 {%- set fwd = (profile.forward_columns | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set totals = (profile.declared_totals | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set proposed = factory.forward_reference.proposed_token -%}
@@ -219,8 +227,7 @@ DBF-{{ MOD }}-001 │ ENT-{{ MOD }}-001 │ <property>    │ <type>    │ — 
 DBF-{{ MOD }}-007 │ ENT-{{ MOD }}-001 │ <property>    │ <type>    │ XM-{{ MOD }}-001 ⏸           │ ⏸
 Legend  ✓ aligned · ✗ type mismatch (finding) · ⏸ deferred XM
 Derived / computed properties (no DBF) are listed with DBF = "— (derived)" and an ADR id.
-A required column that no endpoint writes carries its reason on the row (system-generated ·
-derived · seeded) — see R3 and `gov.py analyze` → `required-writer`.
+A required column that no endpoint writes carries its reason on the row ({% for r in R_why %}{{ r }}{% if not loop.last %} · {% endif %}{% else %}profile.plan_vocabulary.exclusion_reasons{% endfor %}) — see R3 and `gov.py analyze` → `required-writer`.
 ```
 
 ## 5. Query Reference Catalog (QR-*)
@@ -355,7 +362,7 @@ DTO MEMBERSHIP  create-request excludes / update-request excludes / response inc
 DOMAIN RULES   RULE-* full text: trigger · statement · message per language · scope (CREATE|UPDATE|DELETE|ALL) · DB enforcement (constraint name | app-level) · owner layer
 STATE MACHINE  (if status-bearing) status column (DBF) · values · initial · transitions (trigger, actor) · terminal · invalid-transition RULE
 CROSS-MODULE   XM-* rows touching this entity (kind, local column, target, status)
-{% if sec %}OPERATIONS     the operations this entity exposes, drawn from {% for a in sec.actions %}`{{ a }}`{% if not loop.last %} / {% endif %}{% endfor %} — every one
+{% if sec %}{{ L_ops }}{{ ' ' * (15 - L_ops | length if L_ops | length < 15 else 1) }}the operations this entity exposes, drawn from {% for a in sec.actions %}`{{ a }}`{% if not loop.last %} / {% endif %}{% endfor %} — every one
                listed here must be named by an `API-*` block that also names this `ENT-*`. An
                operation stated here and built nowhere is a promise the module never keeps
                (`gov.py analyze` → `operation-resolves`); an operation this entity does not
@@ -373,11 +380,11 @@ marker-countable), group under `{% for l in p.get('sub_labels') %}SUB:{{ p.key }
 Entity       : ENT-{{ MOD }}-<seq>   (the entity whose OPERATIONS line this endpoint answers){% if sec %} · operation <{{ sec.actions | join('|') }}>{% endif %}
 Endpoint     : <instance of {{ api.base_path }}>   verb: <{{ api.verbs.keys() | join('|') }}>
 Layers       : <entry layer → method> ; <service layer → method>        (names per R1)
-Request      : path params · query params (filter names = properties from R2) · body DTO fields — each names its `DBF-*` (type, required, constraint) · excluded system fields
+{{ L_req }}{{ ' ' * (13 - L_req | length if L_req | length < 13 else 1) }}: path params · query params (filter names = properties from R2) · body DTO fields — each names its `DBF-*` (type, required, constraint) · excluded system fields
 Response     : status · DTO fields · paginated? ({{ api.paging | default('per profile') }}) · envelope {{ api.envelope | default('per profile') }}
 Validations  : RULE-* full text (statement, trigger, message per language) — every RULE listed here has a catalog row (§7)
 Errors       : catalog rows this endpoint can raise (code, HTTP, RULE-*)
-Orchestration: load → validate (RULE-*) → integrate (XM-*) → persist (QR-*, table, generation object)   — WHAT in sequence, layer placement per R1; every column this endpoint writes that the request does not carry (a flag it flips, a status it advances) names its `DBF-*` here
+{{ L_eff }}{{ ' ' * (13 - L_eff | length if L_eff | length < 13 else 1) }}: load → validate (RULE-*) → integrate (XM-*) → persist (QR-*, table, generation object)   — WHAT in sequence, layer placement per R1; every column this endpoint writes that the request does not carry (a flag it flips, a status it advances) names its `DBF-*` here
 Repository   : QR-* · operation · join (NONE | ADR) · transaction
 Concurrency  : NONE — this endpoint neither allocates a unique value nor reads-then-writes
                | <the guard, named>: what two simultaneous requests must not both be allowed to
@@ -390,13 +397,13 @@ Localization : every message in {{ langs.all | join(' + ') }}; every name field 
 <!-- API:API-{{ MOD }}-<seq>:END -->
 ```
 **Every required column needs a writer.** A column the db-script declares NOT NULL and the
-platform does not fill itself must be named by at least one `API-*` block, on its `Request` line
-(the caller supplies it) or its `Orchestration` line (the endpoint sets it). A required column no
+platform does not fill itself must be named by at least one `API-*` block, on its `{{ L_req }}` line
+(the caller supplies it) or its `{{ L_eff }}` line (the endpoint sets it). A required column no
 endpoint writes cannot be satisfied on a fresh deployment, so the first call to every endpoint
 that depends on it fails — and no shape check can see it, because the manifest lists the column
 and the endpoint lists its fields and nothing joins the two. Where no endpoint should write it,
-say so on the manifest row with the reason (system-generated · derived · seeded — the seed then
-belongs in BOOTSTRAP DATA, R7); silence is the defect. `gov.py analyze` → `required-writer`.
+say so on the manifest row with one of the profile's stated reasons ({% for r in R_why %}{{ r }}{% if not loop.last %} · {% endif %}{% else %}profile.plan_vocabulary.exclusion_reasons — not declared{% endfor %}{% if boot %}; a seeded one then
+belongs in {{ boot.section }}, R7{% endif %}); silence is the defect. `gov.py analyze` → `required-writer`.
 
 Completeness rules: a RULE whose SRS `Data source` is DEFERRED is **not** enforced here — it is
 listed once in the entity block as `DEFERRED (no declaration surface in v{{ ver }})` with no catalog
@@ -473,10 +480,10 @@ phase carries XM atoms.
 ```
 | Screen | ENT-* | API-* serving it | {% for a in sec.actions %}{{ a }} | {% endfor %}
 
-| <screen> | ENT-{{ MOD }}-<seq> | API-{{ MOD }}-<seq>, … | {% for a in sec.actions %}✓ {{ sec.permission_pattern.replace('<ACTION>', a) }} | {% endfor %}
+| <screen> | ENT-{{ MOD }}-<seq> | API-{{ MOD }}-<seq>, … | {% for a in sec.actions %}{{ T_yes }} {{ sec.permission_pattern.replace('<ACTION>', a) }} | {% endfor %}
 ```
-  A cell is marked only when the row also names the `API-*` that serves it **and** the
-  permission name for *that* action. A ✓ with nothing behind it grants nothing and is enforced
+  A cell is marked `{{ T_yes }}` only when the row also names the `API-*` that serves it **and** the
+  permission name for *that* action. A marked cell with nothing behind it grants nothing and is enforced
   by nothing, while reading downstream as a decision that was implemented — every endpoint of
   the shipped module answered forbidden to every caller behind exactly such a matrix
   (`gov.py analyze` → `operation-resolves`). Leave the cell blank rather than mark it hopefully.

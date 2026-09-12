@@ -156,6 +156,21 @@ conventions?:                               # OPTIONAL — absent = not applied 
                                             # choice produced plans that placed multi-entity rules in the
                                             # service layer — a placement neither value permits.
 
+plan_vocabulary?:                           # OPTIONAL — the labels this project's generated plans use
+                                            # on the lines a check READS. Declared once: the engine
+                                            # renders them and the contract clauses name their
+                                            # addresses, so the template and the checker cannot drift
+                                            # apart — a check looking for a line the template never
+                                            # asks for is a clause that enforces nothing. They are
+                                            # project facts, not factory ones: a project whose plans
+                                            # are authored in another language names its lines in it.
+  request_line?: "str"                      # the line naming what the CALLER supplies to an endpoint
+  effect_line?: "str"                       # the line naming what the ENDPOINT itself writes
+  operations_line?: "str"                   # the line on a subject listing the operations it exposes
+  present_token?: "str"                     # the token marking a matrix cell as claimed
+  exclusion_reasons?: "list[str]"           # the stated reasons a required column is legitimately
+                                             # written by nothing (a silent gap is the defect)
+
 bootstrap_data?:                            # OPTIONAL — the data that must EXIST before any of the
                                             # planned structure or behaviour can work, and which the
                                             # factory had no artifact section for at all (analyze:

@@ -45,7 +45,16 @@ TOY = {
     },
     # G6 — the toy states the OPPOSITE access mechanism to the ERP profile, so an
     # engine still carrying an answer of its own emits the wrong one here.
-    "conventions": {"module_interface": "rest"},
+    "conventions": {"module_interface": "rest",
+                    "security_model": {"page_registry": "CLINIC_VIEWS",
+                                       "permission_pattern": "CAN_<AREA>_<ACTION>",
+                                       "actions": ["BOOK", "CANCEL", "REBOOK"],
+                                       "gateway_action": "BOOK"}},
+    # every label a check reads is declared ONCE and rendered by the engine from
+    # the same declaration; the toy's words are nothing like the other profile's
+    "plan_vocabulary": {"request_line": "Intake", "effect_line": "Follow-up",
+                        "operations_line": "OFFERS", "present_token": "yes",
+                        "exclusion_reasons": ["filled-by-the-clinic"]},
     "stack": {
         # F5a — the toy states the OPPOSITE answer to the ERP profile for every
         # stated choice. An engine that still carried a default of its own would
@@ -888,13 +897,19 @@ def test_a_profile_that_declares_no_status_set_checks_only_the_shape(toy_codes):
 # come from the toy profile's own naming block.
 # ════════════════════════════════════════════════════════════════════════════
 
+# the toy's own line labels — every one reaches the checks through a profile
+# address, the same declaration the engine renders those lines from
+TOY_VOCAB = {"request_line": "Intake", "effect_line": "Follow-up",
+             "operations_line": "OFFERS", "present_token": "yes",
+             "exclusion_reasons": ["filled-by-the-clinic"]}
+
 TOY_WRITER_ARGS = {
     "kind": "DBF", "declared_in": "db-script", "required_marker": "stack.db.required_marker",
     "writer_kind": "API", "writer_in": "backend-execution-plan",
-    "writer_labels": ["Intake", "Follow-up"],
+    "writer_labels": ["plan_vocabulary.request_line", "plan_vocabulary.effect_line"],
     "exempt_names": "stack.db.naming.audit_fields",
     "exempt_pattern": "stack.db.naming.pk_pattern",
-    "exclusions": ["filled-by-the-clinic"],
+    "exclusions": "plan_vocabulary.exclusion_reasons",
 }
 
 
@@ -905,6 +920,7 @@ def toy_writer(toy_analyzable):
     prof = CFG.profiles_dir() / "toy.yaml"
     pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
     pdata["stack"]["db"]["required_marker"] = "MANDATORY"
+    pdata["plan_vocabulary"] = dict(TOY_VOCAB)
     pdata["stack"]["db"]["naming"] = {"audit_fields": ["loggedBy"], "pk_pattern": "{record}Ref"}
     prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
     doc = render.contracts_path(CFG)
@@ -1000,9 +1016,10 @@ def toy_ops(toy_analyzable):
     mod, art, an = toy_analyzable
     prof = CFG.profiles_dir() / "toy.yaml"
     pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
-    pdata["conventions"] = {"security_model": {
+    pdata["plan_vocabulary"] = dict(TOY_VOCAB)
+    pdata.setdefault("conventions", {})["security_model"] = {
         "page_registry": "CLINIC_VIEWS", "permission_pattern": TOY_PERM,
-        "actions": list(TOY_ACTIONS), "gateway_action": "BOOK"}}
+        "actions": list(TOY_ACTIONS), "gateway_action": "BOOK"}
     prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
     doc = render.contracts_path(CFG)
     spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
@@ -1010,8 +1027,9 @@ def toy_ops(toy_analyzable):
         {"id": "T1.8", "check": "operation-resolves",
          "args": {"artifact": "prd", "resolves_to": "API",
                   "actions": "conventions.security_model.actions",
-                  "declared": {"kind": "ENT", "label": "OFFERS"},
-                  "matrix": {"present": "yes", "permission": "conventions.security_model.permission_pattern"}},
+                  "declared": {"kind": "ENT", "label": "plan_vocabulary.operations_line"},
+                  "matrix": {"present": "plan_vocabulary.present_token",
+                             "permission": "conventions.security_model.permission_pattern"}},
          "severity": "WARN"})
     doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
     CFG.reload(profile_id="toy")
@@ -1074,10 +1092,14 @@ def test_toy_matrix_cell_with_endpoint_and_the_right_permission_passes(toy_ops):
 
 
 def test_a_profile_with_no_operation_vocabulary_is_served_unchanged(toy_analyzable):
+    """No operation vocabulary declared → the clause does not run, and says so."""
+    import state as st
     mod, art, an = toy_analyzable
-    assert CFG.profile.get("conventions.security_model.actions") is None
-    assert an._c_operation_resolves(an.Ctx(mod, 1), {
-        "artifact": "prd", "resolves_to": "API", "actions": "conventions.security_model.actions"}, "WARN") == []
+    st.build_state(mod, 1)                      # the artifact resolves; only the vocabulary is absent
+    with pytest.raises(an.ClauseSkipped) as e:
+        an._c_operation_resolves(an.Ctx(mod, 1), {
+            "artifact": "prd", "resolves_to": "API", "actions": "nothing.declared.here"}, "WARN")
+    assert e.value.address == "nothing.declared.here"
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1580,3 +1602,52 @@ def test_a_deliberate_omission_is_still_free_and_visible_as_such(toy_totals):
     mod, art, an = toy_totals
     rep = an.run(mod, 1, scope="all", write=False)
     assert not [s for s in rep.skipped if "declared_totals" in s]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# The checker and the template read ONE declaration
+# ----------------------------------------------------------------------------
+# A check looks for a labelled line; the engine writes that line. Two places
+# spelling the same word is a drift waiting to happen, and a check looking for a
+# line the template never asks for is a clause that enforces nothing while
+# reporting clean. Both sides now name the same profile address — and this test
+# is what proves they still agree, under a profile whose words are all different.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _clause_vocabulary_addresses() -> set[str]:
+    """Every `plan_vocabulary.*` address any real contract clause names, found in
+    the contract document itself — never a list typed here."""
+    import re as _re
+    from conftest import REAL_ROOT
+    doc = (REAL_ROOT / CFG.paths["shared"] / "ARTIFACT-CONTRACTS.md").read_text(encoding="utf-8")
+    body = doc.split("---")[1]
+    return set(_re.findall(r"plan_vocabulary\.[a-z_]+", body))
+
+
+def test_the_contracts_do_name_vocabulary_addresses(toy):
+    assert _clause_vocabulary_addresses(), "no clause reads its label from the profile — nothing to guard"
+
+
+def test_every_label_a_clause_reads_is_one_the_engine_actually_renders(toy):
+    """The decisive one. For every address a clause reads, the toy's own value for
+    it appears in the rendered brief — so the line the check looks for is the line
+    the template asks the author to write."""
+    for address in sorted(_clause_vocabulary_addresses()):
+        value = CFG.profile.get(address)
+        assert value, f"the toy profile declares nothing at {address}"
+        values = value if isinstance(value, list) else [value]
+        briefs = {sid: _exec_brief(toy, sid) for sid in (s.id for s in CFG.stages if s.track == "backend")}
+        assert any(all(str(v) in out for v in values) for out in briefs.values()), \
+            f"{address} = {value!r} is read by a clause but rendered by no engine brief"
+
+
+def test_the_rendered_labels_are_the_toys_words_not_the_other_profiles(toy):
+    """And they are the PROFILE's words: the other profile's labels appear nowhere."""
+    out = _exec_brief(toy, "P3.1")
+    other = toy.load_profile(toy.data["factory"]["active_profile"]).get("plan_vocabulary") or {}
+    for key, mine in (CFG.profile.get("plan_vocabulary") or {}).items():
+        theirs = other.get(key)
+        if not theirs or theirs == mine or isinstance(theirs, list):
+            continue
+        assert str(mine) in out, f"{key}: the toy's label is not rendered"
+        assert f"\n{theirs}" not in out, f"{key}: the brief carries profile {other and 'erp'}'s label {theirs!r}"

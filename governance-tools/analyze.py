@@ -1074,12 +1074,15 @@ def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     # clause simply does not run.
     marker = ctx.need(c["required_marker"], "how a required column is marked")
     marker_rx = re.compile(r"(?<![A-Za-z])" + re.escape(marker) + r"(?![A-Za-z])", re.I)
-    tokens = list(c.get("exclusions") or [])
+    tokens = list(ctx.need(c["exclusions"], "the stated reasons nothing writes a required column")) if c.get("exclusions") else []
     excl_rx = re.compile("|".join(re.escape(x) for x in tokens), re.I) if tokens else None
     exempt = {_squash(x) for x in (CFG.profile.get(c["exempt_names"]) or [])} if c.get("exempt_names") else set()
     pat = CFG.profile.get(c["exempt_pattern"]) if c.get("exempt_pattern") else None
     pk_rx = _template_rx(pat) if pat else None
-    labels = c["writer_labels"] if isinstance(c.get("writer_labels"), list) else [c["writer_labels"]]
+    # the label of each writing line is a profile address, so this check and the
+    # template that renders those lines read the same declaration
+    addresses = c["writer_labels"] if isinstance(c.get("writer_labels"), list) else [c["writer_labels"]]
+    labels = [ctx.need(a, "the label of a line stating what an endpoint writes") for a in addresses]
     label_rx = re.compile(r"^\s*[-*]?\s*\**\s*(?:" + "|".join(re.escape(l) for l in labels) +
                           r")\s*\**\s*:\s*(.+)$", re.I)
     # what the plan WRITES: every id cited on a writing line of an endpoint block
@@ -1177,7 +1180,8 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
 
     d = c.get("declared")
     if d:
-        label_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(d["label"]) + r"\s*\**\s*:?\s*(.+)$", re.I)
+        label = ctx.need(d["label"], "the label of the line listing a subject's operations")
+        label_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(label) + r"\s*\**\s*:?\s*(.+)$", re.I)
         for r in idmodel.by_prefix(recs, d["kind"]):
             stated = " ".join(m.group(1) for ln in r.text.splitlines() if (m := label_rx.match(ln)))
             for a in actions:
@@ -1186,7 +1190,7 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                 seen += 1
                 if not any(r.id in e.text and _word_rx(a).search(e.text) for e in endpoints):
                     out.append(Finding(sev, "", "operation-resolves",
-                                       f"`{r.id}` declares the operation `{a}` on its `{d['label']}` line "
+                                       f"`{r.id}` declares the operation `{a}` on its `{label}` line "
                                        f"but no `{kind}` block names both that operation and `{r.id}` — "
                                        f"the operation was specified and never built, and no shape check "
                                        f"can see the gap because every id in both halves resolves",
@@ -1194,12 +1198,13 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
 
     mx = c.get("matrix")
     if mx:
+        present = ctx.need(mx["present"], "the token marking a matrix cell as claimed")
         pattern = CFG.profile.get(mx["permission"]) if mx.get("permission") else None
         for n, headers, cells in _table_rows(text):
             row = " ".join(cells)
             for h, cell in zip(headers, cells):
                 a = next((x for x in actions if x.lower() == h.strip().lower()), None)
-                if a is None or mx["present"] not in cell:
+                if a is None or present not in cell:
                     continue
                 seen += 1
                 missing = []
@@ -1210,7 +1215,7 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                     missing.append(f"no name matching `{pattern}` for `{a}`")
                 if missing:
                     out.append(Finding(sev, "", "operation-resolves",
-                                       f"the `{a}` cell is marked `{mx['present']}` but the row carries "
+                                       f"the `{a}` cell is marked `{present}` but the row carries "
                                        f"{' and '.join(missing)} — a matrix cell with nothing behind it "
                                        f"grants nothing and is enforced by nothing, while reading as a "
                                        f"decision that was implemented", c["artifact"], n))

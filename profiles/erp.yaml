@@ -174,6 +174,15 @@ conventions:
   domain_behaviour_placement: domain_classes   # consistent with stack.backend.layers, which already
                                                # declares `domain` as its own layer
 
+plan_vocabulary:                           # the labels the plans use on the lines the checks read;
+                                           # the engine renders these same values, so neither side can
+                                           # drift into looking for a line the other never writes.
+  request_line: Request
+  effect_line: Orchestration
+  operations_line: OPERATIONS
+  present_token: "✓"
+  exclusion_reasons: [system-generated, derived, seeded, DEFERRED]
+
 bootstrap_data:                            # what must exist in the database before any endpoint of the
                                            # module can succeed. Absent this section the delivered module
                                            # was unusable on a fresh database: its lookup tables belong to
