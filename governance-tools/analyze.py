@@ -41,6 +41,23 @@ from toolkit.common import (blocking_severities, blocks, counts_line, known_seve
                             now_iso, read_json, sev as sev_at_rank, severities, severity_rank)
 
 
+class ClauseSkipped(Exception):
+    """A clause could not run because the profile declares nothing at an address it
+    needs.
+
+    Not a finding — a profile is allowed to omit an optional convention (C5) — but
+    never SILENT. A check that returns "no findings" because its vocabulary was
+    absent is indistinguishable, in every output this tool produces, from one that
+    looked and found nothing; and a mistyped address is indistinguishable from a
+    deliberate omission. Both read as a clean pass. `_evaluate` records the skip
+    against the clause and gives it a coverage of zero, so it lands in the report's
+    own list of clauses that enforced nothing."""
+
+    def __init__(self, address: str, what: str = ""):
+        super().__init__(address)
+        self.address, self.what = address, what
+
+
 @dataclass
 class Finding:
     severity: str
@@ -107,6 +124,15 @@ class Ctx:
         for s in CFG.all_stages():
             for a in s.produces:
                 self._arts[a.artifact] = (s, a)
+
+    def need(self, address: str, what: str = ""):
+        """The profile value at `address`, or a recorded skip. Every clause whose
+        vocabulary arrives from the profile reaches for it through here, so that
+        "this profile declares none" is stated rather than inferred from silence."""
+        v = CFG.profile.get(address)
+        if not v:
+            raise ClauseSkipped(address, what)
+        return v
 
     def saw(self, n: int) -> None:
         """A check calls this with the number of subjects it actually examined.
@@ -652,9 +678,7 @@ def _c_code_format(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     """The format an artifact DECLARES and the values it EMITS are one fact.
     A declared shape no emitted value obeys is a stale generalisation that a
     downstream verifier built from that sentence would reject every real value of."""
-    fmt = CFG.profile.get(c["format"])
-    if not fmt:
-        return []
+    fmt = ctx.need(c["format"], "the shape of a runtime code")
     # The set of statuses the platform can EMIT — an optional convention (C5): a
     # profile that declares none has the membership half skipped, and only the
     # shape is checked. `FIN-503` matched the declared shape perfectly and was
@@ -849,9 +873,7 @@ def _c_xref_surface(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     The locator is the profile's own address template (`locator`), so this knows no
     path, no verb and no module name; the resolution runs across the module set.
     """
-    template = CFG.profile.get(c["locator"])
-    if not template:
-        return []
+    template = ctx.need(c["locator"], "the surface address template")
     known = set(CFG.profile.vocabulary["module_prefixes"])
     kinds = set(c.get("kinds") or [])
     rx = _locator_rx(template, known)
@@ -959,9 +981,7 @@ def _c_count_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     block name and no atom of its own. Where the same total is stated in more
     than one place every statement is compared against the same row set, so they
     also have to agree with each other."""
-    rows = CFG.profile.get(c["spec"]) or []
-    if not rows:
-        return []                       # this profile declares no total worth counting
+    rows = ctx.need(c["spec"], "the totals a generated artifact states")
     out = []
     for row in rows:
         text = ctx.text(row["artifact"])
@@ -1052,9 +1072,7 @@ def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     # here would be one stack's notation imposed on all of them. An address that
     # resolves to nothing means this profile states no such marker (C5) and the
     # clause simply does not run.
-    marker = CFG.profile.get(c["required_marker"])
-    if not marker:
-        return []
+    marker = ctx.need(c["required_marker"], "how a required column is marked")
     marker_rx = re.compile(r"(?<![A-Za-z])" + re.escape(marker) + r"(?![A-Za-z])", re.I)
     tokens = list(c.get("exclusions") or [])
     excl_rx = re.compile("|".join(re.escape(x) for x in tokens), re.I) if tokens else None
@@ -1151,9 +1169,7 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     text = ctx.text(c["artifact"])
     if text is None:
         return []
-    actions = [str(a) for a in (CFG.profile.get(c["actions"]) or [])]
-    if not actions:
-        return []                       # this profile declares no operation vocabulary
+    actions = [str(a) for a in ctx.need(c["actions"], "the operation vocabulary")]
     kind = c["resolves_to"]
     recs = idmodel.records(text)
     endpoints = idmodel.by_prefix(recs, kind)
@@ -1242,9 +1258,7 @@ def _c_bootstrap_complete(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     Everything is profile data (`spec`): the section token, what each item
     enumerates (a name template, or a table column), where those names are
     declared, and the word that names the source. The checker knows no item."""
-    spec = CFG.profile.get(c["spec"])
-    if not spec:
-        return []                       # this profile declares no bootstrap data
+    spec = ctx.need(c["spec"], "the data that must exist before anything works")
     text = ctx.text(c["artifact"])
     if text is None:
         return []
@@ -1355,9 +1369,7 @@ def _names_in(value: str, source: str) -> bool:
 
 
 def _c_forward_refs(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
-    rows = CFG.profile.get(c["spec"]) or []
-    if not rows:
-        return []                            # this profile declares no forward-referencing column
+    rows = ctx.need(c["spec"], "the columns a stage cannot resolve at its own stage")
     token = CFG.data["forward_reference"]["proposed_token"]
     out = []
     for row in rows:
@@ -1450,9 +1462,7 @@ def claimed_findings(line: str, spec: dict) -> int | None:
 def _c_verdict_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     """An artifact may not assert a verdict about itself that claims fewer findings
     than the machine produced for it."""
-    spec = self_check_spec(c["spec"])
-    if not spec:
-        return []                       # this profile declares no self-check
+    spec = ctx.need(c["spec"], "the block an artifact states its own verdict in")
     out = []
     for name in (c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]):
         text = ctx.text(name)
@@ -1736,6 +1746,16 @@ def _evaluate(ctx: Ctx, fn, cl: dict, args: dict, rep: "AnalyzeReport | None" = 
     ctx._examined = 0
     try:
         fs = fn(ctx, args, cl["severity"])
+    except ClauseSkipped as s:
+        # the profile declares nothing this clause needs. Legal, and recorded: the
+        # one shape a silent pass hides best is a check that never ran.
+        fs = []
+        if rep is not None:
+            rep.skipped.append(f"{cl['id']} ({cl['check']}): the profile declares nothing at "
+                               f"`{s.address}`" + (f" — {s.what}" if s.what else "") +
+                               " — this clause enforced nothing")
+            rep.coverage[cl["id"]] = 0
+            rep.clause_checks[cl["id"]] = cl["check"]
     except Exception as e:  # a broken clause must be visible, never silent
         fs = [Finding(sev_at_rank(1), cl["id"], cl["check"], f"clause could not be evaluated: {e}")]
     else:

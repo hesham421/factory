@@ -421,6 +421,17 @@ these are mechanical clauses here and not a checklist line there.
 | `bootstrap-complete` | the data that must EXIST before any planned structure or behaviour can work is itself planned, and covers what the other registries declare. `spec` is a profile address holding `{section, items}`; each item says what one row is (`label`), where the needed names are declared (`declared_in`), how to enumerate them (`names`, a profile address to a NAME template — or `column`, a table column header), and the word a row must carry naming who produces the data (`source_label`). The factory planned structure and behaviour and had no section for this at all: a module whose lookup tables belong to another module seeded nothing anywhere, and registering a permission is not granting it. A profile that declares no bootstrap data carries no such clause. | `artifact`, `spec`, `when?` |
 | `verdict-agrees` | the verdict the artifact states **about itself** does not claim fewer findings than `gov.py analyze` produced for that artifact. The block name, the verdict label and the pass/fail wording are read from the profile address in `spec` — the checker knows none of them, and a profile that declares no self-check carries no such clause. Evaluated after every clause that produces findings. The orchestrator normally *writes* this line from the report (`gov.py` stamps it after analyze), so the check is the guard for anything still authored by hand. | `artifact`, `spec`, `when?` |
 
+**A clause that could not run is never silent.** Most clauses above take their
+vocabulary from a profile address — the code format, the operation set, the totals, the
+bootstrap items, the self-check block. A profile is allowed to declare none of them (C5),
+and such a clause simply does not run. What it may not do is report "no findings", which
+is what it used to do: a check that never ran and a check that looked and found nothing
+printed the same line, and a mistyped address printed the same line as a deliberate
+omission. `gov.py analyze` now records every such clause in the report's `skipped` list
+with the address it needed, gives it a coverage of zero so it appears among the clauses
+that examined nothing, and prints it. Suppressing the clause deliberately is still done
+with `when:`, which is visible in the contract itself.
+
 Severity semantics are **`factory.analyze`** + `factory.gates[*].requires_analyze`:
 `analyze.severities` is the vocabulary a clause's `severity:` must name (a clause
 naming one it does not declare is itself a finding at the top rank, because such a

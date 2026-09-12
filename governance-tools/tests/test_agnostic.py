@@ -402,11 +402,14 @@ def test_toy_orchestrator_generates_the_verdict_from_the_report(toy_self_check, 
 
 
 def test_a_profile_with_no_self_check_is_served_unchanged(toy_analyzable):
-    """No self-check declared → the clause never runs and nothing is stamped."""
+    """No self-check declared → the clause does not run, nothing is stamped, and the
+    skip is STATED: a check that never ran must not read as a clean pass."""
     import gov
     mod, art, an = toy_analyzable
     assert CFG.profile.self_check is None
-    assert an._c_verdict_agrees(an.Ctx(mod, 1), {"artifact": ["prd"], "spec": "self_check"}, "HALT") == []
+    with pytest.raises(an.ClauseSkipped) as e:
+        an._c_verdict_agrees(an.Ctx(mod, 1), {"artifact": ["prd"], "spec": "self_check"}, "HALT")
+    assert e.value.address == "self_check"
     stage = next(s for s in CFG.stages if any(a.artifact == "prd" for a in s.produces))
     assert gov._stamp_verdict(stage, mod, 1, an.AnalyzeReport(mod, 1, "all")) == []
 
@@ -606,7 +609,8 @@ def test_toy_forward_column_resolves_once_the_later_artifact_exists(toy_forward)
 def test_a_profile_with_no_forward_columns_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("forward_columns") is None
-    assert an._c_forward_refs(an.Ctx(mod, 1), {"spec": "forward_columns"}, "WARN") == []
+    with pytest.raises(an.ClauseSkipped):
+        an._c_forward_refs(an.Ctx(mod, 1), {"spec": "forward_columns"}, "WARN")
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -807,7 +811,8 @@ def test_toy_two_statements_of_one_total_must_agree_with_each_other(toy_totals):
 def test_a_profile_with_no_declared_totals_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("declared_totals") is None
-    assert an._c_count_agrees(an.Ctx(mod, 1), {"spec": "declared_totals"}, "WARN") == []
+    with pytest.raises(an.ClauseSkipped):
+        an._c_count_agrees(an.Ctx(mod, 1), {"spec": "declared_totals"}, "WARN")
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1166,7 +1171,8 @@ def test_the_toy_grant_target_is_the_toys_own_word(toy_bootstrap):
 def test_a_profile_with_no_bootstrap_data_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("bootstrap_data") is None
-    assert an._c_bootstrap_complete(an.Ctx(mod, 1), {"artifact": "prd", "spec": "bootstrap_data"}, "WARN") == []
+    with pytest.raises(an.ClauseSkipped):
+        an._c_bootstrap_complete(an.Ctx(mod, 1), {"artifact": "prd", "spec": "bootstrap_data"}, "WARN")
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1520,3 +1526,57 @@ def test_a_profile_that_states_no_required_marker_skips_the_writer_clause(toy_wr
     prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
     CFG.reload(profile_id="toy")
     assert _writer_findings(mod, an) == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# A clause that could not run is never silent
+# ----------------------------------------------------------------------------
+# Every check whose vocabulary comes from the profile used to return "no
+# findings" when the address resolved to nothing. A check that never ran and a
+# check that looked and found nothing printed the same line — and a MISTYPED
+# address printed the same line as a deliberate omission. Both read as a pass.
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_typo(toy_analyzable):
+    """A clause naming an address this profile does not declare — exactly what a
+    typo in a contract looks like from the outside."""
+    import render
+    mod, art, an = toy_analyzable
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.14", "check": "count-agrees",
+         "args": {"spec": "declared_totalz"}, "severity": "HALT"})      # note the typo
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def test_a_clause_whose_address_resolves_to_nothing_says_so(toy_typo):
+    mod, art, an = toy_typo
+    rep = an.run(mod, 1, scope="all", write=False)
+    assert [f for f in rep.findings if f.clause == "T1.14"] == [], "a missing convention is not a finding"
+    skipped = [s for s in rep.skipped if s.startswith("T1.14")]
+    assert len(skipped) == 1, rep.skipped
+    assert "declared_totalz" in skipped[0] and "enforced nothing" in skipped[0], skipped[0]
+    assert rep.coverage.get("T1.14") == 0 and "T1.14" in rep.vacuous(), rep.coverage
+
+
+def test_the_skip_survives_into_the_report_a_gate_reads(toy_typo):
+    """The report is what a pipeline gates on; a skip that reached only the
+    terminal is a skip nobody acts on."""
+    import json
+    mod, art, an = toy_typo
+    an.run(mod, 1, scope="all")
+    data = json.loads(an.report_json_path(mod, 1, "all").read_text(encoding="utf-8"))
+    assert any("declared_totalz" in s for s in data["skipped"])
+    assert "T1.14" in data["vacuous"]
+
+
+def test_a_deliberate_omission_is_still_free_and_visible_as_such(toy_totals):
+    """Declaring the convention makes the clause run; `when:` is how a contract
+    suppresses one on purpose, and that is visible in the contract itself."""
+    mod, art, an = toy_totals
+    rep = an.run(mod, 1, scope="all", write=False)
+    assert not [s for s in rep.skipped if "declared_totals" in s]

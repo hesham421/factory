@@ -1151,6 +1151,10 @@ def main(argv: list[str] | None = None) -> int:
         _say(f"analyze {a.scope} → {counts_line(c)} · {'CLEAN' if rep.clean else 'BLOCKED'}{tail}")
         for f in rep.findings:
             _say("  ", f)
+        # a clause that could not run is not a clause that passed. It reached the
+        # report and stopped there, where a reader gating on the terminal never saw it.
+        for s in rep.skipped:
+            _say("  SKIPPED   ", s)
         return OK if rep.clean else BLOCKED
     if a.cmd == "state":
         rep = st.build_state(a.module, a.version)
