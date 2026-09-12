@@ -25,8 +25,8 @@ XM STATUS
 open: none · deferred: none — SEC is ROOT, 0 XM rows.
 
 CATALOG
-27 code count (excluding the generic SEC-500/SEC-400-INVALID-SORT which apply platform-wide)
-+ 2 generic = 29 total error-catalog rows. Rules without a message: none — every RULE-SEC-001
+26 code count (excluding the generic INTERNAL_ERROR/SEC-400-INVALID-SORT which apply
+platform-wide) + 2 generic = 28 total error-catalog rows. Rules without a message: none — every RULE-SEC-001
 through RULE-SEC-007 that produces a user-facing message has a full ar/en pair (SRS A5,
 carried verbatim). Rules needing an ADR for their catalog treatment: none (all 7 SEC RULEs
 map directly); PLATFORM-STD rows: ADR-SEC-002.

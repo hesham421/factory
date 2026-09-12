@@ -7,10 +7,11 @@ Framework: agnostic (profile.stack.testing.backend) — every block below is a
   annotation or file layout appears anywhere in this document.
 REDUCED: no — every input plan for SEC is present.
 Open ADRs: 0 new this run (ADR-SEC-001, ADR-SEC-002 unaffected).
-TC count: 33 (module scope) · 0 (integration — SEC is ROOT, declares no XM)
+TC count: 35 (module scope) · 0 (integration — SEC registers no XM row in either direction;
+  TC-SEC-034/035 exercise SEC's own EXPOSED crossmodule interface and are module-scope)
 ══════════════════════════════════════════════════════════════════
 
-<!-- PHASE:TEST-PLAN-BE:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-004,REQ-SEC-005,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-012,REQ-SEC-013,REQ-SEC-014,REQ-SEC-015,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-020,REQ-SEC-021,REQ-SEC-022,REQ-SEC-023,REQ-SEC-024,REQ-SEC-025,REQ-SEC-026,REQ-SEC-027,REQ-SEC-028,REQ-SEC-029,REQ-SEC-030,REQ-SEC-031,REQ-SEC-032,REQ-SEC-033 -->
+<!-- PHASE:TEST-PLAN-BE:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-004,REQ-SEC-005,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-012,REQ-SEC-013,REQ-SEC-014,REQ-SEC-015,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-020,REQ-SEC-021,REQ-SEC-022,REQ-SEC-023,REQ-SEC-024,REQ-SEC-025,REQ-SEC-026,REQ-SEC-027,REQ-SEC-028,REQ-SEC-029,REQ-SEC-030,REQ-SEC-031,REQ-SEC-032,REQ-SEC-033,REQ-SEC-034,REQ-SEC-035 -->
 
 <!-- SUB:RULE-SCENARIOS:START traces=REQ-SEC-008,REQ-SEC-013,REQ-SEC-014,REQ-SEC-015,REQ-SEC-018,REQ-SEC-020,REQ-SEC-030 -->
 ### SUB — RULE-SCENARIOS (RULE-driven violations / cascades)
@@ -100,7 +101,7 @@ Test data    : role R1, screen FIN_ACCOUNTS, action CREATE only
 <!-- TC:TC-SEC-030:END -->
 <!-- SUB:RULE-SCENARIOS:END -->
 
-<!-- SUB:API-SCENARIOS:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-004,REQ-SEC-005,REQ-SEC-006,REQ-SEC-007,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-012,REQ-SEC-016,REQ-SEC-017,REQ-SEC-019,REQ-SEC-021,REQ-SEC-022,REQ-SEC-023,REQ-SEC-024,REQ-SEC-025,REQ-SEC-026,REQ-SEC-027,REQ-SEC-028,REQ-SEC-029,REQ-SEC-031,REQ-SEC-032,REQ-SEC-033 -->
+<!-- SUB:API-SCENARIOS:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-004,REQ-SEC-005,REQ-SEC-006,REQ-SEC-007,REQ-SEC-009,REQ-SEC-010,REQ-SEC-011,REQ-SEC-012,REQ-SEC-016,REQ-SEC-017,REQ-SEC-019,REQ-SEC-021,REQ-SEC-022,REQ-SEC-023,REQ-SEC-024,REQ-SEC-025,REQ-SEC-026,REQ-SEC-027,REQ-SEC-028,REQ-SEC-029,REQ-SEC-031,REQ-SEC-032,REQ-SEC-033,REQ-SEC-034,REQ-SEC-035 -->
 ### SUB — API-SCENARIOS (endpoint-driven happy / state / permission paths)
 
 <!-- TC:TC-SEC-001:START traces=AC-SEC-001,REQ-SEC-001,API-SEC-001 -->
@@ -322,11 +323,11 @@ Test data    : any login
 <!-- TC:TC-SEC-025:START traces=AC-SEC-025,REQ-SEC-025,API-SEC-023 -->
 ### TC-SEC-025 — search and filter the audit log without altering it
 Derived from : AC-SEC-025 (REQ-SEC-025)
-Exercises    : API-SEC-023 GET /api/v1/sec/audit-log
+Exercises    : API-SEC-023 POST /api/v1/sec/audit-log/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
 Preconditions: audit entries across several event types and dates
-Steps        : 1. GET filtered by eventTypeCode and date range
+Steps        : 1. POST /search filtered by eventTypeCode and date range
 Expected     : 200; exactly the matching entries, byte-identical to their stored values
 Test data    : filter eventTypeCode=LOGIN_FAILED
 <!-- TC:TC-SEC-025:END -->
@@ -346,11 +347,11 @@ Test data    : same filter as TC-SEC-025
 <!-- TC:TC-SEC-027:START traces=AC-SEC-027,REQ-SEC-027,API-SEC-025 -->
 ### TC-SEC-027 — list only non-terminated sessions
 Derived from : AC-SEC-027 (REQ-SEC-027)
-Exercises    : API-SEC-025 GET /api/v1/sec/sessions
+Exercises    : API-SEC-025 POST /api/v1/sec/sessions/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
 Preconditions: several sessions, some terminated and some not
-Steps        : 1. GET active sessions
+Steps        : 1. POST /search for active sessions
 Expected     : 200; only non-terminated sessions listed, each with user + last-activity time
 Test data    : 2 active + 1 terminated session
 <!-- TC:TC-SEC-027:END -->
@@ -414,6 +415,30 @@ Steps        : 1. call a FIN endpoint directly by URL, bypassing the menu entire
 Expected     : 403 (denied), regardless of how the request was reached
 Test data    : user with zero FIN grants; direct call to GET /api/v1/fin/accounts
 <!-- TC:TC-SEC-033:END -->
+
+<!-- TC:TC-SEC-034:START traces=AC-SEC-034,REQ-SEC-034 -->
+### TC-SEC-034 — cross-module read of a user's contact details
+Derived from : AC-SEC-034 (REQ-SEC-034)
+Exercises    : `com.erp.sec.crossmodule.SecUserDirectoryApi.findContact(userPk)` — an injected cross-module Spring interface, NOT an HTTP endpoint, so no API-SEC-* is cited and this TC is driven in-process the way a consuming module's service calls it (`build-create-service`: cross-module reads use "direct Spring interface injection, not loopback HTTP")
+Rule / code  : — (no error code; an unknown id is an empty result, never a 404)
+Scenario     : HAPPY · data class VALID · language ALL
+Preconditions: one ACTIVE user and one DISABLED user exist; the caller is authenticated (the producing side is gated `isAuthenticated()`)
+Steps        : 1. ask the interface for the ACTIVE user's contact by user id 2. repeat for the DISABLED user 3. repeat for a user id that does not exist
+Expected     : 1. a contact carrying exactly userPk, email, fullNameAr, fullNameEn and active=true — and nothing else: no password hash (POL-SEC-004), no reset or session token, no audit row, no role/grant/session data, and neither the User entity nor an internal DTO 2. the same shape with active=false 3. an empty result, not an error
+Test data    : an ACTIVE user "u1@example.com" with both display names set; a DISABLED user; an unused id
+<!-- TC:TC-SEC-034:END -->
+
+<!-- TC:TC-SEC-035:START traces=AC-SEC-035,REQ-SEC-035 -->
+### TC-SEC-035 — cross-module read of the user ids holding a permission code
+Derived from : AC-SEC-035 (REQ-SEC-035)
+Exercises    : `com.erp.sec.crossmodule.SecUserDirectoryApi.findUserIdsHoldingPermission(permissionCode)` (QR-SEC-039) — the same injected interface, not an HTTP endpoint; driven in-process as a consuming module's separation-of-duties check would
+Rule / code  : — (no error code; a code nobody holds is an empty set, never a 404)
+Scenario     : PERMISSION · data class VALID · language ALL
+Preconditions: two permission codes the consumer treats as conflicting, each registered as an ACTIVE action; user A holds the first through one ACTIVE role, user B holds it through a second ACTIVE role, user C holds it only through an INACTIVE role, and user D holds an action row that is itself INACTIVE
+Steps        : 1. ask the interface for the holders of the first permission code 2. ask for the holders of the second 3. ask for a permission code no action row carries
+Expected     : 1. exactly the ids of A and B, each once (DISTINCT), with C excluded because its role is inactive and D excluded because its action is inactive 2. the holder set of the second code, computed the same way 3. an empty list; and in every case nothing but user ids is returned — no name, email, role or grant detail
+Test data    : users A, B, C, D; roles R_ACTIVE_1, R_ACTIVE_2, R_INACTIVE; an inactive action row; an unheld permission code
+<!-- TC:TC-SEC-035:END -->
 <!-- SUB:API-SCENARIOS:END -->
 <!-- PHASE:TEST-PLAN-BE:END -->
 
@@ -424,9 +449,11 @@ empty block, simply absent, per §2/§4 of the engine.
 | AC | TC | REQ | API | RULE/code | XM |
 |---|---|---|---|---|---|
 | AC-SEC-001…033 | TC-SEC-001…033 (1:1) | REQ-SEC-001…033 (1:1) | see each TC's Exercises line | see each TC's Rule/code line | none |
+| AC-SEC-034, AC-SEC-035 | TC-SEC-034, TC-SEC-035 (1:1) | REQ-SEC-034, REQ-SEC-035 (1:1) | none — `SecUserDirectoryApi`, a crossmodule Spring interface, not an HTTP endpoint | — (reads only, no error code) | none registered by SEC — ids for the exposed direction belong to the consuming module's P2 |
 
 ## COVERAGE
-AC covered 33/33 (0 gaps) · REQ covered 33/33 · API covered 27/27 (every API-SEC-001..027
+AC covered 35/35 (0 gaps) · REQ covered 35/35 (REQ-SEC-034/035 added by the 2026-09-11
+cross-module amendment) · API covered 27/27 (every API-SEC-001..027
 exercised by ≥1 TC, either directly or as the side-effect target of TC-SEC-024) · every
 selected-module XM covered: not applicable (SEC declares none).
 ══════════════════════════════════════════════════════════════════

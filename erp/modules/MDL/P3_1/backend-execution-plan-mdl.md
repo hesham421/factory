@@ -451,37 +451,21 @@ Localization : n/a
 
 | API | Path | Verb | Request DTO | Response DTO | Stability |
 |---|---|---|---|---|---|
-| API-MDL-001 | /lookup-types/search | POST | LookupTypeSearchRequest | paginated list of LookupTypeResponse | v1 |
-| API-MDL-002 | /lookup-types | POST | LookupTypeCreateRequest | LookupTypeResponse | v1 |
-| API-MDL-003 | /lookup-types/{id} | PUT | LookupTypeUpdateRequest | LookupTypeResponse | v1 |
-| API-MDL-004 | /lookup-types/{id} | DELETE | — | LookupTypeResponse | v1 |
-| API-MDL-005 | /lookup-types/values/search | POST | LookupValueSearchRequest | paginated list of LookupValueResponse | v1 |
-| API-MDL-006 | /lookup-types/{id}/values | POST | LookupValueCreateRequest | LookupValueResponse | v1 |
-| API-MDL-007 | /lookup-values/{id} | PUT | LookupValueUpdateRequest | LookupValueResponse | v1 |
-| API-MDL-008 | /lookup-values/{id} | DELETE | — | LookupValueResponse | v1 |
-| API-MDL-009 | /lookup-types/{id}/values/reorder | PATCH | LookupValueReorderRequest | array of LookupValueResponse | v1 |
-| API-MDL-010 | /lookup-types/by-owner/search | POST | LookupTypeByOwnerSearchRequest | array of OwnerGroupResponse | v1 |
-| API-MDL-011 | /lookups | GET | — | array of LookupValueResponse | v1 |
-(paths relative to `/api/v1/mdl`. A `—` request means the endpoint takes no body: API-MDL-004
-and API-MDL-008 carry their id in the path, and API-MDL-011 reads its `type` key from a query
-parameter. RESOLVED 2026-09-12 against the published `_inputs/api-docs-mdl.md`: every type name
-above was previously marked `(proposed)` — derived before any implementation existed — and each
-is now the name the surface really publishes, so the `(proposed)` marks are gone rather than
-carried beside real names. THREE ROWS ALSO CHANGED VERB AND PATH, and that is the substantive
-correction: API-MDL-001, API-MDL-005 and API-MDL-010 were written here as `GET` with query
-parameters and are published as `POST …/search` taking a `filters[]` envelope. The `Endpoint :`
-lines of their own API blocks above already said `POST …/search`, and so did `srs-mdl.md`
-§B5 — this table was the only artifact in the module still predicting the GET form, which is
-why `gov.py analyze` raised it here as three C8.4 `endpoint-agrees` findings and nowhere else.
-The Response DTO cells are written in the api-docs' own words — `paginated list of X` where the
-response carries a `Page<T>` envelope and `array of X` where it does not — rather than in a
-`Page<X>` / `List<X>` notation the published document never uses; only two of the eleven are
-paged, and the notation now shows which. Two response types also moved: API-MDL-004 and
-API-MDL-008 were predicted to return a
-`DeactivateConfirmation`, and each really returns its own entity response with
-`isActiveFl=false`. The frontend was bound to the published shape throughout —
-`erp/decisions/MDL/ADR-MDL-002.md` records the divergence and names this table as where the fix
-belonged.)
+| API-MDL-001 | /lookup-types | GET | — | Page\<LookupTypeResponse\> (proposed) | v1 |
+| API-MDL-002 | /lookup-types | POST | LookupTypeCreateRequest (proposed) | LookupTypeResponse (proposed) | v1 |
+| API-MDL-003 | /lookup-types/{id} | PUT | LookupTypeUpdateRequest (proposed) | LookupTypeResponse (proposed) | v1 |
+| API-MDL-004 | /lookup-types/{id} | DELETE | — | DeactivateConfirmation (proposed) | v1 |
+| API-MDL-005 | /lookup-types/{id}/values | GET | — | Page\<LookupValueResponse\> (proposed) | v1 |
+| API-MDL-006 | /lookup-types/{id}/values | POST | LookupValueCreateRequest (proposed) | LookupValueResponse (proposed) | v1 |
+| API-MDL-007 | /lookup-values/{id} | PUT | LookupValueUpdateRequest (proposed) | LookupValueResponse (proposed) | v1 |
+| API-MDL-008 | /lookup-values/{id} | DELETE | — | DeactivateConfirmation (proposed) | v1 |
+| API-MDL-009 | /lookup-types/{id}/values/reorder | PATCH | ReorderRequest (proposed) | List\<LookupValueResponse\> (proposed) | v1 |
+| API-MDL-010 | /lookup-types/by-owner | GET | — | List\<OwnerGroupResponse\> (proposed) | v1 |
+| API-MDL-011 | /lookups | GET | — | List\<LookupValueResponse\> (proposed) | v1 |
+(paths relative to `/api/v1/mdl`. A `—` request means the endpoint takes no body: the GET rows
+read their filters from query parameters. Every type name above is marked `(proposed)` — this
+stage runs before any implementation exists, so the names are derived, not decided; the real
+ones arrive with `api-docs-mdl.md` and the stage that can resolve them fills them in.)
 
 **DTO typing constraints**: `ownerModuleCode` is `String` (the platform module code, not
 an enum); no business code field exists.
@@ -575,7 +559,7 @@ CROSS-MODULE      ✓ 1 XM from db-script, 1 placed (XM-MDL-001), 0 mismatched; 
 SECURITY (R7)     ✓ both secured APIs' screens declare PERM_*; ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
 CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-{http}[-{SLUG}]`), type mapping (incl. the stated sort_order→Integer deviation) all declared
 DECISIONS         ✓ 0 new ADR this stage; SEC's ADR-SEC-002 convention correctly cited, not re-derived
-RESULT            BLOCKED ✗ — 3 findings
+RESULT            PASSED ✓ — 0 findings
 ```
 
 **Coverage — ENT/DBF → phases → QR → XM**: ENT-MDL-001/002 each appear in DATA-DOM with

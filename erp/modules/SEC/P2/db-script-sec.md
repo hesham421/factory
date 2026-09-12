@@ -170,9 +170,16 @@ Total: 104 DBF ids across 13 tables (plus 2 shared-infrastructure tables under A
 
 ## 2. XM REGISTER — SEC v1
 
-None — SEC is ROOT; SRS A8 lists no consumed entity owned by another module (the
-Notifications integration is an external service, not a registered platform module,
-and carries no FK — see SRS A8 second table).
+None **in the CONSUME direction** — SEC is ROOT; SRS A8's first table lists no consumed entity
+owned by another module (the Notifications integration is an external service, not a registered
+platform module, and carries no FK — see SRS A8 second table).
+
+AMENDMENT 2026-09-11 — the EXPOSED direction is not covered by that statement and does not change
+it. SEC exposes one read-only inbound surface, `com.erp.sec.crossmodule` (REQ-SEC-034,
+REQ-SEC-035; SRS A8's third table). It registers no entity, table or column and carries no FK, so
+it produces no XM row here; SEC assigns no XM id of its own. Formal `XM-*` ids for that direction
+are assigned by the *consuming* module's own P2, not by SEC — the rule already stated for
+`XM-INBOUND-STUB-1` in P3_1/backend-execution-plan-sec.md PHASE 6 (INT-R).
 
 ## 3. FULL_DATABASE_SCRIPT
 

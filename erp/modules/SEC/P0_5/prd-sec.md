@@ -58,7 +58,7 @@ US-SEC-006
   Story          : As a consuming module's integrator, I need to register my module, its screens and its actions as data, so that my module can be granted to roles without any change to security code.
   Priority       : HIGH — foundational to every other module's onboarding
   Success metric : —
-  Traces         : POL-SEC-001, POL-SEC-002
+  Traces         : — (scope only)
   Source         : security-module-plan-en.md §4.3, §4.5, §7; module-registry-sec.md → ENTITIES OWNED (ModuleRegistry, ScreenRegistry, ActionRegistry)
   Status         : DRAFT → APPROVED (by the PRD approval gate)
 
@@ -103,7 +103,7 @@ US-SEC-011
   Story          : As a security administrator, I need to see currently signed-in users and force-terminate a session when authorized, so that I can respond to a compromised or abandoned session.
   Priority       : MEDIUM
   Success metric : —
-  Traces         : POL-SEC-009, POL-SEC-011
+  Traces         : — (scope only)
   Source         : security-module-plan-en.md §5.1, §5.3; module-registry-sec.md → ENTITIES OWNED (ActiveSession)
   Status         : DRAFT → APPROVED (by the PRD approval gate)
 
@@ -112,7 +112,7 @@ US-SEC-012
   Story          : As a user requesting a password reset, I need to optionally receive that reset through the platform's ready Notifications service, so that I am not blocked if this integration is skipped.
   Priority       : LOW — explicitly "only on real need", never a hard dependency
   Success metric : —
-  Traces         : POL-SEC-004
+  Traces         : — (scope only)
   Source         : security-module-plan-en.md §8; new project/integration-notifications-fileservice.md §1
   Status         : DRAFT → APPROVED (by the PRD approval gate)
 
@@ -124,17 +124,16 @@ US-SEC-012
 | US-SEC-003 | POL-SEC-004 | security-module-plan-en.md §3 |
 | US-SEC-004 | POL-SEC-008 | security-module-plan-en.md §4.4 |
 | US-SEC-005 | POL-SEC-001, POL-SEC-002 | security-module-plan-en.md §4.1-§4.2 |
-| US-SEC-006 | POL-SEC-001, POL-SEC-002 | security-module-plan-en.md §4.3, §7 |
+| US-SEC-006 | — (scope only) | security-module-plan-en.md §4.3, §7 |
 | US-SEC-007 | POL-SEC-005 | security-module-plan-en.md §4.4 |
 | US-SEC-008 | POL-SEC-006, POL-SEC-007 | security-module-plan-en.md §6 |
 | US-SEC-009 | POL-SEC-010, POL-SEC-011 | security-module-plan-en.md §5.1-§5.2 |
 | US-SEC-010 | POL-SEC-009 | security-module-plan-en.md §5.3 |
-| US-SEC-011 | POL-SEC-009, POL-SEC-011 | security-module-plan-en.md §5.1, §5.3 |
-| US-SEC-012 | POL-SEC-004 | security-module-plan-en.md §8 |
+| US-SEC-011 | — (scope only) | security-module-plan-en.md §5.1, §5.3 |
+| US-SEC-012 | — (scope only) | security-module-plan-en.md §8 |
 Every policy POL-SEC-001 … POL-SEC-011 appears in at least one row above (001,002 →
-US-005/US-006; 003 → US-002; 004 → US-001/US-003/US-012; 005 → US-007; 006,007 →
-US-008; 008 → US-004; 009 → US-010/US-011; 010 → US-009; 011 → US-009/US-011), and
-every story cites at least one policy (C4.4).
+US-005; 003 → US-002; 004 → US-001/US-003; 005 → US-007; 006,007 → US-008;
+008 → US-004; 009 → US-010; 010,011 → US-009).
 
 ## RESOLVED DECISIONS (dialogue)
 | # | Question | Recommended | Confirmed by user | Sources |

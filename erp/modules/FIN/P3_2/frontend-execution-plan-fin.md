@@ -106,10 +106,10 @@ PERMISSIONS declared by the backend and read from the SRS Access summary and the
 
 | # | Phase | Split | Blocks |
 |---|---|---|---|
-| 1 | F1 — Models & Types | always — one SUB per screen | 12 SUB |
-| 2 | F2 — Data Hooks | always — one SUB per screen | 12 SUB |
-| 3 | F3 — Forms & Validators | always — one SUB per screen | 12 SUB |
-| 4 | F4 — Screens & Routes | always — one SUB per screen | 12 SUB |
+| 1 | F1 — Models & Types | per screen (12 SCR ≥ 5) | 12 SUB |
+| 2 | F2 — Data Hooks | per screen | 12 SUB |
+| 3 | F3 — Forms & Validators | per screen | 12 SUB |
+| 4 | F4 — Screens & Routes | per screen | 12 SUB |
 | 5 | SEC-FE | never split | level-1 only |
 | 6 | ALIGN-FE | never split | level-1 only |
 
@@ -130,8 +130,7 @@ PERMISSIONS declared by the backend and read from the SRS Access summary and the
 | SCR-FIN-011 | قائمة الدخل / Income statement | FIN_INCOME_STATEMENT | FULL_PAGE (no entry sub-view — ADR-FIN-003) | ENT-FIN-005 سطر قيد اليومية / JournalLine (live-derived) |
 | SCR-FIN-012 | تقارير الأبعاد / Dimension reports | FIN_DIMENSION_REPORTS | FULL_PAGE (no entry sub-view — ADR-FIN-003) | ENT-FIN-005, ENT-FIN-006 (live-derived) |
 
-Twelve screens, and every `sub_bearing` phase splits per screen — one `SUB` per `SCR-*`, at
-any screen count — so
+Twelve screens, so every `sub_bearing` phase splits per screen (threshold: SCR count ≥ 5), and
 every SUB id is phase-qualified — `SUB:F1-SCR-FIN-006` and `SUB:F2-SCR-FIN-006` are distinct
 blocks for the same screen under different phases.
 
