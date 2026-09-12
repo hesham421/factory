@@ -180,16 +180,32 @@ class Ctx:
 
     def records_of(self, prefix: str) -> list[idmodel.Record]:
         """Definitions of an atom across the module: registries never define; a marker block
-        defines its atom only inside an artifact of the atom's owning stage (else it is a reference)."""
+        defines its atom only inside an artifact of the atom's owning stage (else it is a reference).
+
+        Within ONE artifact every statement of an id is one record. An atom block is
+        written as a marker START immediately followed by the heading that repeats
+        the id, which parses as two definitions — the first ending where the second
+        begins, so its body is the marker line and nothing else. Every check that
+        reads a record's text (orphans, data-source, traces) then saw an empty
+        block: a query cited inside an endpoint was invisible to the clause asking
+        whether anything cited it. Across artifacts the first still wins — the
+        upstream artifact governs, and a downstream restatement is a reference."""
         out = []
         for name, t in self.all_texts().items():
             if self.is_registry(name):
                 continue
             stage = self.artifact(name)[0].id if self.artifact(name) else None
+            per: dict[str, idmodel.Record] = {}
             for r in idmodel.by_prefix(idmodel.records(t), prefix):
                 if r.via_marker and self.owner_of(prefix) not in (stage, "any"):
                     continue
-                out.append(r)
+                if r.id in per:
+                    prev = per[r.id]
+                    prev.text = prev.text + "\n" + r.text
+                    prev.traces = list(dict.fromkeys(prev.traces + r.traces))
+                else:
+                    per[r.id] = r
+            out += per.values()
         seen, uniq = set(), []
         for r in out:
             if r.id not in seen:

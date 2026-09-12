@@ -1210,3 +1210,47 @@ def test_a_profile_declaring_no_interface_still_gets_a_sensible_instruction(toy)
     out = _exec_brief(toy, "P3.1")
     assert "the single access mechanism" in out and "profile.conventions.module_interface" in out
     assert "DB foreign key | REST call" not in out
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G7 — every catalogued query must be referenced
+# ----------------------------------------------------------------------------
+# No new check: `orphans` is exactly this question, asked in the direction the
+# QRC's own four assertions never ran.
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_catalog(toy_analyzable):
+    import render
+    mod, art, an = toy_analyzable
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.10", "check": "orphans",
+         "args": {"kind": "QR", "referenced_by": ["API"], "min": 1}, "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _orphan_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "orphans"]
+
+
+def test_toy_catalogued_query_nobody_runs_is_a_finding(toy_catalog):
+    mod, art, an = toy_catalog
+    qr, dead, api = CFG.make_id("QR", mod, 1), CFG.make_id("QR", mod, 2), CFG.make_id("API", mod, 1)
+    art.write_text(f"# toy prd\n\n### {qr} — find the visit\n\n### {dead} — nobody runs this\n\n"
+                   f"### {api} — book a visit\nRepository : {qr}\n", encoding="utf-8")
+    fs = _orphan_findings(mod, an)
+    assert len(fs) == 1 and dead in fs[0].message and "API" in fs[0].message, [str(f) for f in fs]
+
+
+def test_toy_catalog_reached_in_both_directions_passes(toy_catalog):
+    mod, art, an = toy_catalog
+    qr, api = CFG.make_id("QR", mod, 1), CFG.make_id("API", mod, 1)
+    art.write_text(f"# toy prd\n\n### {qr} — find the visit\n\n"
+                   f"### {api} — book a visit\nRepository : {qr}\n", encoding="utf-8")
+    assert _orphan_findings(mod, an) == []

@@ -170,6 +170,9 @@ def backend_plan(mod: str) -> str:
             out += [f"<!-- API:{mid('API', mod, 1)}:START traces={req1},{dbf1} -->", f"### {mid('API', mod, 1)} — create endpoint", "POST create.",
                     f"<!-- API:{mid('API', mod, 1)}:END -->",
                     f"<!-- API:{mid('API', mod, 2)}:START traces={req2},{dbf1} -->", f"### {mid('API', mod, 2)} — search endpoint", "GET search.",
+                    # the catalogued query is REACHED by an endpoint (C7.22): a QR no API cites
+                    # is a query nobody runs, and the catalog is checked in both directions now
+                    f"  Repository : {mid('QR', mod, 1)}",
                     f"<!-- API:{mid('API', mod, 2)}:END -->", f"### {mid('QR', mod, 1)} — search query", f"  Traces     : {req2}"]
             api_done = True
         elif kind == "XM" and not xm_done:

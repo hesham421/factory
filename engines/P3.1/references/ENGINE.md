@@ -231,13 +231,15 @@ every entry with the real entity classes, mapped property names and the project'
 strategy. Copy-pasting a QR entry into production code is a violation.
 
 - Format: `{{ factory.ids.pattern.replace('{prefix}', 'QR').replace('{MOD}', MOD) }}` ({{ factory.ids.seq_width }}-digit sequence, continuous across the module).
-- Assigned while writing the data and service phases; every API with a DB operation cites its QR.
+- Assigned while writing the data and service phases; every API with a DB operation cites its QR, **and** every QR is cited by ≥1 API — the catalog is checked in both directions (C7.22).
 - Ordering / paging use the profile's envelope: {% if api.paging %}`{{ api.paging }}`{% else %}(profile.stack.backend.api.paging — not declared){% endif %}; responses are wrapped in {% if api.envelope %}`{{ api.envelope }}`{% else %}(profile.stack.backend.api.envelope — not declared){% endif %}.
 
 ```
 QR-{{ MOD }}-<seq> — <operation name>
 Phase        : <p.key of the phase that defines it>
-API          : API-{{ MOD }}-<seq> | repository-only
+API          : API-{{ MOD }}-<seq> — the endpoint that reaches this query (a query reached only through
+               another QR names the `API-*` at the head of that chain). A QR no `API-*` block cites is a
+               query nobody runs: `gov.py analyze` → `orphans` (C7.22)
 Entity       : ENT-{{ MOD }}-<seq>
 Operation    : FIND_ONE | FIND_ALL | FIND_BY_CRITERIA | SAVE | UPDATE | DELETE | COUNT | EXISTS | NATIVE | AGGREGATE
 Intent       : <what business question this answers / what it must return or change>
@@ -545,6 +547,7 @@ a prose pass reads past:
 | `xref-resolve` | every id of another module cited here is defined in that module's own registry |
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
+| `orphans` (QR) | every catalogued query is reached by at least one `API-*` — the direction the QRC's own four assertions never ran, so a query nobody runs was invisible to all of them |
 | `count-agrees` | every total this plan states equals the rows it heads, and two statements of the same total agree with each other |
 | `required-writer` | every column the db-script requires is written by at least one endpoint's request or orchestration, or carries a stated reason why not |
 | `operation-resolves` | every operation an entity declares is answered by an `API-*`, and every marked permission-matrix cell names an `API-*` and the permission for that action |
@@ -567,7 +570,7 @@ so the count is no longer a thing a model is asked to be honest about.
 TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
 BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
 MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`) │ every required column has an endpoint that writes it or a stated reason why not (`required-writer`)
-QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
+QRC (§5)          every API with a DB operation has a QR │ every QR is reached by ≥1 API (`orphans`) │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
 CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every row's interface is {% if conv.get('module_interface') %}`{{ conv.get('module_interface') }}`{% else %}the one mechanism the profile declares{% endif %} and names something the target module's own registry defines (`xref-resolve`)
