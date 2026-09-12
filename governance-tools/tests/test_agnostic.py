@@ -731,3 +731,77 @@ def test_toy_surface_citation_does_not_leak_across_table_rows(toy_surface):
                    f"| /svc/{other.lower()}/roster | read here |\n", encoding="utf-8")
     fs = _surface_findings(mod, an)
     assert len(fs) == 1 and "cites no API" in fs[0].message
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G1 — a declared total must equal the rows beneath it
+# ----------------------------------------------------------------------------
+# The first COMPLETENESS clause. The toy names its total something no ERP reader
+# would guess, keys it to a different atom and resolves its rows in a different
+# artifact — the checker knows none of the three.
+# ════════════════════════════════════════════════════════════════════════════
+
+TOY_TOTALS = [{"artifact": "prd", "label": "CHARTS FILED", "kind": "REQ", "rows_in": "srs"}]
+
+
+@pytest.fixture
+def toy_totals(toy_analyzable):
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["declared_totals"] = [dict(r) for r in TOY_TOTALS]
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.5", "check": "count-agrees",
+         "args": {"spec": "declared_totals", "when": "profile.declared_totals"}, "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _rows(mod: str, n: int) -> None:
+    """`n` rows in the toy's resolving artifact, each keyed by its own id."""
+    _srs("# toy srs\n\n" + "\n".join(
+        f"### {CFG.make_id('REQ', mod, i)} — the clinic shall record it" for i in range(1, n + 1)) + "\n")
+
+
+def _count_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "count-agrees"]
+
+
+def test_toy_wrong_total_is_a_finding_that_names_both_numbers(toy_totals):
+    mod, art, an = toy_totals
+    _rows(mod, 3)
+    art.write_text("# toy prd\n\nCHARTS FILED   4\n", encoding="utf-8")
+    fs = _count_findings(mod, an)
+    assert len(fs) == 1 and fs[0].severity == "WARN", [str(f) for f in fs]
+    assert "declares 4" in fs[0].message and "carries 3" in fs[0].message, fs[0].message
+    assert "CHARTS FILED" in fs[0].message and "srs" in fs[0].message
+
+
+def test_toy_right_total_passes(toy_totals):
+    mod, art, an = toy_totals
+    _rows(mod, 3)
+    art.write_text("# toy prd\n\nCHARTS FILED   3\n", encoding="utf-8")
+    assert _count_findings(mod, an) == []
+
+
+def test_toy_two_statements_of_one_total_must_agree_with_each_other(toy_totals):
+    """Both are compared against the same row set, so a pair that disagrees is
+    two findings — the shipped shape was '147' on one line and '146' on another."""
+    mod, art, an = toy_totals
+    _rows(mod, 3)
+    art.write_text("# toy prd\n\nCHARTS FILED   4\n\nlater: CHARTS FILED 5 in total\n", encoding="utf-8")
+    fs = _count_findings(mod, an)
+    assert len(fs) == 2 and {f.line for f in fs} == {3, 5}, [str(f) for f in fs]
+
+
+def test_a_profile_with_no_declared_totals_is_served_unchanged(toy_analyzable):
+    mod, art, an = toy_analyzable
+    assert CFG.profile.get("declared_totals") is None
+    assert an._c_count_agrees(an.Ctx(mod, 1), {"spec": "declared_totals"}, "WARN") == []

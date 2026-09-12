@@ -226,6 +226,7 @@ and no prose anywhere may add a convention that is not a profile field:
 | `conventions.numbering` is set | follows that rule for document numbering and never generates numbers inside a module |
 | `conventions.lookups` is set | follows that rule for list-of-values handling |
 | `conventions.workflow_engine` is `forbidden` | models approvals as explicit states and rules inside the module; a generic workflow engine is a CRITICAL finding |
+| `conventions.domain_behaviour_placement` is set | puts EVERY rule answering "is this operation allowed?" in that one placement, whatever the rule's entity or table count; the service layer is never a placement, and a per-module split between placements is a CRITICAL finding |
 
 Violations of an applied convention are scored as `profile.review.extra_checks`
 data at the pass gate ([QUALITY-RUBRIC.md](QUALITY-RUBRIC.md)); there is no

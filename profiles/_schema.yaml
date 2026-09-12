@@ -118,6 +118,23 @@ conventions?:                               # OPTIONAL — absent = not applied 
   numbering?: "str"                         # numbering-engine rule
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
   workflow_engine?: "(forbidden|allowed)"
+  domain_behaviour_placement?: "(entity_methods|domain_classes)"
+                                            # WHERE a rule answering "is this operation allowed?" lives.
+                                            # Declared here, never chosen per module: a free per-plan
+                                            # choice produced plans that placed multi-entity rules in the
+                                            # service layer — a placement neither value permits.
+
+declared_totals?: "list[{artifact: str, label: str, kind: str, rows_in?: str}]"
+                                            # OPTIONAL — totals a generated artifact states in prose,
+                                            # and the rows each one heads (analyze: count-agrees). A
+                                            # hand-counted total is the smallest completeness defect
+                                            # there is and the one nothing counted: a plan asserting
+                                            # "147" on one line and "146" on another for one set.
+                                            #   artifact — the artifact that STATES the total
+                                            #   label    — the text introducing it; the first number
+                                            #              after it on that line is the claim
+                                            #   kind     — the ID atom its rows are keyed by
+                                            #   rows_in  — artifact the rows live in (default: artifact)
 
 forward_columns?: "list[{artifact: str, column: str, resolved_from: str}]"
                                             # OPTIONAL — table columns a stage EMITS but cannot resolve at

@@ -886,6 +886,65 @@ def _c_paths_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+# ── completeness — is the planned system complete enough to function? ────────
+# Every clause above asks whether a reference is SHAPED right or whether it
+# RESOLVES. None asks whether what was planned is COMPLETE: whether a declared
+# total matches the rows beneath it, whether a required column has anything that
+# writes it, whether a declared operation has an endpoint, whether the data that
+# must exist before any of it works was planned at all. A whole delivered module
+# passed twenty-two checks and could not serve its first request, because that
+# dimension had no clause in it.
+
+
+def _kind_ids(text: str, kind: str, mod: str) -> set[str]:
+    """Every id of `kind` belonging to `mod` that the text names — the row set a
+    declared total is a total OF."""
+    return {x for x in idmodel.find_ids(text)
+            if (p := idmodel.split_id(x)) and p[0] == kind and p[1] == mod}
+
+
+def _c_count_agrees(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A total an artifact DECLARES equals the rows it heads.
+
+    `manifest` validates a manifest's shape and `registry-agree` compares two
+    registries' membership; neither ever counts. One delivered plan asserted
+    "147" on one line and "146" on another for the same set, and certified both.
+
+    The label that introduces a total, the atom its rows are keyed by and the
+    artifact those rows live in are all profile data (`spec`), so this knows no
+    block name and no atom of its own. Where the same total is stated in more
+    than one place every statement is compared against the same row set, so they
+    also have to agree with each other."""
+    rows = CFG.profile.get(c["spec"]) or []
+    if not rows:
+        return []                       # this profile declares no total worth counting
+    out = []
+    for row in rows:
+        text = ctx.text(row["artifact"])
+        source_name = row.get("rows_in") or row["artifact"]
+        source = ctx.text(source_name)
+        if text is None or source is None:
+            continue
+        actual = len(_kind_ids(source, row["kind"], ctx.mod))
+        label_rx = re.compile(re.escape(row["label"]) + r"[^\d\n]*(\d+)", re.I)
+        seen = 0
+        for n, ln in enumerate(text.splitlines(), 1):
+            m = label_rx.search(ln)
+            if not m:
+                continue
+            seen += 1
+            declared = int(m.group(1))
+            if declared != actual:
+                out.append(Finding(sev, "", "count-agrees",
+                                   f"`{row['label']}` declares {declared} but `{source_name}` carries "
+                                   f"{actual} `{row['kind']}` row(s) — a hand-counted total drifts from "
+                                   f"the rows it heads the moment one row moves, and every reader "
+                                   f"downstream takes the stated number for the real one",
+                                   row["artifact"], n))
+        ctx.saw(seen)
+    return out
+
+
 # ── forward references — a fact a stage cannot verify at its own stage ───────
 # A planning stage runs before any implementation exists, so a name it invents for
 # an implementation artifact is a guess. In a table of facts a guess is
@@ -1177,6 +1236,7 @@ CHECKS = {
     "xref-resolve": _c_xref_resolve, "refs-exist": _c_refs_exist, "paths-resolve": _c_paths_resolve,
     "verdict-agrees": _c_verdict_agrees, "forward-refs": _c_forward_refs,
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
+    "count-agrees": _c_count_agrees,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -1184,7 +1244,7 @@ CHECKS = {
 # different from having counted zero, and conflating the two would put noise in the
 # one list that has to stay trustworthy.
 for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
-            _c_endpoint_agrees, _c_ears):
+            _c_endpoint_agrees, _c_ears, _c_count_agrees):
     _fn.counts_subjects = True
 
 

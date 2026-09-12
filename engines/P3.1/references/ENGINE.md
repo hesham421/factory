@@ -21,6 +21,7 @@
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sc = profile.self_check | default({}) -%}
 {%- set fwd = (profile.forward_columns | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
+{%- set totals = (profile.declared_totals | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set proposed = factory.forward_reference.proposed_token -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
@@ -184,8 +185,16 @@ QRC SUMMARY       QR-*   │ operation │ phase │ ENT-*         (agent refere
 DB ALIGNMENT      see manifest (§4) — ALIGNED ✓ / issues: <n>
 XM STATUS         <n> deferred — see the cross-module phases
 SECURITY          <n> screens × <n> roles
-```
-
+{% for x in totals %}{{ x.label }}{{ ' ' * (18 - x.label | length if x.label | length < 18 else 1) }}<n>
+{% endfor %}```
+{% if totals %}
+Every `<n>` above is a **count, not a claim**: {% for x in totals %}`{{ x.label }}` is the number of
+distinct `{{ x.kind }}-*` ids in `{{ x.rows_in | default(x.artifact) }}`{% if not loop.last %}; {% endif %}{% endfor %}. Count the rows, state
+that number, and state it in only one place — `gov.py analyze` → `count-agrees` compares every
+statement of a total against the same row set, so two statements that disagree with each other
+are two findings, not one. A hand-counted total was the smallest completeness defect this
+factory shipped and the one nothing in it counted.
+{% endif %}
 ## 4. DB Alignment Manifest
 
 The manifest is the canonical binding between plan fields and db-script fields. It contains
@@ -292,7 +301,7 @@ kind is `XM`.
 
 **R1 — Core / configuration (architecture policies).** Declared once, applies to the module:
 - Layers and responsibilities: {% if profile.stack.backend.layers %}{{ profile.stack.backend.layers | join(' → ') }}{% else %}as `profile.stack.backend.layers` declares{% endif %} — each layer's "does / never does" stated; boundary violations are review findings.
-- Domain-behaviour placement (in entity methods | separate domain classes) — one choice.
+- Domain-behaviour placement — **not a per-module choice**. A rule that answers *"is this operation allowed?"* (guards, immutability, state transitions, cycle prevention, balance/count invariants) lives {% if conv.get('domain_behaviour_placement') == 'domain_classes' %}in a dedicated domain class per entity (`profile.conventions.domain_behaviour_placement: domain_classes`){% elif conv.get('domain_behaviour_placement') == 'entity_methods' %}in entity methods (`profile.conventions.domain_behaviour_placement: entity_methods`){% else %}in the single placement `profile.conventions.domain_behaviour_placement` declares — state it verbatim{% endif %}, for **every** such rule without exception. The **service layer is never a placement**: it orchestrates (load → delegate → persist → return) and carries no rule conditional of its own. How many entities or tables a rule reads is **not** a placement criterion — the service fetches those facts and passes them in as plain arguments, so a multi-entity rule sits in exactly the same place as a single-entity one. Never emit a split such as "entity methods for single-entity invariants, service layer for multi-entity rules"; that is the defect this clause exists to prevent.
 - Error signalling: `{{ api.error_envelope | default('profile.stack.backend.api.error_envelope') }}`; every catalog row is registered in every place the framework needs (declare the list once here).
 - Transaction scope defaults; search contract (request shape, allowed sort fields, paging `{{ api.paging | default('per profile') }}`).
 - Audit fields {% if (db.naming or {}).get('audit_fields') %}(`{{ db.naming.audit_fields | join('`, `') }}`) {% endif %}are framework-filled — never in create/update requests, never set by mappers or services.
@@ -459,6 +468,7 @@ a prose pass reads past:
 | `xref-resolve` | every id of another module cited here is defined in that module's own registry |
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
+| `count-agrees` | every total this plan states equals the rows it heads, and two statements of the same total agree with each other |
 | `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
 Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
@@ -475,7 +485,7 @@ so the count is no longer a thing a model is asked to be honest about.
 {{ sc.block }} — {{ MOD }} v{{ ver }}
 TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
 BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
-MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM
+MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`)
 QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
 API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted

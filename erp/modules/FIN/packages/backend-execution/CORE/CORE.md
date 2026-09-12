@@ -4,9 +4,20 @@
 ## PHASE 1 — CORE
 
 **Layers**: controller → service → mapper → domain → repository (`profile.stack.backend.layers`).
-Domain-behaviour placement: entity methods for single-entity invariants (e.g.
-`JournalEntry.post()`, `FiscalPeriod.hardClose()`); service layer for every multi-entity
-or multi-table rule (RULE-FIN-001, 003, 006-012, 014-016 all read beyond one row).
+Domain-behaviour placement: **domain classes** — one dedicated `<Entity>Domain` per entity —
+for every rule that answers "is this operation allowed?"
+(`profile.conventions.domain_behaviour_placement: domain_classes`). The service layer is
+never a placement: it orchestrates only (load → delegate → persist → return) and holds no
+business-rule conditional of its own. How many entities or tables a rule reads is NOT a
+placement criterion — the service fetches those facts and passes them into the domain class
+as plain arguments, so a multi-entity rule sits in exactly the same place as a single-entity
+one. The decision moves to the domain class while the entity keeps the plain state mutation:
+`JournalEntryDomain.assertCanPost(...)` then `JournalEntry.post()`;
+`FiscalPeriodDomain.assertCanHardClose(...)` then `FiscalPeriod.hardClose()`. FIN domain
+classes: `AccountDomain` (RULE-FIN-001, 007), `DimensionValueDomain` (RULE-FIN-002, 009),
+`EventTypeRuleDomain` (RULE-FIN-003, 005, 010), `JournalEntryDomain` (RULE-FIN-004, 006,
+008, 011, 012, 013, 016), `FiscalPeriodDomain` (RULE-FIN-014, 015), `AllocationRuleDomain`
+(RULE-FIN-003, 010 as they apply to allocation targets).
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`; runtime code
 format `FIN-{http}[-{SLUG}]`.

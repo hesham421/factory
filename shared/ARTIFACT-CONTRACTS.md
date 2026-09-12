@@ -7,7 +7,7 @@
 #   exists · no-questions · languages · ids-owned · ids-continue · traces · orphans
 #   · ears · registry-agree · markers · manifest · gate-approved
 #   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
-#   · verdict-agrees · forward-refs · xref-surface · endpoint-agrees
+#   · verdict-agrees · forward-refs · xref-surface · endpoint-agrees · count-agrees
 contracts:
   - id: C1
     title: domain profile → registry bootstrap
@@ -108,6 +108,7 @@ contracts:
       - {id: C7.14, check: paths-resolve, args: {files: [manifest_file]},                                                          severity: CRITICAL}
       - {id: C7.17, check: xref-surface,  args: {artifact: [backend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
       - {id: C7.16, check: forward-refs,  args: {spec: forward_columns, when: "profile.forward_columns"},                       severity: MAJOR}
+      - {id: C7.18, check: count-agrees,  args: {spec: declared_totals, when: "profile.declared_totals"},                 severity: MAJOR}
       - {id: C7.15, check: verdict-agrees, args: {artifact: [backend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C8
     title: real API docs (consumer repo input) → frontend
@@ -189,7 +190,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 17 |
+| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 18 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 13 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
@@ -289,7 +290,7 @@ unenforceable rule is not.
 | Consumer | `gov.py split` / `deliver` (tools lane); the pass-1 gate reads it first |
 | What crosses | `backend-execution-plan` wrapped in markers per [MARKER-PROTOCOL.md](MARKER-PROTOCOL.md) — every `PHASE`/`SUB`/`API`/`XM` block carries `traces=`; `API` → `REQ` + `DBF`; `XM` blocks mirror `registry-db` entries with execution state; `registry-exec-be` with `API`/`QR` |
 | What does not cross | DDL or column definitions (bound by `DBF`), test cases (standalone `test-gen`), any content for the frontend track |
-| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 plan `XM` set == registry-db `XM` set · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves |
+| Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 plan `XM` set == registry-db `XM` set · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves · C7.18 every total the plan hand-counts equals the rows it heads |
 | Violation | C7.1/C7.7/C7.8/C7.9/C7.10/C7.12/C7.13/C7.14 CRITICAL; the rest MAJOR |
 
 C7.1–C7.9 check that references are *shaped* right. C7.10–C7.14 check that they
@@ -382,6 +383,7 @@ these are mechanical clauses here and not a checklist line there.
 | `xref-surface` | every reference to **another module's surface** written as prose resolves in that module's own artifacts. `locator` is a profile address holding the surface address template (e.g. the API base path); every `{module}` slot in it that names a declared module other than this one must be accompanied by a cited id of `kinds` that the target module really defines — anywhere in the same paragraph, because prose wraps; inside a table the scope narrows to the row, since an id in a neighbouring row says nothing about this one. `xref-resolve` sees id-shaped citations only, and prose is exactly how a module encodes a dependency it has no id for yet — so both modules pass, each having validated only itself. Resolved across the module set. | `artifact`, `locator`, `kinds?` |
 | `endpoint-agrees` | every `(verb, path)` the `artifact` states for an id of `kind` is one the published `source` really serves. Paths match by suffix, since a plan writes them relative to the module base while the api-docs write them absolute. One-way on purpose: the api-docs are the authority, and an endpoint the plan never mentions belongs to `registry-agree`. `forward-refs` guards the request/response columns of the same table; without this the verb and path beside them were unguarded, and a row could name a correct request type on a verb that carries no body | `artifact`, `source`, `kind?` |
 | `forward-refs` | every cell of a column the profile declares forward-referencing (`spec`, a profile address) either carries `factory.forward_reference.proposed_token` or holds a value that resolves in that row's `resolved_from` artifact. A stage that runs before the thing exists cannot state its name as fact; printed beside facts, a guess is read as a decision. Generalises past any one column: the artifact, the column header and the resolving artifact are all profile data. | `spec`, `when?` |
+| `count-agrees` | every total an artifact DECLARES equals the rows it heads. `spec` is a profile address holding rows of `{artifact, label, kind, rows_in?}`: the artifact that states the total, the text introducing it (the first number after it on that line is the claim), the ID atom its rows are keyed by, and the artifact those rows live in. Where the same total is stated in more than one place, every statement is compared against the same row set, so they must also agree with each other. The first completeness clause in a contract set that until now only checked consistency: `manifest` validates a manifest's *shape* and `registry-agree` compares two registries' *membership* — neither ever counted anything. | `spec`, `when?` |
 | `verdict-agrees` | the verdict the artifact states **about itself** does not claim fewer findings than `gov.py analyze` produced for that artifact. The block name, the verdict label and the pass/fail wording are read from the profile address in `spec` — the checker knows none of them, and a profile that declares no self-check carries no such clause. Evaluated after every clause that produces findings. The orchestrator normally *writes* this line from the report (`gov.py` stamps it after analyze), so the check is the guard for anything still authored by hand. | `artifact`, `spec`, `when?` |
 
 Severity semantics are **`factory.analyze`** + `factory.gates[*].requires_analyze`:

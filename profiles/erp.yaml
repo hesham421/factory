@@ -153,6 +153,17 @@ conventions:
   numbering: "document numbers come from the platform numbering engine; never generated in a module"
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden
+  domain_behaviour_placement: domain_classes   # consistent with stack.backend.layers, which already
+                                               # declares `domain` as its own layer
+
+declared_totals:                           # every total the plan hand-counts, and the rows it heads.
+                                           # One shipped file asserted "147 DBF" and "Total: 146" in the
+                                           # same module and the self-check certified both: nothing in
+                                           # the factory counted anything (analyze: count-agrees).
+  - {artifact: backend-execution-plan, label: "DBF ROWS",  kind: DBF, rows_in: db-script}
+  - {artifact: backend-execution-plan, label: "XM ROWS",   kind: XM,  rows_in: db-script}
+  - {artifact: backend-execution-plan, label: "API ROWS",  kind: API}
+  - {artifact: backend-execution-plan, label: "QR ROWS",   kind: QR}
 
 forward_columns:                           # the backend plan names request/response types for an
                                            # implementation that does not exist yet; the real api-docs,
@@ -179,3 +190,4 @@ review:
     - {id: ERP-2, stage: P1,   check: "every screen maps to exactly one composite SCR and one SEC_PAGES row", severity: MAJOR}
     - {id: ERP-3, stage: P2,   check: "every flag column ends with the flag_suffix", severity: MINOR}
     - {id: ERP-4, stage: P3.1, check: "every mutation endpoint declares its PERM_* requirement", severity: MAJOR}
+    - {id: ERP-5, stage: P3.1, check: "CORE states domain-behaviour placement as the single value conventions.domain_behaviour_placement declares, for every rule alike — no split by entity count, and the service layer never named as a placement", severity: CRITICAL}
