@@ -6,10 +6,12 @@
 
 #### ENT-FIN-004 — JournalEntry      kind: transactional
 BINDINGS: table `FIN_JOURNAL_ENTRY` · PK `journalEntryPk` (DBF-FIN-034) · PK generation `GENERATED ALWAYS AS IDENTITY`
-BUSINESS CODE: **docNo** · column `doc_no` (DBF-FIN-035) · format: platform numbering
-engine, scoped per `fiscalYearId` (`UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO`) · generation source:
-the numbering engine, invoked at create, before the first save — excluded from every
-create/update request body, always present in responses.
+BUSINESS CODE: **docNo** · column `doc_no` (DBF-FIN-035) · format:
+`JV-{fiscalYearCode}-{NNNNNN}` (e.g. `JV-2026-000123`), counter scoped per `fiscalYearId`
+and restarting at `000001` each fiscal year, single counter across all journal types
+(`UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO`) · generation source: a FIN-local generator in
+`com.erp.fin` (not `com.erp.common` — see CORE Numbering), invoked at create, before the
+first save — excluded from every create/update request body, always present in responses.
 FIELDS: DBF-FIN-034..050 — see DB Alignment Manifest; `journalTypeCode`/`statusCode`
 lookup-backed (XM-FIN-001).
 DTO MEMBERSHIP: manual-create request `{docDate, fiscalYearId, periodId, descriptionAr,
@@ -23,15 +25,28 @@ DOMAIN RULES:
 **RULE-FIN-004** — duplicate eventReference rejected — QR-FIN-026 — service.
 **RULE-FIN-005** — no active rule for event type — QR-FIN-027 — service.
 **RULE-FIN-006** — debit=credit invariant — QR-FIN-029 — service (POL-FIN-001).
-**RULE-FIN-008** — period open at post — QR-FIN-031 — service (POL-FIN-004).
+**RULE-FIN-008** — period open at post, except the year-end closing/opening entries the rule
+itself exempts (REQ-FIN-036 / API-FIN-027) — QR-FIN-031 — service (POL-FIN-004).
 **RULE-FIN-011** — reversal exact and linked — QR-FIN-034 — service (POL-FIN-007).
 **RULE-FIN-012** — reversal posts to current period if original's closed — QR-FIN-036 — service.
-**RULE-FIN-013** — reject reverse of non-POSTED — QR-FIN-035 — service.
+**RULE-FIN-013** — reject reverse of non-POSTED, and reject reversing an entry that already
+carries a reversal link (double-reversal) — QR-FIN-035 — service.
 **RULE-FIN-016** — lock after posting — enforced by omission (no UPDATE/DELETE mapping on
 a POSTED row in the repository layer at all) — service/repository.
+**RULE-FIN-017** — the submitted fiscalYearId, periodId and docDate must describe one
+accounting context (the period belongs to that year, DBF-FIN-076; the date falls inside the
+period, DBF-FIN-080/081) — API-FIN-019 only, since every system-generated entry derives the
+three from one another — `JournalEntryDomain.assertHeaderCoherent(...)` (ALIGN-BE;
+`FIN-400-PERIOD-NOT-IN-YEAR`, `FIN-400-DOCDATE-OUTSIDE-PERIOD`).
+**RULE-FIN-013's second half under concurrency** — the "already reversed" read-then-write is
+made atomic by a PESSIMISTIC_WRITE load of the original's header before the guard runs
+(ALIGN-BE); no FIN entity carries `@Version`, so without it two concurrent reversals both
+post a mirror.
 (Full text of every RULE above: srs-fin.md §A5 — not restated here per the single-source rule.)
 STATE MACHINE: `statusCode` (JOURNAL_STATUS) per SRS A7 — DRAFT→POSTED (RULE-FIN-016 locks
-immediately)→VOID (via reversal, RULE-FIN-011).
+immediately); POSTED is terminal. Classic reversal (RULE-FIN-011): reversing an entry leaves the
+original POSTED and posts an equal, opposite mirror entry, the two linked through
+`originalEntryId`/`reversalEntryId` (DBF-FIN-042/043) — net ledger effect zero. No path sets VOID.
 CROSS-MODULE: `journalTypeCode`/`statusCode` touch XM-FIN-001.
 REPOSITORY OPS → QR-FIN-023 through QR-FIN-037 (the full posting pipeline + reversal + read).
 

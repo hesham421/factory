@@ -78,10 +78,10 @@ PERMISSIONS declared by the backend and read from the api-docs, never redeclared
 
 | # | Phase | Split | Blocks |
 |---|---|---|---|
-| 1 | F1 — Models & Types | per screen (10 SCR ≥ 5) | 10 SUB |
-| 2 | F2 — Data Hooks | per screen | 10 SUB |
-| 3 | F3 — Forms & Validators | per screen | 10 SUB |
-| 4 | F4 — Screens & Routes | per screen | 10 SUB |
+| 1 | F1 — Models & Types | always — one SUB per screen | 10 SUB |
+| 2 | F2 — Data Hooks | always — one SUB per screen | 10 SUB |
+| 3 | F3 — Forms & Validators | always — one SUB per screen | 10 SUB |
+| 4 | F4 — Screens & Routes | always — one SUB per screen | 10 SUB |
 | 5 | SEC-FE | never split | level-1 only |
 | 6 | ALIGN-FE | never split | level-1 only |
 
@@ -100,7 +100,8 @@ PERMISSIONS declared by the backend and read from the api-docs, never redeclared
 | SCR-SEC-009 | إدارة الجلسات النشطة / Active sessions management | SEC_SESSIONS | FULL_PAGE (no entry sub-view — ADR-SEC-007) | ENT-SEC-010 الجلسة النشطة / ActiveSession |
 | SCR-SEC-010 | القائمة الديناميكية ثنائية المستوى / Dynamic two-tier menu | (none — global component) | none — global shell component (ADR-SEC-007) | ENT-SEC-004 ModuleRegistry |
 
-Ten screens, so every `sub_bearing` phase splits per screen (threshold: SCR count ≥ 5), and
+Ten screens, and every `sub_bearing` phase splits per screen — one `SUB` per `SCR-*`, at
+any screen count — so
 every SUB id is phase-qualified — `SUB:F1-SCR-SEC-004` and `SUB:F2-SCR-SEC-004` are distinct
 blocks for the same screen under different phases.
 

@@ -1,0 +1,13 @@
+{
+  "module": "FIN",
+  "track": "frontend",
+  "plan": "test",
+  "version": 1,
+  "verify": "sha256",
+  "source": "erp/modules/FIN/test_gen/frontend-test-plan-fin.md",
+  "checked": 41,
+  "missing": [],
+  "mismatched": [],
+  "ok": true,
+  "at": "2026-09-12T14:00:17+00:00"
+}

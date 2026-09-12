@@ -34,7 +34,7 @@
     "archived": false,
     "split": {
       "backend/exec": true,
-      "backend/test": false,
+      "backend/test": true,
       "frontend/exec": true,
       "frontend/test": true
     }

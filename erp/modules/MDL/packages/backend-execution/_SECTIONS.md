@@ -70,16 +70,16 @@ Open ADRs: 0
 **API REGISTRY**
 | API | Operation | Verb | Path | Traces (REQ, DBF) |
 |---|---|---|---|---|
-| API-MDL-001 | search types | GET | /api/v1/mdl/lookup-types | REQ-MDL-001 · DBF-MDL-002,003,004,005,006 |
+| API-MDL-001 | search types | POST | /api/v1/mdl/lookup-types/search | REQ-MDL-001 · DBF-MDL-002,003,004,005,006 |
 | API-MDL-002 | create type | POST | /api/v1/mdl/lookup-types | REQ-MDL-001,REQ-MDL-002 · DBF-MDL-002,003,004,005 |
 | API-MDL-003 | update type | PUT | /api/v1/mdl/lookup-types/{id} | REQ-MDL-003 · DBF-MDL-004,005 |
 | API-MDL-004 | deactivate type | DELETE | /api/v1/mdl/lookup-types/{id} | REQ-MDL-004 · DBF-MDL-006 |
-| API-MDL-005 | search values | GET | /api/v1/mdl/lookup-types/{id}/values | REQ-MDL-005 · DBF-MDL-012,013,014,015,016,017 |
+| API-MDL-005 | search values | POST | /api/v1/mdl/lookup-types/values/search | REQ-MDL-005 · DBF-MDL-012,013,014,015,016,017 |
 | API-MDL-006 | create value | POST | /api/v1/mdl/lookup-types/{id}/values | REQ-MDL-006,REQ-MDL-007 · DBF-MDL-012,013,014,015,016 |
 | API-MDL-007 | update value | PUT | /api/v1/mdl/lookup-values/{id} | REQ-MDL-008 · DBF-MDL-014,015,016 |
 | API-MDL-008 | deactivate value | DELETE | /api/v1/mdl/lookup-values/{id} | REQ-MDL-009 · DBF-MDL-017 |
 | API-MDL-009 | reorder values | PATCH | /api/v1/mdl/lookup-types/{id}/values/reorder | REQ-MDL-010 · DBF-MDL-016 |
-| API-MDL-010 | browse registry by owner | GET | /api/v1/mdl/lookup-types/by-owner | REQ-MDL-013 · DBF-MDL-003,002,004,005 |
+| API-MDL-010 | browse registry by owner | POST | /api/v1/mdl/lookup-types/by-owner/search | REQ-MDL-013 · DBF-MDL-003,002,004,005 |
 | API-MDL-011 | read values by key (consumer API) | GET | /api/v1/mdl/lookups | REQ-MDL-011,REQ-MDL-012 · DBF-MDL-002,013,014,015,016,006,017 |
 
 **RULE REGISTRY**
@@ -216,7 +216,7 @@ CROSS-MODULE      ✓ 1 XM from db-script, 1 placed (XM-MDL-001), 0 mismatched; 
 SECURITY (R7)     ✓ both secured APIs' screens declare PERM_*; ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
 CORE (R1)         ✓ layers, domain placement, error signalling (`MDL-{http}[-{SLUG}]`), type mapping (incl. the stated sort_order→Integer deviation) all declared
 DECISIONS         ✓ 0 new ADR this stage; SEC's ADR-SEC-002 convention correctly cited, not re-derived
-RESULT            PASSED ✓ — 0 findings
+RESULT            BLOCKED ✗ — 3 findings
 ```
 
 **Coverage — ENT/DBF → phases → QR → XM**: ENT-MDL-001/002 each appear in DATA-DOM with

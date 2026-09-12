@@ -217,7 +217,7 @@ Phase table for `profile.tracks.{{ track }}.plans.exec` (plan order):
 | # | Key | Display | Split rule | Per-screen SUB |
 |---|---|---|---|---|
 {% for p in phases -%}
-| {{ loop.index }} | `{{ p.key }}` | {{ p.get('display') | default(p.key, true) }} | {% if p.get('never_split') %}never split{% elif p.get('split_threshold') %}SUB when {{ p.get('split_threshold').kind }} count {{ p.get('split_threshold').op }} {{ p.get('split_threshold').count }}{% else %}as the profile describes{% endif %} | {% if p.get('sub_bearing') %}yes — `SUB:{{ p.key }}-SCR-{{ MOD }}-<seq>`{% else %}no{% endif %} |
+| {{ loop.index }} | `{{ p.key }}` | {{ p.get('display') | default(p.key, true) }} | {% if p.get('never_split') %}never split{% elif p.get('split_threshold') %}SUB when {{ p.get('split_threshold').kind }} count {{ p.get('split_threshold').op }} {{ p.get('split_threshold').count }}{% elif p.get('sub_bearing') %}always — one SUB per screen{% else %}as the profile describes{% endif %} | {% if p.get('sub_bearing') %}yes — `SUB:{{ p.key }}-SCR-{{ MOD }}-<seq>`{% else %}no{% endif %} |
 {% endfor %}
 
 ### 3.2 Content roles

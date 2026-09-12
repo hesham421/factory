@@ -4,7 +4,8 @@ Module : FIN   Version : v1   Dialect : postgresql16   Schema prefix : none
 Identifier transformation : SRS logical field name (camelCase) → physical column
   name (snake_case). Applied to every identifier; no other spelling exists.
 Date : 2026-09-10
-Counts : 14 tables · 146 DBF · 1 XM (SOFT-READ → MDL)
+Counts : 14 tables · 147 DBF · 1 XM (XM-FIN-001 SOFT-READ → MDL). XM-FIN-002 (READ → SEC)
+  was registered at ALIGN-BE and RETIRED on 2026-09-12 — see §2
 ══════════════════════════════════════════════════════════════════
 
 ## 1. DB FIELD TRACEABILITY MATRIX — FIN v1
@@ -21,6 +22,7 @@ Counts : 14 tables · 146 DBF · 1 XM (SOFT-READ → MDL)
 | DBF-FIN-007 | parent_account_id | BIGINT | ENT-FIN-001.parentAccountId (self) | REQ-FIN-001, REQ-FIN-002 | NULL | — |
 | DBF-FIN-008 | is_leaf_fl | BOOLEAN | ENT-FIN-001.isLeafFl | REQ-FIN-002, REQ-FIN-019 | NOT NULL | TRUE |
 | DBF-FIN-009 | is_active_fl | BOOLEAN | ENT-FIN-001.isActiveFl | REQ-FIN-003, REQ-FIN-019 | NOT NULL | TRUE |
+| DBF-FIN-147 | is_retained_earnings_fl | BOOLEAN | ENT-FIN-001.isRetainedEarningsFl | REQ-FIN-036 | NOT NULL | FALSE |
 | DBF-FIN-010 | created_by | VARCHAR(100) | profile: entity_defaults.master (audit) | REQ-FIN-001 | NOT NULL | — |
 | DBF-FIN-011 | created_at | TIMESTAMPTZ | profile: entity_defaults.master (audit) | REQ-FIN-001 | NOT NULL | now() |
 | DBF-FIN-012 | updated_by | VARCHAR(100) | profile: entity_defaults.master (audit) | REQ-FIN-001 | NULL | — |
@@ -190,19 +192,53 @@ Counts : 14 tables · 146 DBF · 1 XM (SOFT-READ → MDL)
 | DBF-FIN-145 | distribution_value | NUMERIC(18,4) | ENT-FIN-014.distributionValue | REQ-FIN-026 | NULL | — |
 | DBF-FIN-146 | is_remainder_fl | BOOLEAN | ENT-FIN-014.isRemainderFl | REQ-FIN-009, REQ-FIN-026 | NOT NULL | FALSE |
 
-Total: 146 DBF ids across 14 tables.
+Total: 147 DBF ids across 14 tables (the figure read 146 until ALIGN-BE; it was never bumped
+when DBF-FIN-147, FIN_ACCOUNT.is_retained_earnings_fl, was inserted by migration V23 and added
+to the matrix above — the header's "147 DBF" was the correct half of the contradiction).
+
+PK generation, as built: the matrix rows above describe every PK as
+`GENERATED ALWAYS AS IDENTITY`; migration V22 deliberately built plain `BIGINT NOT NULL` PKs fed
+by explicit `SEQ_<TABLE>` sequences instead (V22 BLOCK 1, justified in that file's header), because
+this repo's entity contract mandates `GenerationType.SEQUENCE` and every other module here does
+the same. The entities match V22. Left as written rather than rewriting 14 applied rows; the
+deviation is recorded here and in the backend execution plan's extraction block.
 
 ## 2. XM REGISTER — FIN v1
 
 | XM id | Type | This table | Column / access | Target table | Target module | Traces (REQ) | Status |
 |---|---|---|---|---|---|---|---|
 | XM-FIN-001 | SOFT-READ | FIN_ACCOUNT, FIN_JOURNAL_ENTRY, FIN_JOURNAL_LINE, FIN_FISCAL_YEAR, FIN_FISCAL_PERIOD, FIN_EVENT_TYPE_RULE, FIN_RULE_LINE, FIN_RECURRING_TEMPLATE, FIN_ALLOCATION_TARGET | application-level validation of every lookup-backed code column (account_type_code, nature_code, direction_code, journal_type_code, status_code, event_type_code, account_derivation_type_code, amount_source_type_code, distribution_type_code, schedule_type_code, frequency_code) against `MDL_LOOKUP_VALUE` | MDL_LOOKUP_VALUE | MDL | REQ-FIN-001, REQ-FIN-007, REQ-FIN-008, REQ-FIN-010, REQ-FIN-014, REQ-FIN-018, REQ-FIN-022, REQ-FIN-025, REQ-FIN-031 | ACTIVE (target MDL v1 gated, pass-1 APPROVE) |
+| ~~XM-FIN-002~~ | READ | (no table — service-to-service) | HISTORICAL, kept so the decision can be reconstructed. `FinSeparationOfDutiesService` injected `com.erp.sec.crossmodule.SecUserDirectoryApi` and called `findUserIdsHoldingPermission` for `PERM_FIN_PERIODS_CLOSE_APPROVE` and `PERM_FIN_JOURNAL_ENTRIES_CREATE`, to resolve a global user-set-disjointness fact behind API-FIN-026 / API-FIN-027; in-process Spring injection, never HTTP. That service was DELETED on 2026-09-12 together with `FiscalPeriodDomain.assertCanHardClose(...)` — see the note below | SEC's user/role/permission grant tables (via the crossmodule interface only) | SEC | REQ-FIN-037, REQ-FIN-038 | RETIRED 2026-09-12 — nothing consumes it |
 
-See `erp/decisions/FIN/ADR-FIN-001.md` for why this is the only formal XM row this stage
-assigns (FIN's identity/authorization dependency on SEC, and its own self-registration
-into SEC, follow the exact precedent SEC's and MDL's own P2/P3.1 already set: platform-
-standard integration narrated in the backend execution plan, not a `SHARED ENTITIES
-CONSUMED` → `XM` row — no physical cross-module FK exists anywhere in this pipeline).
+XM-FIN-002 bound no FIN column and created no physical FK. It was assigned at ALIGN-BE, after
+the SEC-BE phase introduced the read (the P2 pass legitimately saw only one XM), on the grounds
+that it was a named FIN service consuming a named SEC `crossmodule` interface whose result fed a
+FIN business rule.
+
+**RETIRED 2026-09-12 — do not resurrect it.** The rule it fed was an over-implementation:
+`FinSeparationOfDutiesService` reported whether the user sets holding
+`PERM_FIN_PERIODS_CLOSE_APPROVE` and `PERM_FIN_JOURNAL_ENTRIES_CREATE` were disjoint, and
+`FiscalPeriodDomain.assertCanHardClose` refused the close whenever ANY single user in the system
+held both — for EVERY caller, including a perfectly clean approver. RULE-FIN-015 does not ask for
+that. Read at `governance/modules/FIN/P1/srs-fin.md:1026-1033`, it requires only that the
+close-approval action be gated by a permission DISTINCT from the journal-entry-creation
+permission, "enforced through the Security module", and its `Data source` line reads
+"DEFERRED — ... has no FIN-side field to read". REQ-FIN-038 (`srs-fin.md:781-788`) and
+AC-FIN-038 (`:789-792`) say the same. By recorded human decision both classes were deleted;
+RULE-FIN-015 stands and is enforced by the delivered
+`@PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)` gate on `FiscalPeriodService.hardClose` and
+`FiscalYearService.yearEndClose`. That service was FIN's ONLY consumer of
+`com.erp.sec.crossmodule`, so **FIN now has no cross-module dependency on SEC at all**; the only
+remaining `com.erp.sec` mentions under `src/main/java/com/erp/fin/` are `@PreAuthorize` SpEL
+string literals naming `PermissionConstants`, plus two javadoc references. The id XM-FIN-002 is
+retired, not reused.
+
+See `erp/decisions/FIN/ADR-FIN-001.md` for why FIN's *identity/authorization* dependency on SEC,
+and its own self-registration into SEC, are still NOT an XM row (they follow the exact precedent
+SEC's and MDL's own P2/P3.1 already set: platform-standard integration narrated in the backend
+execution plan, not a `SHARED ENTITIES CONSUMED` → `XM` row — no physical cross-module FK exists
+anywhere in this pipeline). ADR-FIN-001 is unchanged and, with XM-FIN-002 retired, it once again
+covers the whole of FIN's relationship with SEC.
 
 ### 2.1 SOFT-READ handling
 ```
@@ -254,6 +290,7 @@ CREATE TABLE FIN_ACCOUNT (
   parent_account_id  BIGINT,
   is_leaf_fl         BOOLEAN       NOT NULL DEFAULT TRUE,
   is_active_fl       BOOLEAN       NOT NULL DEFAULT TRUE,
+  is_retained_earnings_fl BOOLEAN  NOT NULL DEFAULT FALSE,
   created_by         VARCHAR(100)  NOT NULL,
   created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
   updated_by         VARCHAR(100),
@@ -424,7 +461,12 @@ CREATE TABLE FIN_JOURNAL_LINE_DIM (
 
 -- BLOCK 4 — COMMENTS (table + every column; each column comment cites its DBF id)
 
-COMMENT ON TABLE FIN_ACCOUNT IS 'ENT-FIN-001 Account — PRIVATE; [DBF-FIN-001..013]';
+COMMENT ON TABLE FIN_ACCOUNT IS 'ENT-FIN-001 Account — PRIVATE; [DBF-FIN-001..013, DBF-FIN-147]';
+-- NOTE (ALIGN-BE): the LIVE database does not carry this text. V22 applied
+-- '[DBF-FIN-001..013]' and V23, which added is_retained_earnings_fl, added the column comment
+-- but no replacement table comment. V22 is applied and must never be edited, so the live
+-- FIN_ACCOUNT table comment permanently omits DBF-FIN-147 unless a forward migration is written
+-- for it. Open decision — recorded in execution-state.json, not silently reconciled.
 COMMENT ON COLUMN FIN_ACCOUNT.account_pk IS 'DBF-FIN-001';
 COMMENT ON COLUMN FIN_ACCOUNT.code IS 'DBF-FIN-002';
 COMMENT ON COLUMN FIN_ACCOUNT.name_ar IS 'DBF-FIN-003';
@@ -434,6 +476,7 @@ COMMENT ON COLUMN FIN_ACCOUNT.nature_code IS 'DBF-FIN-006 — lookup DEBIT_CREDI
 COMMENT ON COLUMN FIN_ACCOUNT.parent_account_id IS 'DBF-FIN-007';
 COMMENT ON COLUMN FIN_ACCOUNT.is_leaf_fl IS 'DBF-FIN-008 — RULE-FIN-001 enforced at application layer';
 COMMENT ON COLUMN FIN_ACCOUNT.is_active_fl IS 'DBF-FIN-009';
+COMMENT ON COLUMN FIN_ACCOUNT.is_retained_earnings_fl IS 'DBF-FIN-147 — REQ-FIN-036 / POL-FIN-010; at most one row TRUE (UQ_FIN_ACCOUNT_RETAINED_EARNINGS, partial unique index)';
 COMMENT ON COLUMN FIN_ACCOUNT.created_by IS 'DBF-FIN-010';
 COMMENT ON COLUMN FIN_ACCOUNT.created_at IS 'DBF-FIN-011';
 COMMENT ON COLUMN FIN_ACCOUNT.updated_by IS 'DBF-FIN-012';
@@ -466,6 +509,10 @@ COMMENT ON COLUMN FIN_DIMENSION_VALUE.updated_at IS 'DBF-FIN-033';
 COMMENT ON TABLE FIN_JOURNAL_ENTRY IS 'ENT-FIN-004 JournalEntry — PRIVATE, immutable after POSTED (POL-FIN-013); [DBF-FIN-034..050]';
 COMMENT ON COLUMN FIN_JOURNAL_ENTRY.journal_entry_pk IS 'DBF-FIN-034';
 COMMENT ON COLUMN FIN_JOURNAL_ENTRY.doc_no IS 'DBF-FIN-035 — platform numbering engine, unique per fiscal_year_id';
+-- NOTE (ALIGN-BE): "platform numbering engine" is a fiction — no such component exists in this
+-- repo. doc_no is `JV-{fiscal_year.code}-{NNNNNN}`, counter per fiscal_year_id, produced by a
+-- FIN-local generator in com.erp.fin. V22 applied this comment text verbatim and must never be
+-- edited, so the live column comment keeps the wrong phrase; corrected here and in srs-fin.md.
 COMMENT ON COLUMN FIN_JOURNAL_ENTRY.doc_date IS 'DBF-FIN-036';
 COMMENT ON COLUMN FIN_JOURNAL_ENTRY.fiscal_year_id IS 'DBF-FIN-037';
 COMMENT ON COLUMN FIN_JOURNAL_ENTRY.period_id IS 'DBF-FIN-038 — RULE-FIN-008 period-open-at-post-time, application layer';
@@ -660,6 +707,7 @@ ALTER TABLE FIN_ALLOCATION_TARGET       ADD CONSTRAINT FK_ALLOCATION_TARGET_DIMV
 -- POL-FIN-005 amount positivity, RULE-FIN-004/005 uniqueness). No PK-population trigger.
 
 -- BLOCK 7 — INDEXES (non-PK; every FK column + every SRS search/list filter column)
+CREATE UNIQUE INDEX UQ_FIN_ACCOUNT_RETAINED_EARNINGS ON FIN_ACCOUNT (is_retained_earnings_fl) WHERE is_retained_earnings_fl;
 CREATE INDEX IDX_FIN_ACCOUNT_PARENT              ON FIN_ACCOUNT (parent_account_id);
 CREATE INDEX IDX_FIN_ACCOUNT_TYPE                ON FIN_ACCOUNT (account_type_code);
 CREATE INDEX IDX_FIN_DIMENSION_VALUE_DIMENSION   ON FIN_DIMENSION_VALUE (dimension_id);
@@ -702,7 +750,7 @@ COMMIT;
 
 | DEFAULT / ADR | What | Source | Override / status |
 |---|---|---|---|
-| ADR-FIN-001 | Only one formal XM row (XM-FIN-001, SOFT-READ → MDL) is assigned this stage; FIN's identity/authorization dependency on SEC and its own self-registration into SEC follow the exact precedent SEC's and MDL's own P2/P3.1 already set — platform-standard integration narrated in the backend plan, not an `XM` row, since no physical cross-module FK exists anywhere in this pipeline | erp/decisions/FIN/ADR-FIN-001.md | ACCEPTED (non-breaking) |
+| ADR-FIN-001 | Only one formal XM row (XM-FIN-001, SOFT-READ → MDL) is assigned at THIS stage; FIN's identity/authorization dependency on SEC and its own self-registration into SEC follow the exact precedent SEC's and MDL's own P2/P3.1 already set — platform-standard integration narrated in the backend plan, not an `XM` row, since no physical cross-module FK exists anywhere in this pipeline | erp/decisions/FIN/ADR-FIN-001.md | ACCEPTED (non-breaking). Still correct as written. It did NOT cover XM-FIN-002, added at ALIGN-BE for FIN's read of SEC's user directory; that row was RETIRED on 2026-09-12 when `FinSeparationOfDutiesService` was deleted, so the ADR again covers the whole of FIN↔SEC — see §2 |
 | DEFAULT | All 13 FIN-owned lookup-backed columns are plain VARCHAR, validated against MDL at the application layer (XM-FIN-001), never CHECK-constrained locally — unlike SEC's ADR-SEC-001, which applied only because MDL did not exist yet at SEC's build time | this stage, MDL v1 already gated | non-breaking |
 | DEFAULT | `amount` columns use `NUMERIC(18,4)` | [KB:erp-domain-standards §6] | non-breaking |
 
@@ -721,6 +769,7 @@ See `registry-db-fin.md`.
 **DBF-FIN-007** — FIN_ACCOUNT.parent_account_id [ENT-FIN-001, REQ-FIN-001, REQ-FIN-002]
 **DBF-FIN-008** — FIN_ACCOUNT.is_leaf_fl [ENT-FIN-001, REQ-FIN-002, REQ-FIN-019]
 **DBF-FIN-009** — FIN_ACCOUNT.is_active_fl [ENT-FIN-001, REQ-FIN-003, REQ-FIN-019]
+**DBF-FIN-147** — FIN_ACCOUNT.is_retained_earnings_fl [ENT-FIN-001, REQ-FIN-036]
 **DBF-FIN-010** — FIN_ACCOUNT.created_by [ENT-FIN-001, REQ-FIN-001]
 **DBF-FIN-011** — FIN_ACCOUNT.created_at [ENT-FIN-001, REQ-FIN-001]
 **DBF-FIN-012** — FIN_ACCOUNT.updated_by [ENT-FIN-001, REQ-FIN-001]
@@ -861,4 +910,5 @@ See `registry-db-fin.md`.
 
 ## 7. XM id definitions
 **XM-FIN-001** — SOFT-READ every FIN lookup-backed column → MDL_LOOKUP_VALUE [REQ-FIN-001, REQ-FIN-007, REQ-FIN-008, REQ-FIN-010, REQ-FIN-014, REQ-FIN-018, REQ-FIN-022, REQ-FIN-025, REQ-FIN-031]
+**XM-FIN-002** — READ SEC's user→permission directory (`SecUserDirectoryApi.findUserIdsHoldingPermission`) for the RULE-FIN-015 separation-of-duties fact [REQ-FIN-037, REQ-FIN-038]
 ══════════════════════════════════════════════════════════════════

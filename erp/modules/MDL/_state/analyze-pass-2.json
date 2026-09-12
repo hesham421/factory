@@ -1,0 +1,278 @@
+{
+  "module": "MDL",
+  "version": 1,
+  "scope": "pass:2",
+  "counts": {
+    "CRITICAL": 1,
+    "MAJOR": 18,
+    "MINOR": 0
+  },
+  "clean": false,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "C8",
+    "C9",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {
+    "C2.2": 10,
+    "C3.7": 6,
+    "C4.4": 5,
+    "C5.2": 13,
+    "C5.3": 13,
+    "C5.4": 13,
+    "C5.5": 13,
+    "C5.6": 4,
+    "C5.8": 32,
+    "C6.2": 21,
+    "C6.3": 1,
+    "C6.5": 22,
+    "C6.6": 2,
+    "C7.2": 22,
+    "C7.3": 11,
+    "C7.4": 26,
+    "C7.5": 1,
+    "C7.5b": 1,
+    "C7.6": 13,
+    "C7.16": 0,
+    "C7.22": 15,
+    "C7.21": 5,
+    "C7.20": 0,
+    "C7.19": 11,
+    "C7.18": 0,
+    "C8.2": 11,
+    "C8.3": 11,
+    "C8.4": 22,
+    "C9.2": 6,
+    "C9.3": 1,
+    "C9.4": 2,
+    "C9.5": 11,
+    "C9.6": 1,
+    "C9.7": 2,
+    "C9.8": 3
+  },
+  "vacuous": [
+    "C7.16",
+    "C7.18",
+    "C7.20"
+  ],
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "clause": "C7.15",
+      "check": "verdict-agrees",
+      "message": "`backend-execution-plan` claims 0 findings but `gov.py analyze` produced 6 for it \u2014 the artifact the implementer reads contradicts the report beside it. Correct line: `BLOCKED \u2717 \u2014 6 findings`",
+      "artifact": "backend-execution-plan",
+      "line": 562
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C2.2",
+      "check": "registry-agree",
+      "message": "registry does not map categories ['CAT-10']",
+      "artifact": "project-registry",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "`MDL-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
+      "artifact": "backend-execution-plan",
+      "line": 485
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "`MDL-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
+      "artifact": "backend-execution-plan",
+      "line": 542
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-002` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 17
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-003` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 18
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-004` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 19
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-005` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 20
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-006` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 21
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-012` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 31
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-013` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 32
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-014` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 33
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-015` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 34
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-016` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 35
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-MDL-017` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 36
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.21",
+      "check": "bootstrap-complete",
+      "message": "`backend-execution-plan` declares 5 permission(s) but `backend-execution-plan` carries no `BOOTSTRAP DATA` section \u2014 the module plans its structure and its behaviour and nothing at all about the data that must exist before either can work",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C8.4",
+      "check": "endpoint-agrees",
+      "message": "`API-MDL-001` is stated as `GET /lookup-types`, which `api-docs` does not publish \u2014 the published surface serves `POST /api/v1/mdl/lookup-types`. The published surface is the authority; correct the row, or record the divergence at the row rather than only in an ADR",
+      "artifact": "backend-execution-plan",
+      "line": 454
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C8.4",
+      "check": "endpoint-agrees",
+      "message": "`API-MDL-005` is stated as `GET /lookup-types/{id}/values`, which `api-docs` does not publish \u2014 the published surface serves `POST /api/v1/mdl/lookup-types/{id}/values`. The published surface is the authority; correct the row, or record the divergence at the row rather than only in an ADR",
+      "artifact": "backend-execution-plan",
+      "line": 458
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C8.4",
+      "check": "endpoint-agrees",
+      "message": "`API-MDL-010` is stated as `GET /lookup-types/by-owner`, which `api-docs` does not publish \u2014 no published endpoint matches that path at all. The published surface is the authority; correct the row, or record the divergence at the row rather than only in an ADR",
+      "artifact": "backend-execution-plan",
+      "line": 463
+    }
+  ],
+  "provenance": {
+    "rules": {
+      "contracts": "d5ba45d1e41a663f75b636dad1323932f19ca18d6878c324e911edb6e9329733",
+      "checker": "4b68eb77b487d179fec4a4e3f4389b4fdfed4d1b27ee39caf1a30acd4cbb3e16",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "api-docs",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "4311f662e8aebd14c2154459a46ef7723569e33cdb5a7e138f59431585f78c06",
+      "backend-execution-plan": "11f8e2a64752c75b2d63e4d0d4f0b46b45a587e6af537c41cdfaa0abecf10bfa",
+      "backend-test-plan": "3be5c3fb603c9cab7b16d1623282e0789109d30dc10f98d949bce43c456b6f14",
+      "business-policies": "a24f602bf4a6d363ef4ae9707c7ad02d2613f675262ec0643d52b6e19ae07610",
+      "db-script": "5bc170fbb831b6272f68586bda6a9c7556198800b6c2588205b789fd92373073",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "e1b1d4447e4bedb470056a22ef321d2364f9635cd7794b750646581c84191cc0",
+      "frontend-execution-plan": "d0c9ccffab2daa5cd1b1687778e1415b59837e75e1228ee0f7f4a54be51f23b0",
+      "frontend-test-plan": "d587391f651ae04cfbc7d8c4527a2713fac789e71d40b796aa7d842f8c30c13d",
+      "module-registry": "00c50cdcb36d25d8d01b1ffe59601983321f5185c2cfbe8e273b393ad29462fd",
+      "platform-summary": "f34badb101d03d55af07076d04fee4c2647627707292b246f7bc78c449dfc649",
+      "prd": "1d14a3ab6d7e190f06748a56be0cd23d633f82ef3b2f802f31badbc54be24d58",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "b792b9be98c201f759cc76b14551d9e748ec48dc539b7ee103e03d5d63a831f8",
+      "registry-exec-be": "2b1aa474e2a1c341deb92e04e93bab97af750f277fcac4950d0f19cba431b8e7",
+      "registry-exec-fe": "b867b0b4e756abea690bb89d58a2f7e6d2986e22fdbd01c8062ba5dc3042bc2a",
+      "registry-srs": "2ca257f9002cc2cccf8a74c8f4c5608b56a54166fd02efe04dddd12e622661bb",
+      "srs": "c5920de1f783587b574b9d2fd92b13de9e6cd78be203555810ac060e82447321",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "aad86ad6fedd4ead5c5f4b26d11d0a7dadb0cd38c4652e097dc8f3c2002dd8b3",
+      "ui-ux-spec": "5cfbeefafb805d51e7541c83bc567dc0f3814236826d3a9bdda1f7d838fc6ea1"
+    },
+    "at": "2026-09-12T13:52:19+00:00"
+  }
+}

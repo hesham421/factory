@@ -4,10 +4,10 @@
   "scope": "all",
   "counts": {
     "CRITICAL": 0,
-    "MAJOR": 0,
+    "MAJOR": 58,
     "MINOR": 0
   },
-  "clean": true,
+  "clean": false,
   "blocking": [
     "CRITICAL",
     "MAJOR"
@@ -27,7 +27,7 @@
   ],
   "skipped": [],
   "coverage": {
-    "C2.2": 9,
+    "C2.2": 10,
     "C3.7": 11,
     "C4.4": 12,
     "C5.2": 33,
@@ -44,8 +44,14 @@
     "C7.3": 27,
     "C7.4": 65,
     "C7.5": 0,
+    "C7.5b": 0,
     "C7.6": 33,
     "C7.16": 46,
+    "C7.22": 38,
+    "C7.21": 13,
+    "C7.20": 0,
+    "C7.19": 56,
+    "C7.18": 0,
     "C8.2": 27,
     "C8.3": 27,
     "C8.4": 54,
@@ -56,20 +62,488 @@
     "C9.6": 0,
     "C9.7": 10,
     "C9.8": 10,
-    "C10.1": 33,
+    "C10.1": 63,
     "C10.2": 33
   },
   "vacuous": [
     "C6.3",
+    "C7.18",
+    "C7.20",
     "C7.5",
+    "C7.5b",
     "C9.3",
     "C9.6"
   ],
-  "findings": [],
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "clause": "C2.2",
+      "check": "registry-agree",
+      "message": "registry does not map categories ['CAT-10']",
+      "artifact": "project-registry",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-002` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 17
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-003` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 18
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-004` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 19
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-005` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 20
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-006` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 21
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-007` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 22
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-009` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 24
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-015` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 34
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-016` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 35
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-017` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 36
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-020` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 39
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-026` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 49
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-027` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 50
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-028` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 51
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-029` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 52
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-031` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 58
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-032` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 59
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-033` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 60
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-034` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 61
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-040` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 71
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-041` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 72
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-042` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 73
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-043` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 74
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-044` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 75
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-051` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 86
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-052` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 87
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-053` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 88
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-054` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 89
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-055` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 90
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-061` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 100
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-062` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 101
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-063` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 102
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-064` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 103
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-066` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 109
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-067` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-068` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 111
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-069` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 112
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-071` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 118
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-072` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 119
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-073` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 120
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-074` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 121
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-076` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 127
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-077` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 128
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-078` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 129
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-079` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 130
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-084` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 139
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-086` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 141
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-092` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 151
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-093` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 152
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-094` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 153
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-095` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 154
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-098` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 161
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-099` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 162
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-100` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 163
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-101` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 164
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-SEC-102` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 165
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.21",
+      "check": "bootstrap-complete",
+      "message": "`backend-execution-plan` declares 13 permission(s) but `backend-execution-plan` carries no `BOOTSTRAP DATA` section \u2014 the module plans its structure and its behaviour and nothing at all about the data that must exist before either can work",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    }
+  ],
   "provenance": {
     "rules": {
-      "contracts": "e44f19aa8816de9808c39fd84b63e1bcf939bf389029281d3a646951454956f7",
-      "checker": "d9d959ac7390500b2afb9f99cafa2eea71707199ea117c67a07b198fd6468c9f",
+      "contracts": "d5ba45d1e41a663f75b636dad1323932f19ca18d6878c324e911edb6e9329733",
+      "checker": "4b68eb77b487d179fec4a4e3f4389b4fdfed4d1b27ee39caf1a30acd4cbb3e16",
       "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
     },
     "resolvable": [
@@ -97,14 +571,14 @@
     ],
     "inputs": {
       "api-docs": "f622cbbf15a046331f24f819f7bb2fe14c724a720f09f235ae3de68adb9fe43c",
-      "backend-execution-plan": "e2b8d92dfff261ab0921e8acbc0e2a94642a30dff30fa0ca6507256ca795f405",
+      "backend-execution-plan": "d12d3a5b0cc402f123fc8818571383ae366031fb8e24f1b7e931c9903a93fb41",
       "backend-test-plan": "22cd268bcf01b35c3a1741bd93aa287bd272047a287fcf500d476ada8be8c68e",
       "business-policies": "aa84e4fa34c5d3e1b7ef71e2055bdd4b81980bcf4a1b53f81351cd120566d35a",
       "db-script": "4ebf14c9d44b51e764aa87b0a567bb82e0ca0788a750eba5e3b7bf4288d4f640",
       "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
       "flow-diagram": "bf09530e6b4194e3542e077cdac552df67fd3cc63a7383be74a855b1f38e1c2a",
-      "frontend-execution-plan": "4a1d38c8c0b0f49a4897e16c39618cb8750219a70f202007e5e9a0d206960484",
-      "frontend-test-plan": "e447bcec7e8144b0e958a85d93a12505a01a524af2ed36a7cadc137284696566",
+      "frontend-execution-plan": "6041127de04ac3030e988a112a880c916136e9165e5f2876d2e8c97f98605d4e",
+      "frontend-test-plan": "46a52f92044cc1c6c24aea0c5f686f10a69ddd9d5e7c5430762eef0fcfa90cc9",
       "module-registry": "fdee1eb1c5a9ae0be45579eddf863b41859474f9c1b75f2df76d06c830c9cbdc",
       "platform-summary": "ef423becc4481e307d98de8960f8416cb02212571d518daa3f2015c4ddf6a44e",
       "prd": "a3899886da913a83daf7224b6f48ae1bc600c51d091301960da2a748f2e22f49",
@@ -118,6 +592,6 @@
       "test-execution-manifest": "fe360a9c38baf2785c213cffdd24b06f9e68738419dd21fa96c66b588070f78c",
       "ui-ux-spec": "2773bd597812d0990990b231d5582e4461698eaa0294c15788db4c27a1896397"
     },
-    "at": "2026-09-11T20:36:43+00:00"
+    "at": "2026-09-12T14:23:32+00:00"
   }
 }

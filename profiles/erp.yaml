@@ -75,10 +75,22 @@ tracks:
     plans:
       exec:
         phases:
-          - {key: F1,       display: "F1 — Models & Types",   sub_bearing: true, split_threshold: {kind: SCR, count: 5, op: ">="}}
-          - {key: F2,       display: "F2 — Data Hooks",       sub_bearing: true, split_threshold: {kind: SCR, count: 5, op: ">="}}
-          - {key: F3,       display: "F3 — Forms & Validators", sub_bearing: true, split_threshold: {kind: SCR, count: 5, op: ">="}}
-          - {key: F4,       display: "F4 — Screens & Routes", sub_bearing: true, split_threshold: {kind: SCR, count: 5, op: ">="}}
+          # `sub_bearing` alone decides these four: ONE SUB per screen, always, at any screen
+          # count. They carried `split_threshold: {kind: SCR, count: 5, op: ">="}` until
+          # 2026-09-12, and the gate was wrong in both directions. It never ENFORCED anything —
+          # markers.py:313 only fires when the threshold's kind is a marker kind, and `SCR` is
+          # not one (PHASE, SUB, API, XM, TC are), so the check was skipped and the rule lived
+          # only in the rendered engine text. And what it produced was a package whose SHAPE
+          # depended on how big the module happened to be: FIN (12 screens) and SEC (10) split
+          # per screen, MDL (2) did not, so one module's frontend package had a different
+          # folder tree from the others' for no reason a reader could act on. A per-screen
+          # address is what the split exists to give — an implementer takes one screen's F2
+          # block, not "the F2 phase of a small module" — and that is worth exactly as much at
+          # two screens as at twelve.
+          - {key: F1,       display: "F1 — Models & Types",   sub_bearing: true}
+          - {key: F2,       display: "F2 — Data Hooks",       sub_bearing: true}
+          - {key: F3,       display: "F3 — Forms & Validators", sub_bearing: true}
+          - {key: F4,       display: "F4 — Screens & Routes", sub_bearing: true}
           - {key: SEC-FE,   never_split: true}
           - {key: ALIGN-FE, never_split: true}
       test:

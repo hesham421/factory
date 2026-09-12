@@ -94,10 +94,10 @@ Frontend, execution plan:
 <!-- RENDER:phases:frontend:exec -->
 | Key | Display | Folder | Split when | SUB labels |
 |---|---|---|---|---|
-| `F1` | F1 — Models & Types | `F1` | SCR >= 5 | — |
-| `F2` | F2 — Data Hooks | `F2` | SCR >= 5 | — |
-| `F3` | F3 — Forms & Validators | `F3` | SCR >= 5 | — |
-| `F4` | F4 — Screens & Routes | `F4` | SCR >= 5 | — |
+| `F1` | F1 — Models & Types | `F1` | per screen | — |
+| `F2` | F2 — Data Hooks | `F2` | per screen | — |
+| `F3` | F3 — Forms & Validators | `F3` | per screen | — |
+| `F4` | F4 — Screens & Routes | `F4` | per screen | — |
 | `SEC-FE` | SEC-FE | `SEC-FE` | never | — |
 | `ALIGN-FE` | ALIGN-FE | `ALIGN-FE` | never | — |
 <!-- /RENDER:phases:frontend:exec -->

@@ -8,7 +8,7 @@
 BINDINGS: table `FIN_DIMENSION` · PK `dimensionPk` (DBF-FIN-014) · PK generation `GENERATED ALWAYS AS IDENTITY`
 FIELDS: DBF-FIN-014..022. DTO: create `{code, nameAr, nameEn}`; no update endpoint (name
 edits go through a future v2 if needed — not named in the plan, so not built). DOMAIN
-RULES: none scoped alone. REPOSITORY OPS → QR-FIN-007, QR-FIN-008.
+RULES: none scoped alone. REPOSITORY OPS → QR-FIN-007, QR-FIN-008, QR-FIN-046 (EXISTS, code unique).
 
 #### ENT-FIN-003 — DimensionValue      kind: lookup
 BINDINGS: table `FIN_DIMENSION_VALUE` · PK `dimensionValuePk` (DBF-FIN-023) · PK generation `GENERATED ALWAYS AS IDENTITY`
@@ -27,8 +27,12 @@ OPS → QR-FIN-012, QR-FIN-013, QR-FIN-014, QR-FIN-027 (reused at post time).
 BINDINGS: table `FIN_RULE_LINE` · PK `ruleLinePk` (DBF-FIN-098) · PK generation `GENERATED ALWAYS AS IDENTITY`
 FIELDS: DBF-FIN-098..108; `accountDerivationTypeCode`/`amountSourceTypeCode`/
 `directionCode`/`distributionTypeCode` all lookup-backed (XM-FIN-001). DOMAIN RULES:
-**RULE-FIN-003** (exactly one remainder line under percentage distribution) — QR-FIN-016 —
-service. REPOSITORY OPS → QR-FIN-015, QR-FIN-016; read as part of QR-FIN-025/028 at
+**RULE-FIN-003** (exactly one remainder line whenever the line set is a compound or
+percentage distribution — any sibling PERCENTAGE-distributed, or any line already marked
+remainder — plus marker agreement: `isRemainderFl` (DBF-FIN-103) is the SINGLE remainder
+marker, the one both this guard and the API-FIN-020 builder read, and must agree with the
+line's own REMAINDER type code, `FIN-422-REMAINDER-MARKER`) — QR-FIN-016 —
+`EventTypeRuleDomain`. REPOSITORY OPS → QR-FIN-015, QR-FIN-016; read as part of QR-FIN-025/028 at
 event-entry build time.
 
 #### ENT-FIN-011 — RecurringTemplate      kind: config
@@ -52,7 +56,9 @@ QR-FIN-021, QR-FIN-022.
 #### ENT-FIN-014 — AllocationTarget      kind: config
 BINDINGS: table `FIN_ALLOCATION_TARGET` · PK `allocationTargetPk` (DBF-FIN-139) · PK generation `GENERATED ALWAYS AS IDENTITY`
 FIELDS: DBF-FIN-139..146; `distributionTypeCode` lookup-backed (XM-FIN-001). DOMAIN RULES:
-**RULE-FIN-003** (reused — exactly one remainder target under percentage distribution) —
-QR-FIN-016 (reused) — service. REPOSITORY OPS → written with QR-FIN-021; read by
+**RULE-FIN-003** (reused — exactly one remainder target whenever the target set is a
+compound or percentage distribution, plus marker agreement between `isRemainderFl`
+(DBF-FIN-141, the SINGLE marker the API-FIN-017 builder reads) and `distributionTypeCode`,
+`FIN-422-REMAINDER-MARKER`) — QR-FIN-016 (reused) — `AllocationRuleDomain`. REPOSITORY OPS → written with QR-FIN-021; read by
 QR-FIN-022 at run time.
 <!-- SUB:DATA-DOM-LOOKUP:END -->

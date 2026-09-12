@@ -340,11 +340,11 @@ Page code: MDL_LOOKUPS. Actions: VIEW, CREATE, UPDATE, DELETE (deactivate), per 
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search types | GET | /api/v1/mdl/lookup-types | filters, paging | Page\<LookupType\> | — | REQ-MDL-001 |
+| search types | POST | /api/v1/mdl/lookup-types/search | filters, paging | Page\<LookupType\> | — | REQ-MDL-001 |
 | create type | POST | /api/v1/mdl/lookup-types | key, ownerModuleCode, nameAr, nameEn | LookupType | RULE-MDL-001 | REQ-MDL-001, REQ-MDL-002 |
 | update type | PUT | /api/v1/mdl/lookup-types/{id} | nameAr, nameEn | LookupType | RULE-MDL-003 | REQ-MDL-003 |
 | deactivate type | DELETE | /api/v1/mdl/lookup-types/{id} | id | confirmation | — | REQ-MDL-004 |
-| search values | GET | /api/v1/mdl/lookup-types/{id}/values | filters, paging | Page\<LookupValue\> | — | REQ-MDL-005 |
+| search values | POST | /api/v1/mdl/lookup-types/values/search | filters, paging (parent lookupTypeId in filters) | Page\<LookupValue\> | — | REQ-MDL-005 |
 | create value | POST | /api/v1/mdl/lookup-types/{id}/values | code, nameAr, nameEn, sortOrder | LookupValue | RULE-MDL-002 | REQ-MDL-006, REQ-MDL-007 |
 | update value | PUT | /api/v1/mdl/lookup-values/{id} | nameAr, nameEn, sortOrder | LookupValue | — | REQ-MDL-008 |
 | deactivate value | DELETE | /api/v1/mdl/lookup-values/{id} | id | confirmation | — | REQ-MDL-009 |
@@ -369,7 +369,7 @@ Page code: MDL_TYPE_REGISTRY. Action: VIEW.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| browse registry | GET | /api/v1/mdl/lookup-types/by-owner | filters | grouped Page\<LookupType\> | — | REQ-MDL-013 |
+| browse registry | POST | /api/v1/mdl/lookup-types/by-owner/search | filters | grouped List\<OwnerGroupResponse\> | — | REQ-MDL-013 |
 | read values by key (consumer API) | GET | /api/v1/mdl/lookups | type=key | List\<LookupValue\> (active only) | RULE-MDL-004 | REQ-MDL-011, REQ-MDL-012 |
 
 # STANDALONE

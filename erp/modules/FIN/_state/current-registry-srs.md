@@ -66,8 +66,8 @@ Screens
 | SCR-REQ-FIN-012 | تقارير الأبعاد / Dimension reports | FIN_DIMENSION_REPORTS |
 
 Requirements
-REQ count: 46 · AC count: 46 · RULE count: 16 · ENT count: 14 · SCR-REQ count: 12
-Last sequence per atom: REQ: 046 · AC: 046 · ENT: 014 · RULE: 016 · SCR-REQ: 012
+REQ count: 46 · AC count: 46 · RULE count: 17 · ENT count: 14 · SCR-REQ count: 12
+Last sequence per atom: REQ: 046 · AC: 046 · ENT: 014 · RULE: 017 · SCR-REQ: 012
 
 REQ ids (full text in srs-fin.md → A4): REQ-FIN-001, REQ-FIN-002, REQ-FIN-003, REQ-FIN-004,
 REQ-FIN-005, REQ-FIN-006, REQ-FIN-007, REQ-FIN-008, REQ-FIN-009, REQ-FIN-010, REQ-FIN-011,
@@ -89,11 +89,14 @@ AC-FIN-046
 RULE ids (full text in srs-fin.md → A5): RULE-FIN-001, RULE-FIN-002, RULE-FIN-003,
 RULE-FIN-004, RULE-FIN-005, RULE-FIN-006, RULE-FIN-007, RULE-FIN-008, RULE-FIN-009,
 RULE-FIN-010, RULE-FIN-011, RULE-FIN-012, RULE-FIN-013, RULE-FIN-014, RULE-FIN-015,
-RULE-FIN-016
+RULE-FIN-016, RULE-FIN-017
 
 Decisions
 ADR ids: none.
 
 Event
 "P1 completed: FIN v1 — 14 entities, 46 requirements, 46 acceptance criteria, 16 rules, 12 screen requirements, 0 ADRs"
+(RULE-FIN-017 — fiscal-year/period/docDate coherence — was added later, during SVC-API, and
+carried back into srs-fin.md §A5; the counts above are the current 17, while this event line
+records what P1 itself emitted.)
 ══════════════════════════════════════════════════════════════════

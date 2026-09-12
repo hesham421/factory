@@ -6,19 +6,53 @@
   "profile": "erp",
   "markers_schema_version": 2,
   "source": "erp/modules/SEC/test_gen/frontend-test-plan-sec.md",
-  "split_at": "2026-09-11T20:36:44+00:00",
+  "split_at": "2026-09-12T14:00:17+00:00",
   "strict": false,
   "files": [
-    "erp/modules/SEC/packages/frontend-test/TEST-PLAN-FE.md",
+    "erp/modules/SEC/packages/frontend-test/TEST-PLAN-FE-HEADER.md",
+    "erp/modules/SEC/packages/frontend-test/UI-FLOWS.md",
+    "erp/modules/SEC/packages/frontend-test/INT-FLOW.md",
     "erp/modules/SEC/packages/frontend-test/_SECTIONS.md"
   ],
   "indexes": [
     "erp/modules/SEC/packages/frontend-test/index.md"
   ],
   "units": [
-    "PHASE:TEST-PLAN-FE"
+    "SUB:UI-FLOWS",
+    "SUB:INT-FLOW"
   ],
-  "atoms": [],
+  "atoms": [
+    "TC:TC-SEC-034",
+    "TC:TC-SEC-035",
+    "TC:TC-SEC-036",
+    "TC:TC-SEC-037",
+    "TC:TC-SEC-038",
+    "TC:TC-SEC-039",
+    "TC:TC-SEC-040",
+    "TC:TC-SEC-041",
+    "TC:TC-SEC-042",
+    "TC:TC-SEC-043",
+    "TC:TC-SEC-044",
+    "TC:TC-SEC-045",
+    "TC:TC-SEC-046",
+    "TC:TC-SEC-047",
+    "TC:TC-SEC-048",
+    "TC:TC-SEC-049",
+    "TC:TC-SEC-050",
+    "TC:TC-SEC-051",
+    "TC:TC-SEC-052",
+    "TC:TC-SEC-053",
+    "TC:TC-SEC-054",
+    "TC:TC-SEC-055",
+    "TC:TC-SEC-056",
+    "TC:TC-SEC-057",
+    "TC:TC-SEC-058",
+    "TC:TC-SEC-059",
+    "TC:TC-SEC-060",
+    "TC:TC-SEC-061",
+    "TC:TC-SEC-062",
+    "TC:TC-SEC-063"
+  ],
   "verification": "erp/modules/SEC/packages/frontend-test/verification.json",
   "verified": true
 }

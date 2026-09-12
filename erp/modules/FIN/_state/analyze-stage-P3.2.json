@@ -1,0 +1,85 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:P3.2",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C9",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {
+    "C9.2": 54,
+    "C9.3": 12,
+    "C9.4": 12,
+    "C9.5": 37,
+    "C9.6": 12,
+    "C9.7": 12,
+    "C9.8": 24
+  },
+  "vacuous": [],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "d5ba45d1e41a663f75b636dad1323932f19ca18d6878c324e911edb6e9329733",
+      "checker": "4b68eb77b487d179fec4a4e3f4389b4fdfed4d1b27ee39caf1a30acd4cbb3e16",
+      "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
+    },
+    "resolvable": [
+      "api-docs",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "1ab813f9ba02688396d5ae100675d1c23b738e3732fb73f5966b4f6936d9acbb",
+      "backend-execution-plan": "e0a26150be46d156d67fa6737db877894aef47b6bed6b9011e405d7f0e204ce9",
+      "backend-test-plan": "c07bbd7c85dfc33ebecf2e44f5ae17ceb771857aa3e960c9b5f11e8142c6c3ab",
+      "business-policies": "c554eb8a8fc1dee75c137a5f26b053b3f72f7a243ad6b66c0352c7b425927e0d",
+      "db-script": "1789c85a0bce0ade31c455c366e13d75b66ba74f2193a89be6c6f79a35b77861",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "8ce2d346bcf0b475c8886e0bb3b2736f04e8f17128b886691ef06c06701d303a",
+      "frontend-execution-plan": "553520b810bc2ea9b7bd0e93c47a56b4346cf2d344242017c25ac52eabd5e8c8",
+      "frontend-test-plan": "accc070e270dea58e06759cc315d0c4f842caa5e58c84c2384cfcb6d22ff2590",
+      "module-registry": "2c87d7b5ab738ace629d1c62bad0a1ff1c5c4985bdad9c686e3a9ccac8b7dc7d",
+      "platform-summary": "92f95565180e1a10a770a4fdec21260b8bdaa5acc2a701a22fd33c7c41d84e0c",
+      "prd": "4e4c599d0fa97ceade98746ff53a1ad2909c5a71518241003987060bce6bc818",
+      "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "0f5a46da0155ed4337835a94493a6f20770a8940d86a0b8eb514ca0f1fd8297d",
+      "registry-exec-be": "62244a67c2eec3053ecf15a71c31bef824cff64ef008e470dad554ddc591f896",
+      "registry-exec-fe": "c4e609f0fc1e41853b20d4ff7f44bfe1bbbec6e44fadbe138368d470322d863b",
+      "registry-srs": "2d4190f612cf6e017c216af488579700f4587af2279851a7b27256a157f68d22",
+      "srs": "ab4c41d5e9b94cb6f629b8fd7fd9cc3924d3076630026f2523a56e5ad4a90b29",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "0478297eebe2dd3dbe52f5bdd2969ffb7e970cabff9416e6f3f54222e0b34ceb",
+      "ui-ux-spec": "e260838d18d5d7c989555ade4ae04623ac0714684c976ace9a15e9d830327424"
+    },
+    "at": "2026-09-12T14:23:19+00:00"
+  }
+}

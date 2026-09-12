@@ -2,7 +2,7 @@
   "module": "FIN",
   "version": 1,
   "profile": "erp",
-  "generated_at": "2026-09-11T11:55:50+00:00",
+  "generated_at": "2026-09-12T14:23:26+00:00",
   "sources": {
     "platform-summary": [
       1
@@ -34,6 +34,18 @@
     "registry-exec-be": [
       1
     ],
+    "flow-diagram": [
+      1
+    ],
+    "ui-ux-spec": [
+      1
+    ],
+    "frontend-execution-plan": [
+      1
+    ],
+    "registry-exec-fe": [
+      1
+    ],
     "backend-test-plan": [
       1
     ],
@@ -45,12 +57,8 @@
     ]
   },
   "missing": [
-    "flow-diagram",
-    "ui-ux-spec",
-    "frontend-execution-plan",
-    "registry-exec-fe",
     "api-verify-script",
     "api-verify-report"
   ],
-  "inputs_mtime": 1789127750.1540148
+  "inputs_mtime": 1789222999.8120887
 }

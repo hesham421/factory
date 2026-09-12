@@ -6,7 +6,7 @@
   "profile": "erp",
   "markers_schema_version": 2,
   "source": "erp/modules/MDL/P3_1/backend-execution-plan-mdl.md",
-  "split_at": "2026-09-11T11:58:38+00:00",
+  "split_at": "2026-09-12T13:58:29+00:00",
   "strict": false,
   "files": [
     "erp/modules/MDL/packages/backend-execution/CORE/CORE.md",

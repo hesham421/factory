@@ -1268,7 +1268,7 @@ CROSS-MODULE      ✓ 0 XM from db-script, 0 placed, 0 mismatched; inbound stub 
 SECURITY (R7)     ✓ every secured API declares its PERM_* (Phase 3 Security lines, cross-checked against Phase 7 table); every secured screen has a Phase 7 seed row; no permission outside SRS §7.1/Access summary — profile.review.extra_checks ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
 CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `{MOD}-{http}[-{SLUG}]`), type mapping declared (postgresql16 → Java table)
 DECISIONS         ✓ ADR-SEC-001 (carried from P2, lookup centralization deferral) and ADR-SEC-002 (this stage, PLATFORM-STD catalog umbrella) both ACCEPTED, non-breaking; no BLOCKED ADR
-RESULT            PASSED ✓ — 0 findings
+RESULT            BLOCKED ✗ — 1 findings
 ```
 
 **Coverage — ENT/DBF → phases → QR → XM**: every ENT-SEC-001..013 appears in exactly one

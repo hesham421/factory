@@ -1,7 +1,7 @@
 <!-- source: content outside every PHASE block (leading / between / trailing sections) -->
 # BACKEND TEST PLAN — البيانات المرجعية / Master Data Lookup (MDL)
 ══════════════════════════════════════════════════════════════════
-Module : MDL   Version : v1   Profile : erp   Scope : project (modules FIN, MDL, SEC)
+Module : MDL   Version : v1   Profile : erp   Scope : project (modules MDL, SEC)
 Sources: srs-mdl.md v1 · backend-execution-plan-mdl.md v1 · registry-srs-mdl.md v1 · registry-db-mdl.md v1
 Framework: agnostic. REDUCED: no. Open ADRs: 0 new.
 TC count: 13 (module scope) · 1 (integration — XM-MDL-001, MDL declares → SEC)

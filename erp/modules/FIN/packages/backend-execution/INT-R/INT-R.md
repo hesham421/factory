@@ -6,6 +6,7 @@
 | XM | Status | Workaround (if not READY/ACTIVE) |
 |---|---|---|
 | XM-FIN-001 | ACTIVE | not applicable — target already gated |
+| ~~XM-FIN-002~~ | RETIRED 2026-09-12 | not applicable — the row is historical. `FinSeparationOfDutiesService`, its only consumer, was deleted with the SoD over-implementation (see INT-C); there is no read left to fail and so nothing to work around |
 
 No DEFERRED row exists. FIN is the third and last module of this batch
 (GENERATION-INSTRUCTIONS.md §3); the next module to consume FIN (first candidate: PRC or

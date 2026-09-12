@@ -18,6 +18,7 @@
   "plans": {
     "backend/exec": "P3_1/backend-execution-plan-mdl.md",
     "backend/test": "test_gen/backend-test-plan-mdl.md",
+    "frontend/exec": "P3_2/frontend-execution-plan-mdl.md",
     "frontend/test": "test_gen/frontend-test-plan-mdl.md"
   },
   "packages": {
@@ -34,8 +35,8 @@
     "split": {
       "backend/exec": true,
       "backend/test": true,
-      "frontend/exec": false,
-      "frontend/test": false
+      "frontend/exec": true,
+      "frontend/test": true
     }
   },
   "created_at": "2026-09-10T16:04:50+00:00"

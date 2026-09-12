@@ -1,33 +1,33 @@
 <!-- source: PHASE:TEST-PLAN-BE / SUB:API-SCENARIOS -->
 <!-- traces: AC-MDL-001, AC-MDL-005, AC-MDL-006, AC-MDL-008, AC-MDL-009, AC-MDL-010, AC-MDL-013, API-MDL-002, API-MDL-005, API-MDL-006, API-MDL-007, API-MDL-008, API-MDL-009, API-MDL-010, REQ-MDL-001, REQ-MDL-005, REQ-MDL-006, REQ-MDL-008, REQ-MDL-009, REQ-MDL-010, REQ-MDL-013 -->
 <!-- SUB:API-SCENARIOS:START traces=REQ-MDL-001,REQ-MDL-005,REQ-MDL-006,REQ-MDL-008,REQ-MDL-009,REQ-MDL-010,REQ-MDL-013 -->
-### SUB — API-SCENARIOS
+  ### SUB — API-SCENARIOS
 
-<!-- TC:TC-MDL-001:START traces=AC-MDL-001,REQ-MDL-001,API-MDL-002 -->
-### TC-MDL-001 — create a lookup type
-Derived from : AC-MDL-001 (REQ-MDL-001)
-Exercises    : API-MDL-002 POST /api/v1/mdl/lookup-types
-Rule / code  : — (happy path)
-Scenario     : HAPPY · data class VALID · language ALL
-Preconditions: unique key; registered owner module code
-Steps        : 1. POST {key: "TEST_TYPE", ownerModuleCode: "FIN", nameAr, nameEn}
-Expected     : 201; active LookupType created
-Test data    : key "TEST_TYPE", ownerModuleCode "FIN"
-<!-- TC:TC-MDL-001:END -->
+  <!-- TC:TC-MDL-001:START traces=AC-MDL-001,REQ-MDL-001,API-MDL-002 -->
+  ### TC-MDL-001 — create a lookup type
+  Derived from : AC-MDL-001 (REQ-MDL-001)
+  Exercises    : API-MDL-002 POST /api/v1/mdl/lookup-types
+  Rule / code  : — (happy path)
+  Scenario     : HAPPY · data class VALID · language ALL
+  Preconditions: unique key; registered owner module code
+  Steps        : 1. POST {key: "TEST_TYPE", ownerModuleCode: "MDL", nameAr, nameEn}
+  Expected     : 201; active LookupType created
+  Test data    : key "TEST_TYPE", ownerModuleCode "MDL" (MDL owning its own test lookup type is a legitimate self-registration case — a module owning its own reference data is a real scenario, not a contrived one)
+  <!-- TC:TC-MDL-001:END -->
 
-<!-- TC:TC-MDL-005:START traces=AC-MDL-005,REQ-MDL-005,API-MDL-005 -->
-### TC-MDL-005 — select a type and list its values
-Derived from : AC-MDL-005 (REQ-MDL-005)
-Exercises    : API-MDL-005 GET /api/v1/mdl/lookup-types/{id}/values
-Rule / code  : — (happy path)
-Scenario     : HAPPY · data class VALID · language ALL
-Preconditions: a type with 3 values
-Steps        : 1. GET the type's values
-Expected     : 200; exactly those 3 values, ordered by sortOrder
-Test data    : type with 3 values
-<!-- TC:TC-MDL-005:END -->
+  <!-- TC:TC-MDL-005:START traces=AC-MDL-005,REQ-MDL-005,API-MDL-005 -->
+  ### TC-MDL-005 — select a type and list its values
+  Derived from : AC-MDL-005 (REQ-MDL-005)
+  Exercises    : API-MDL-005 POST /api/v1/mdl/lookup-types/values/search
+  Rule / code  : — (happy path)
+  Scenario     : HAPPY · data class VALID · language ALL
+  Preconditions: a type with 3 values
+  Steps        : 1. POST /search filtered by the type's lookupTypeId
+  Expected     : 200; exactly those 3 values, ordered by sortOrder
+  Test data    : type with 3 values
+  <!-- TC:TC-MDL-005:END -->
 
-<!-- TC:TC-MDL-006:START traces=AC-MDL-006,REQ-MDL-006,API-MDL-006 -->
+  <!-- TC:TC-MDL-006:START traces=AC-MDL-006,REQ-MDL-006,API-MDL-006 -->
 ### TC-MDL-006 — create a lookup value
 Derived from : AC-MDL-006 (REQ-MDL-006)
 Exercises    : API-MDL-006 POST /api/v1/mdl/lookup-types/{id}/values
@@ -78,12 +78,12 @@ Test data    : 3 values under one type
 <!-- TC:TC-MDL-013:START traces=AC-MDL-013,REQ-MDL-013,API-MDL-010 -->
 ### TC-MDL-013 — browse the type registry grouped by owner
 Derived from : AC-MDL-013 (REQ-MDL-013)
-Exercises    : API-MDL-010 GET /api/v1/mdl/lookup-types/by-owner
+Exercises    : API-MDL-010 POST /api/v1/mdl/lookup-types/by-owner/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
-Preconditions: types owned by SEC and by FIN
-Steps        : 1. GET the registry
+Preconditions: types owned by SEC and by MDL
+Steps        : 1. POST /search for the registry
 Expected     : 200; types grouped under their respective owner-module headings
-Test data    : existing SEC-owned and FIN-owned types
+Test data    : existing SEC-owned and MDL-owned types
 <!-- TC:TC-MDL-013:END -->
 <!-- SUB:API-SCENARIOS:END -->

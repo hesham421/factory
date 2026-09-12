@@ -1,0 +1,13 @@
+<!-- source: PHASE:F3 — preamble before the first SUB -->
+<!-- traces: REQ-FIN-001, REQ-FIN-002, REQ-FIN-003, AC-FIN-001, AC-FIN-002, AC-FIN-003, API-FIN-001, API-FIN-002, API-FIN-003, API-FIN-004, UXD-FIN-001, UXD-FIN-002, SCR-FIN-001, REQ-FIN-004, REQ-FIN-005, REQ-FIN-006, AC-FIN-004, AC-FIN-005, AC-FIN-006, API-FIN-005, API-FIN-006, API-FIN-007, API-FIN-008, API-FIN-035, SCR-FIN-002, REQ-FIN-007, REQ-FIN-008, REQ-FIN-009, AC-FIN-007, AC-FIN-008, AC-FIN-009, API-FIN-009, API-FIN-010, API-FIN-011, API-FIN-034, UXD-FIN-007, UXD-FIN-008, UXD-FIN-009, UXD-FIN-010, SCR-FIN-003, REQ-FIN-022, REQ-FIN-023, REQ-FIN-024, AC-FIN-022, AC-FIN-023, AC-FIN-024, API-FIN-012, API-FIN-013, API-FIN-014, API-FIN-036, UXD-FIN-011, UXD-FIN-012, SCR-FIN-004, REQ-FIN-025, REQ-FIN-026, AC-FIN-025, AC-FIN-026, API-FIN-015, API-FIN-016, API-FIN-017, API-FIN-037, SCR-FIN-005, REQ-FIN-010, REQ-FIN-011, REQ-FIN-012, REQ-FIN-013, REQ-FIN-014, REQ-FIN-015, REQ-FIN-016, REQ-FIN-017, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-021, REQ-FIN-027, REQ-FIN-028, REQ-FIN-029, REQ-FIN-030, AC-FIN-010, AC-FIN-011, AC-FIN-012, AC-FIN-013, AC-FIN-014, AC-FIN-015, AC-FIN-016, AC-FIN-017, AC-FIN-018, AC-FIN-019, AC-FIN-020, AC-FIN-021, AC-FIN-027, AC-FIN-028, AC-FIN-029, AC-FIN-030, API-FIN-018, API-FIN-019, API-FIN-020, API-FIN-021, API-FIN-022, UXD-FIN-005, UXD-FIN-006, SCR-FIN-006, REQ-FIN-031, REQ-FIN-032, REQ-FIN-033, REQ-FIN-034, REQ-FIN-035, REQ-FIN-036, REQ-FIN-037, REQ-FIN-038, AC-FIN-031, AC-FIN-032, AC-FIN-033, AC-FIN-034, AC-FIN-035, AC-FIN-036, AC-FIN-037, AC-FIN-038, API-FIN-023, API-FIN-024, API-FIN-025, API-FIN-026, API-FIN-027, API-FIN-033, UXD-FIN-003, UXD-FIN-004, SCR-FIN-007, REQ-FIN-039, REQ-FIN-046, AC-FIN-039, AC-FIN-046, API-FIN-028, SCR-FIN-008, REQ-FIN-040, AC-FIN-040, API-FIN-029, SCR-FIN-009, REQ-FIN-041, AC-FIN-041, API-FIN-030, SCR-FIN-010, REQ-FIN-042, AC-FIN-042, API-FIN-031, SCR-FIN-011, REQ-FIN-043, AC-FIN-043, API-FIN-032, SCR-FIN-012 -->
+## PHASE 3 — F3 — Forms & Validators
+
+One block per `RULE-*` enforced on a form, plus the field constraints the published DTOs state.
+No frontend-only validation the SRS does not state; every message is read from its catalog
+code, never hard-coded; the locale resolves session → browser → `ar`; and a caller without the
+write permission is answered by the server rather than by a pre-emptively disabled field
+(ADR-FIN-005). Schemas are written with `zod` + `react-hook-form`.
+
+Five of the twelve screens carry no form at all: SCR-FIN-008..012 are read-only reports whose
+SRS §B3 reads "not applicable". Their blocks state the filter validation and say plainly that
+no `RULE-*` is enforced, rather than inventing one to fill the section.

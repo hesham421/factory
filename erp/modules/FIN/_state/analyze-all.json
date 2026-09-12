@@ -3,9 +3,9 @@
   "version": 1,
   "scope": "all",
   "counts": {
-    "CRITICAL": 19,
-    "MAJOR": 13,
-    "MINOR": 1
+    "CRITICAL": 0,
+    "MAJOR": 114,
+    "MINOR": 0
   },
   "clean": false,
   "blocking": [
@@ -26,284 +26,978 @@
     "C12"
   ],
   "skipped": [],
+  "coverage": {
+    "C2.2": 10,
+    "C3.7": 20,
+    "C4.4": 19,
+    "C5.2": 46,
+    "C5.3": 46,
+    "C5.4": 46,
+    "C5.5": 46,
+    "C5.6": 17,
+    "C5.8": 123,
+    "C6.2": 147,
+    "C6.3": 2,
+    "C6.5": 149,
+    "C6.6": 15,
+    "C7.2": 53,
+    "C7.3": 37,
+    "C7.4": 86,
+    "C7.5": 2,
+    "C7.5b": 2,
+    "C7.6": 46,
+    "C7.16": 0,
+    "C7.22": 49,
+    "C7.21": 28,
+    "C7.20": 25,
+    "C7.19": 76,
+    "C7.18": 0,
+    "C8.2": 37,
+    "C8.3": 37,
+    "C8.4": 32,
+    "C9.2": 54,
+    "C9.3": 12,
+    "C9.4": 12,
+    "C9.5": 37,
+    "C9.6": 12,
+    "C9.7": 12,
+    "C9.8": 24,
+    "C10.1": 148,
+    "C10.2": 46
+  },
+  "vacuous": [
+    "C7.16",
+    "C7.18"
+  ],
   "findings": [
     {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-001` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 900
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-002` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 908
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-003` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 916
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-004` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 924
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-005` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 932
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-006` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 940
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-007` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 948
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-008` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 956
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-009` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 964
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-010` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 972
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-011` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 980
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-012` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 988
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-013` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 996
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-014` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 1004
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-015` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 1012
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.12",
-      "check": "data-source",
-      "message": "`RULE-FIN-016` declares no `Data source` \u2014 the data its check reads has no stated origin",
-      "artifact": "",
-      "line": 1020
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C7.15",
-      "check": "verdict-agrees",
-      "message": "`backend-execution-plan` claims 0 findings but `gov.py analyze` produced 5 for it \u2014 the artifact the implementer reads contradicts the report beside it. Correct line: `BLOCKED \u2717 \u2014 5 findings`",
-      "artifact": "backend-execution-plan",
-      "line": 1135
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C8.1",
-      "check": "exists",
-      "message": "`api-docs` is missing or empty",
-      "artifact": "api-docs",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C9.1",
-      "check": "markers",
-      "message": "`frontend-execution-plan` missing",
-      "artifact": "frontend-execution-plan",
+      "severity": "MAJOR",
+      "clause": "C2.2",
+      "check": "registry-agree",
+      "message": "registry does not map categories ['CAT-10']",
+      "artifact": "project-registry",
       "line": 0
     },
     {
       "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-MDL-001` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-MDL-002` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-SEC-001` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-SEC-004` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-SEC-005` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C5.8",
-      "check": "registry-agree",
-      "message": "`ENT-SEC-006` registered in `registry-srs` but not defined in `srs`",
-      "artifact": "registry-srs",
-      "line": 0
+      "clause": "C6.6",
+      "check": "orphans",
+      "message": "`ENT-SEC-001` is referenced by 0 of ['DBF'], needs \u22651",
+      "artifact": "",
+      "line": 1293
     },
     {
       "severity": "MAJOR",
       "clause": "C7.11",
       "check": "code-format",
-      "message": "declares the code format `FIN-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "message": "`FIN-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
       "artifact": "backend-execution-plan",
-      "line": 341
+      "line": 1587
     },
     {
       "severity": "MAJOR",
       "clause": "C7.11",
       "check": "code-format",
-      "message": "declares the code format `FIN-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "message": "`FIN-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
       "artifact": "backend-execution-plan",
-      "line": 1083
+      "line": 1597
     },
     {
       "severity": "MAJOR",
       "clause": "C7.11",
       "check": "code-format",
-      "message": "declares the code format `FIN-<3-digit>` but `stack.backend.api.error_code_format` is `{MOD}-{http}[-{SLUG}]` \u2014 a format string maintained as free text drifts from the values it describes",
+      "message": "`FIN-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
       "artifact": "backend-execution-plan",
-      "line": 1132
+      "line": 1616
     },
     {
       "severity": "MAJOR",
-      "clause": "C7.17",
-      "check": "xref-surface",
-      "message": "`/api/v1/mdl/lookups` consumes `MDL`'s surface in prose but cites no API of `MDL` \u2014 a dependency with no id resolves nowhere, and `MDL`'s own checks never see it",
+      "clause": "C7.11",
+      "check": "code-format",
+      "message": "`FIN-503` carries status 503, which `stack.backend.api.http_statuses` does not declare (200, 201, 400, 401, 403, 404, 409, 413, 415, 422, 500) \u2014 the platform cannot emit it, so no code path can ever raise this row",
       "artifact": "backend-execution-plan",
-      "line": 375
+      "line": 1634
     },
     {
       "severity": "MAJOR",
-      "clause": "C8.2",
-      "check": "registry-agree",
-      "message": "artifact `api-docs` missing",
-      "artifact": "api-docs",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-002` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 17
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-003` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 18
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-004` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 19
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-005` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 20
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-006` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 21
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-008` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 23
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-009` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 24
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-147` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 25
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-015` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 35
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-016` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 36
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-017` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 37
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-018` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 38
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-024` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 45
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-025` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 46
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-026` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 47
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-027` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 48
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-028` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 49
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-035` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 57
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-036` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 58
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-037` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 59
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-038` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 60
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-039` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 61
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-040` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 62
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-052` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 78
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-053` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 79
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-054` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 80
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-055` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 81
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-056` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 82
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-057` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 83
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-062` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 92
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-063` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 93
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-064` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 94
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-066` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 100
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-067` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 101
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-068` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 102
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-069` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 103
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-070` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 104
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-077` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 112
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-078` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 113
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-079` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 114
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-081` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 116
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-090` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 126
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-091` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 127
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-092` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 128
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-099` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 136
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-100` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 137
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-101` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 138
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-102` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 139
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-103` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 140
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-105` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 142
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-106` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 143
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-107` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 144
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-110` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 151
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-111` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 152
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-112` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 153
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-114` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 155
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-115` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 156
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-117` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 158
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-123` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 165
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-124` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 166
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-125` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 167
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-126` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 168
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-127` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 169
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-131` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 177
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-132` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 178
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-133` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 179
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-134` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 180
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-140` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 187
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-141` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 188
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-142` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 189
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-144` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 191
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.19",
+      "check": "required-writer",
+      "message": "`DBF-FIN-146` is NOT NULL in `db-script` but no `API` block names it on a `Request`/`Orchestration` line \u2014 nothing in this module writes it, so every operation that depends on it fails on a fresh deployment. Either an endpoint writes it, or the row states why not (system-generated, derived, seeded, DEFERRED)",
+      "artifact": "db-script",
+      "line": 193
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1352
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1352
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `UPDATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `UPDATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1352
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1353
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1353
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1354
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1354
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `UPDATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `UPDATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1354
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1355
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1355
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `UPDATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `UPDATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1355
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1356
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1356
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `UPDATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `UPDATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1356
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1357
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1357
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1358
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `CREATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `CREATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1358
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `UPDATE` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `UPDATE` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1358
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1359
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1360
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1361
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1362
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.20",
+      "check": "operation-resolves",
+      "message": "the `VIEW` cell is marked `\u2713` but the row carries no name matching `PERM_<PAGE_CODE>_<ACTION>` for `VIEW` \u2014 a matrix cell with nothing behind it grants nothing and is enforced by nothing, while reading as a decision that was implemented",
+      "artifact": "backend-execution-plan",
+      "line": 1363
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.21",
+      "check": "bootstrap-complete",
+      "message": "`backend-execution-plan` declares 28 permission(s) but `backend-execution-plan` carries no `BOOTSTRAP DATA` section \u2014 the module plans its structure and its behaviour and nothing at all about the data that must exist before either can work",
+      "artifact": "backend-execution-plan",
       "line": 0
     },
     {
       "severity": "MAJOR",
-      "clause": "C9.2",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-045` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 472
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-047` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 491
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-015` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 1692
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-019` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 1696
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-024` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 1701
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-046` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 1723
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.22",
+      "check": "orphans",
+      "message": "`QR-FIN-048` is referenced by 0 of ['API'], needs \u22651",
+      "artifact": "",
+      "line": 1725
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.3",
       "check": "traces",
-      "message": "`frontend-execution-plan` missing",
-      "artifact": "frontend-execution-plan",
-      "line": 0
+      "message": "`API-FIN-035` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 1227
     },
     {
       "severity": "MAJOR",
-      "clause": "C9.8",
-      "check": "registry-agree",
-      "message": "registry `registry-exec-fe` missing",
-      "artifact": "registry-exec-fe",
-      "line": 0
+      "clause": "C7.3",
+      "check": "traces",
+      "message": "`API-FIN-035` traces to 0 `DBF` id(s), needs \u22651",
+      "artifact": "",
+      "line": 1227
     },
     {
-      "severity": "MINOR",
-      "clause": "C7.11",
-      "check": "code-format",
-      "message": "does not state the declared code format `{MOD}-{http}[-{SLUG}]` (`stack.backend.api.error_code_format`)",
-      "artifact": "backend-execution-plan",
-      "line": 0
+      "severity": "MAJOR",
+      "clause": "C7.3",
+      "check": "traces",
+      "message": "`API-FIN-014` traces to 0 `REQ` id(s), needs \u22651",
+      "artifact": "",
+      "line": 1300
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.3",
+      "check": "traces",
+      "message": "`API-FIN-014` traces to 0 `DBF` id(s), needs \u22651",
+      "artifact": "",
+      "line": 1300
     }
   ],
   "provenance": {
     "rules": {
-      "contracts": "8b061142d7ce0c7586f81b1b17aa2684b81ab6b946f963500cc9a3b9a63ed36d",
-      "checker": "49fe4e5a1123136a3d48c45fc88c3be6e310c01f1f99f481c8519086f0ce87c8",
+      "contracts": "d5ba45d1e41a663f75b636dad1323932f19ca18d6878c324e911edb6e9329733",
+      "checker": "4b68eb77b487d179fec4a4e3f4389b4fdfed4d1b27ee39caf1a30acd4cbb3e16",
       "policy": "61d1af6c86d3f26a4b5546b4b158a1ac8fdfe69edfb7da0cb5c2023e3e99a68c"
     },
     "resolvable": [
+      "api-docs",
       "backend-execution-plan",
       "backend-test-plan",
       "business-policies",
       "db-script",
       "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
       "frontend-test-plan",
       "module-registry",
       "platform-summary",
@@ -311,29 +1005,36 @@
       "project-registry",
       "registry-db",
       "registry-exec-be",
+      "registry-exec-fe",
       "registry-srs",
       "srs",
       "system-test-index",
-      "test-execution-manifest"
+      "test-execution-manifest",
+      "ui-ux-spec"
     ],
     "inputs": {
-      "backend-execution-plan": "95d7644079789abb8eb22be605331a1693e7fd28b8f1f79681817cd95fcf1ca9",
-      "backend-test-plan": "64c2438903264b04fd8db0f6ae7a362a103e2e28b7c7740aa5c84d08fbe56f2c",
+      "api-docs": "1ab813f9ba02688396d5ae100675d1c23b738e3732fb73f5966b4f6936d9acbb",
+      "backend-execution-plan": "e0a26150be46d156d67fa6737db877894aef47b6bed6b9011e405d7f0e204ce9",
+      "backend-test-plan": "c07bbd7c85dfc33ebecf2e44f5ae17ceb771857aa3e960c9b5f11e8142c6c3ab",
       "business-policies": "c554eb8a8fc1dee75c137a5f26b053b3f72f7a243ad6b66c0352c7b425927e0d",
-      "db-script": "a01392146007213714996f5cd526c0dd48b3a25cd7fc404d1582b338e29616ae",
+      "db-script": "1789c85a0bce0ade31c455c366e13d75b66ba74f2193a89be6c6f79a35b77861",
       "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
-      "frontend-test-plan": "248b03249a575a2f682be6682418e5840c7dc4d705135985cbf5dc1c164cbf1a",
+      "flow-diagram": "8ce2d346bcf0b475c8886e0bb3b2736f04e8f17128b886691ef06c06701d303a",
+      "frontend-execution-plan": "553520b810bc2ea9b7bd0e93c47a56b4346cf2d344242017c25ac52eabd5e8c8",
+      "frontend-test-plan": "accc070e270dea58e06759cc315d0c4f842caa5e58c84c2384cfcb6d22ff2590",
       "module-registry": "2c87d7b5ab738ace629d1c62bad0a1ff1c5c4985bdad9c686e3a9ccac8b7dc7d",
       "platform-summary": "92f95565180e1a10a770a4fdec21260b8bdaa5acc2a701a22fd33c7c41d84e0c",
       "prd": "4e4c599d0fa97ceade98746ff53a1ad2909c5a71518241003987060bce6bc818",
       "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
-      "registry-db": "dcb10374b8357ef1e12d6ea57f9f6d8e9ee6ac9f90c36d0a4e7c7661c9b92068",
-      "registry-exec-be": "f4ea82d8eabe27ddaec7143461d406c4efd447319a73d9d7fc9fe0b92e74770f",
-      "registry-srs": "5b40c54e768d5186ae3cfdcf84cf81eb93aa2a13b2971a3f1c5059001736c677",
-      "srs": "d87679ab1d8f3b52e729fdfea65c343cf7ec53484a6d403a19388674da2adf50",
+      "registry-db": "0f5a46da0155ed4337835a94493a6f20770a8940d86a0b8eb514ca0f1fd8297d",
+      "registry-exec-be": "62244a67c2eec3053ecf15a71c31bef824cff64ef008e470dad554ddc591f896",
+      "registry-exec-fe": "c4e609f0fc1e41853b20d4ff7f44bfe1bbbec6e44fadbe138368d470322d863b",
+      "registry-srs": "2d4190f612cf6e017c216af488579700f4587af2279851a7b27256a157f68d22",
+      "srs": "ab4c41d5e9b94cb6f629b8fd7fd9cc3924d3076630026f2523a56e5ad4a90b29",
       "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
-      "test-execution-manifest": "a8211ced740388920162372d56adbc765d49af414af42721124d28472326210c"
+      "test-execution-manifest": "0478297eebe2dd3dbe52f5bdd2969ffb7e970cabff9416e6f3f54222e0b34ceb",
+      "ui-ux-spec": "e260838d18d5d7c989555ade4ae04623ac0714684c976ace9a15e9d830327424"
     },
-    "at": "2026-09-11T11:54:33+00:00"
+    "at": "2026-09-12T14:23:30+00:00"
   }
 }
