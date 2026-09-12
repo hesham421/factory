@@ -1340,3 +1340,84 @@ def test_the_reviewer_carries_a_concurrency_row(toy):
     row = next((l for l in text.splitlines() if l.startswith("| concurrency:")), None)
     assert row and "two simultaneous requests" in row, "the gate brief has no concurrency row"
     assert "nothing mechanical can check this" in row, "the row must say it is the reviewer's, not a check's"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G11 — a channel for findings that belong to no module
+# ----------------------------------------------------------------------------
+# The category list is a FACTORY fact read from the shared schema, not a literal
+# in Python, so a factory that adds one needs no checker change: `registry-agree
+# categories: all` demands it of whatever registry the project declares.
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_categories(toy_analyzable):
+    """The toy factory gets the real shared schema and a contract clause that
+    demands every category of it be mapped in the toy's own registry."""
+    import shutil
+    import render
+    from conftest import REAL_ROOT
+    mod, art, an = toy_analyzable
+    # only the category schema — the toy's own contract document already lives here
+    schema = "REGISTRY-SCHEMA.md"
+    dest = CFG.dir("shared")
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(REAL_ROOT / CFG.paths["shared"] / schema, dest / schema)
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.13", "check": "registry-agree",
+         "args": {"registry": "project-registry", "categories": "all"}, "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _platform_category(an) -> str:
+    """The category the schema declares for findings that belong to no module —
+    found by its meaning in the schema, never by a number typed here."""
+    doc = (CFG.dir("shared") / "REGISTRY-SCHEMA.md").read_text(encoding="utf-8")
+    import re
+    row = next(l for l in doc.splitlines() if "platform findings" in l.lower() and l.startswith("|"))
+    # whole-token, longest-first: `CAT-1` is a substring of `CAT-10`, and picking the
+    # short one would have the test remove a category the text still contains
+    return max((c for c in an._categories() if re.search(re.escape(c) + r"(?!\d)", row)), key=len)
+
+
+def test_a_registry_that_maps_no_platform_findings_category_is_a_finding(toy_categories):
+    import state as st
+    mod, art, an = toy_categories
+    cats = an._categories()
+    platform = _platform_category(an)
+    assert platform in cats, "the shared schema declares no category for platform findings"
+
+    _write_art(mod, "project-registry", "# toy registry\n\n" + "\n".join(f"- {c} → §1" for c in sorted(cats - {platform})))
+    st.build_state(mod, 1)
+    fs = [f for f in an.run(mod, 1, scope="all", write=False).findings if f.clause == "T1.13"]
+    assert len(fs) == 1 and platform in fs[0].message, [str(f) for f in fs]
+
+    _write_art(mod, "project-registry", "# toy registry\n\n" + "\n".join(f"- {c} → §1" for c in sorted(cats)))
+    st.build_state(mod, 1)
+    assert [f for f in an.run(mod, 1, scope="all", write=False).findings if f.clause == "T1.13"] == []
+
+
+def test_a_category_is_matched_as_a_whole_token(toy_categories):
+    """A plain substring test passed any category whose name is a prefix of
+    another's — the moment the schema reached two digits, a registry that mapped
+    the tenth satisfied the first as well."""
+    import state as st
+    mod, art, an = toy_categories
+    cats = an._categories()
+    longest = max(cats, key=len)
+    prefixes = [c for c in cats if c != longest and longest.startswith(c)]
+    assert prefixes, "no category name is a prefix of another — nothing to guard"
+    _write_art(mod, "project-registry", "# toy registry\n\n- " + longest + " → §1\n")
+    st.build_state(mod, 1)
+    fs = [f for f in an.run(mod, 1, scope="all", write=False).findings if f.clause == "T1.13"]
+    assert len(fs) == 1 and all(c in fs[0].message for c in prefixes), [str(f) for f in fs]
+
+
+def test_the_schema_says_a_module_scoped_stage_records_and_never_fixes(toy_categories):
+    doc = (CFG.dir("shared") / "REGISTRY-SCHEMA.md").read_text(encoding="utf-8")
+    assert "records** a platform finding; it never fixes one" in doc
+    assert "is **not** a module gap" in doc, "nothing stops it being read as a module gap"

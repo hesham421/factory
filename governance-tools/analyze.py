@@ -454,7 +454,10 @@ def _c_registry_agree(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     if c.get("categories") == "all":
         cats = _categories()
         ctx.saw(len(cats))       # this branch examines categories, not ids
-        missing = sorted(x for x in cats if x not in reg)
+        # whole-token: a plain `in` passes any category whose name is a prefix of
+        # another's, so the moment the schema reached two digits a registry that
+        # mapped the tenth silently satisfied the first as well
+        missing = sorted(x for x in cats if not re.search(re.escape(x) + r"(?![0-9])", reg))
         if missing:
             out.append(Finding(sev, "", "registry-agree", f"registry does not map categories {missing}", c["registry"]))
         return out

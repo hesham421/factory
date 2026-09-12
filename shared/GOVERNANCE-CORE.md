@@ -157,6 +157,15 @@ Consequences: what downstream stages must now do / may no longer do
 traces      : <IDs affected — required, ≥1>
 ```
 
+**A finding that belongs to no module.** The ambiguity rule settles what *this*
+module must decide. A defect a module-scoped stage finds **outside** its own
+module — in a shared artifact, a platform-wide convention, another module's
+surface — is not its to settle and not its to drop: it is recorded as a platform
+finding in the project registry ([REGISTRY-SCHEMA.md §4](REGISTRY-SCHEMA.md)),
+never fixed here and never filed among this module's own gaps, where the next
+reader takes it for one. "Not mine to settle" with nowhere to put it is how
+three real platform-wide defects were found and escalated nowhere.
+
 The pass gate reads every ADR of the version; a later version that revisits a
 decision writes a new ADR that names the one it supersedes. "Derivation logs",
 "open-question logs" and "findings records" of earlier designs are all this

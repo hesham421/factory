@@ -18,7 +18,7 @@ Two registry levels exist and nothing else counts as a registry:
 Any domain-specific section layout (a reference template, a platform-specific
 grouping) lives in `profile.knowledge.files`, never here.
 
-## 1. Project registry — the nine canonical categories
+## 1. Project registry — the canonical categories
 
 The registry must **cover** each category in substance. Sections may be
 named, grouped, split or ordered as the domain prefers; what is fixed is that
@@ -35,6 +35,7 @@ every category is findable and a compliance map says where.
 | **CAT-7 decision index** | every ADR across modules with status, and every open resolution event — the cross-module view of the decision stream ([GOVERNANCE-CORE.md §5](GOVERNANCE-CORE.md#5-ambiguity-rule)) |
 | **CAT-8 pipeline status** | per module version: last committed stage, last gate verdict and scores, delivered tracks, tag — as `gov.py status` reports it |
 | **CAT-9 event history** | append-only: date, stage or tool, module, version, event (IDs registered, gate verdicts, deliveries, resolution events, waivers) |
+| **CAT-10 platform findings** | every finding a module-scoped stage recorded that is **not that module's to settle**: a defect in a shared artifact, a platform-wide convention, or another module's surface. One row per finding: what was found, the evidence, the module and stage that found it, the artifact or convention it belongs to, and its status (OPEN · ACCEPTED · FIXED · WAIVED + the ADR). See §4 |
 
 **Compliance map (required).** Near the header, a table `section → category`
 plus the line `Uncovered: <list | none>`. `registry-agree` with
@@ -81,5 +82,36 @@ other artifact: in `vN/` it lists only IDs ADDED or MODIFIED in that version;
 | ADR | ACCEPTED · BLOCKED · SUPERSEDED | the writing stage; BLOCKED resolved only at a human decision point |
 | any other atom | ACTIVE · REMOVED (by a change set of a later version) | the owning stage |
 | module version (CAT-8) | last committed stage id · gate verdict (`factory.review.verdicts`) · delivered tracks · tag | `gov.py` |
+| platform finding (CAT-10) | OPEN · ACCEPTED · FIXED · WAIVED | the stage that recorded it; closed only by whoever owns the fix, never by the module that found it |
 
 No status is implied. A status that the schema does not list is a finding.
+
+## 4. Platform findings — where a finding that belongs to no module goes
+
+A module-scoped stage that finds a defect **outside its own module** is right to
+say "not mine to settle" and wrong to stop there. Three real platform-wide
+defects were found exactly that way — a response envelope that never reaches the
+wire as the documented code, a shared field whose declared length exceeds the
+physical column in every module, a shared exception type that cannot carry more
+than one error — and every module-scoped worker correctly declined to fix them,
+and nothing escalated them anywhere.
+
+```
+CAT-10 row
+  finding   : what is wrong, in one sentence
+  evidence  : artifact + location (a shared doc, a convention, another module's surface)
+  found by  : module · stage · version
+  belongs to: the artifact, convention or module that owns the fix — never this module
+  status    : OPEN | ACCEPTED (ADR-…) | FIXED (where) | WAIVED (ADR-…)
+```
+
+Rules:
+1. A module-scoped stage **records** a platform finding; it never fixes one.
+   Fixing outside your own module is the boundary violation the "not mine"
+   instinct was protecting against — recording is not.
+2. A platform finding is **not** a module gap and is never written into the
+   module's own findings, where the next reader takes it for one.
+3. The row is appended by the orchestrator's registry step like any other
+   registry update (GOVERNANCE-CORE.md §6 step 4), with its CAT-9 event.
+4. Every gate reads the OPEN rows of this category (`reviewers/pass-review.md`):
+   a finding nobody can see is a finding nobody will fix.

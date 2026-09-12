@@ -42,6 +42,7 @@ The orchestrator has regenerated current state; read only these:
 {% endfor -%}
 | traceability matrix | the matrix file `gov.py state` wrote next to the artifacts |
 | ADR stream | `{{ factory.paths.decisions }}/{{ mod }}/` — every ADR of v{{ version }} |
+| platform findings | the project registry's platform-findings category — every OPEN row, whoever found it (shared/REGISTRY-SCHEMA.md §4) |
 {% if previous_version -%}
 | baseline | v{{ previous_version }} current state (frozen) + `{{ factory.paths.module.change_manifest }}` of v{{ version }} |
 {% endif -%}
@@ -120,6 +121,14 @@ For every ADR of v{{ version }}: is the status right (ACCEPTED / BLOCKED /
 SUPERSEDED), does `traces` name the IDs actually affected, does the decision
 follow the cited best-practice source, and does any downstream artifact ignore
 it? A BLOCKED ADR forces ESCALATE.
+
+Then the platform findings: for every OPEN row this pass recorded, is it really
+outside this module (a module gap filed as a platform finding is an evasion), is
+the evidence enough for the owner to act on, and does it name who owns the fix?
+A row this pass *should* have recorded and did not is a finding of yours — a
+module-scoped worker saying "not mine to settle" into the void is the failure
+this category exists to stop. Recording one is never a reason to lower a score;
+not recording one is.
 
 ## 8. Output — exactly one JSON block, no prose outside it
 
