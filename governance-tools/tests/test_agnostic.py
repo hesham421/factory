@@ -884,7 +884,7 @@ def test_a_profile_that_declares_no_status_set_checks_only_the_shape(toy_codes):
 # ════════════════════════════════════════════════════════════════════════════
 
 TOY_WRITER_ARGS = {
-    "kind": "DBF", "declared_in": "db-script", "required_marker": "MANDATORY",
+    "kind": "DBF", "declared_in": "db-script", "required_marker": "stack.db.required_marker",
     "writer_kind": "API", "writer_in": "backend-execution-plan",
     "writer_labels": ["Intake", "Follow-up"],
     "exempt_names": "stack.db.naming.audit_fields",
@@ -899,6 +899,7 @@ def toy_writer(toy_analyzable):
     mod, art, an = toy_analyzable
     prof = CFG.profiles_dir() / "toy.yaml"
     pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["db"]["required_marker"] = "MANDATORY"
     pdata["stack"]["db"]["naming"] = {"audit_fields": ["loggedBy"], "pk_pattern": "{record}Ref"}
     prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
     doc = render.contracts_path(CFG)
@@ -1502,3 +1503,20 @@ def test_no_self_check_row_asserts_a_dimension_no_check_examines(toy):
                      "no BLOCKED ADR left unsurfaced", "tree routes before :id",
                      "no hard-coded message", "no enum models"):
             assert gone not in out, f"{sid}: an unfalsifiable self-check row survives — {gone!r}"
+
+
+def test_a_profile_that_states_no_required_marker_skips_the_writer_clause(toy_writer):
+    """The notation for "this column is required" is a PROJECT fact: the contract
+    set is shared across every profile, so a marker spelled there would be one
+    stack's notation imposed on all of them. Undeclared → the clause does not run."""
+    mod, art, an = toy_writer
+    col = CFG.make_id("DBF", mod, 1)
+    _write_art(mod, "db-script", _columns(mod, f"| {col} | visit_reason | MANDATORY |"))
+    _write_art(mod, "backend-execution-plan", _endpoint(mod, "Intake : nothing"))
+    assert len(_writer_findings(mod, an)) == 1
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["db"].pop("required_marker")
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    assert _writer_findings(mod, an) == []

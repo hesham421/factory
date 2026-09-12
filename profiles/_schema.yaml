@@ -81,6 +81,11 @@ stack:                                      # REQUIRED — every technology fact
                                              # to be inferred from whether `naming.flag_suffix` happened to be
                                              # declared: a semantic decision derived from an unrelated naming
                                              # key is the same defect one step further removed.
+    required_marker?: "str"                 # HOW this project's structural artifact says a column is
+                                             # REQUIRED (the notation its dialect uses). Read by
+                                             # analyze: required-writer, which then asks what writes it.
+                                             # A factory-level contract may not spell one stack's
+                                             # notation; a profile that declares none skips the clause.
     naming?: "{flag_suffix?: str, audit_fields?: list[str], pk_pattern?: str, sequence_pattern?: str}"
     syntax_map?: "map[str, map[str, str]]"  # type → dialect → syntax ; the rows `identity`, `sequence`
                                              # and `pk` are read by the pk_generation rule above

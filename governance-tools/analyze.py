@@ -1047,7 +1047,15 @@ def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     if src is None or plan is None:
         return []
     kind, mod = c["kind"], ctx.mod
-    marker_rx = re.compile(r"(?<![A-Za-z])" + re.escape(c["required_marker"]) + r"(?![A-Za-z])", re.I)
+    # HOW the structural artifact says "required" is a project fact, not a factory
+    # one: the contract set is shared across every profile, and a marker spelled
+    # here would be one stack's notation imposed on all of them. An address that
+    # resolves to nothing means this profile states no such marker (C5) and the
+    # clause simply does not run.
+    marker = CFG.profile.get(c["required_marker"])
+    if not marker:
+        return []
+    marker_rx = re.compile(r"(?<![A-Za-z])" + re.escape(marker) + r"(?![A-Za-z])", re.I)
     tokens = list(c.get("exclusions") or [])
     excl_rx = re.compile("|".join(re.escape(x) for x in tokens), re.I) if tokens else None
     exempt = {_squash(x) for x in (CFG.profile.get(c["exempt_names"]) or [])} if c.get("exempt_names") else set()
@@ -1077,7 +1085,7 @@ def _c_required_writer(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         seen += 1
         if rid not in written:
             out.append(Finding(sev, "", "required-writer",
-                               f"`{rid}` is {c['required_marker']} in `{c['declared_in']}` but no "
+                               f"`{rid}` is {marker} in `{c['declared_in']}` but no "
                                f"`{c['writer_kind']}` block names it on a `{'`/`'.join(labels)}` line — "
                                f"nothing in this module writes it, so every operation that depends on it "
                                f"fails on a fresh deployment. Either an endpoint writes it, or the row "
