@@ -95,6 +95,12 @@ stack:                                      # REQUIRED — every technology fact
       error_code_format?: "str"             # SHAPE of a runtime error code, as a template over the tokens
                                              # {MOD} {http} {SLUG} {seq} — the plan states this format and
                                              # every catalog code it emits must match it (analyze: code-format)
+      http_statuses?: "list[int]"           # the statuses the PLATFORM can actually emit. `error_code_format`
+                                             # declares a code's SHAPE; this declares the values the {http}
+                                             # slot may hold. Without it a catalog row could name a status
+                                             # the platform's own enum has no member for — shaped perfectly,
+                                             # raisable by nothing. Optional (C5): a profile that declares
+                                             # none has only the shape checked.
     layers?: "list[str]"                    # controller, service, mapper, domain, repository …
   frontend:
     framework: "str"

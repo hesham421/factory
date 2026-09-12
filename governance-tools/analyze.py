@@ -597,16 +597,26 @@ def _c_value_agreement(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
+_HTTP_TOKEN = "{http}"
+
+
 def _fmt_regex(fmt: str, mod: str) -> re.Pattern:
     """A declared code format → the regex its instances must match. Tokens:
     {MOD} module code · {http} HTTP status · {SLUG} SCREAMING-KEBAB · {seq} sequence;
-    `[ … ]` wraps an optional half."""
+    `[ … ]` wraps an optional half.
+
+    The FIRST `{http}` slot is captured by name, so the caller can ask the second
+    question the shape alone cannot answer: is that status one the platform can
+    actually produce? A code shaped perfectly and raised by nothing is a catalog
+    row no code path can ever reach."""
     w = int(CFG.ids["seq_width"])
-    tokens = {"{MOD}": re.escape(mod), "{http}": r"[1-5]\d{2}", "{SLUG}": r"[A-Z0-9]+(?:-[A-Z0-9]+)*", "{seq}": rf"\d{{{w}}}"}
-    parts, i = [], 0
+    tokens = {"{MOD}": re.escape(mod), _HTTP_TOKEN: r"[1-5]\d{2}", "{SLUG}": r"[A-Z0-9]+(?:-[A-Z0-9]+)*", "{seq}": rf"\d{{{w}}}"}
+    parts, i, named = [], 0, False
     while i < len(fmt):
         for tok, rx in tokens.items():
             if fmt.startswith(tok, i):
+                if tok == _HTTP_TOKEN and not named:
+                    rx, named = f"(?P<http>{rx})", True
                 parts.append(rx)
                 i += len(tok)
                 break
@@ -626,6 +636,12 @@ def _c_code_format(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     fmt = CFG.profile.get(c["format"])
     if not fmt:
         return []
+    # The set of statuses the platform can EMIT — an optional convention (C5): a
+    # profile that declares none has the membership half skipped, and only the
+    # shape is checked. `FIN-503` matched the declared shape perfectly and was
+    # struck during implementation, because the platform's status enum has no 503
+    # and no code path could ever have raised that catalog row.
+    statuses = {str(s) for s in (CFG.profile.get(c["statuses"]) or [])} if c.get("statuses") else set()
     out, mod = [], ctx.mod
     declared = {fmt, fmt.replace("{MOD}", mod)}
     rx = _fmt_regex(fmt, mod)
@@ -649,11 +665,20 @@ def _c_code_format(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
                                        f"a format string maintained as free text drifts from the values it describes", name, n))
             for m in value_rx.finditer(ln):
                 val = m.group(0)
-                if idrx.fullmatch(val) or not rx.match(val):
-                    if idrx.fullmatch(val):
-                        continue
+                if idrx.fullmatch(val):
+                    continue
+                hit = rx.match(val)
+                if not hit:
                     out.append(Finding(sev, "", "code-format",
                                        f"`{val}` is not an instance of the declared format `{fmt}`", name, n))
+                    continue
+                status = (hit.groupdict() or {}).get("http")
+                if statuses and status and status not in statuses:
+                    out.append(Finding(sev, "", "code-format",
+                                       f"`{val}` carries status {status}, which `{c['statuses']}` "
+                                       f"does not declare ({', '.join(sorted(statuses))}) — the platform "
+                                       f"cannot emit it, so no code path can ever raise this row",
+                                       name, n))
         if not stated and c.get("require_declaration", True):
             out.append(Finding(sev_at_rank(2), "", "code-format",
                                f"does not state the declared code format `{fmt}` (`{c['format']}`)", name))

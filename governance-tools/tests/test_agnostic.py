@@ -805,3 +805,68 @@ def test_a_profile_with_no_declared_totals_is_served_unchanged(toy_analyzable):
     mod, art, an = toy_analyzable
     assert CFG.profile.get("declared_totals") is None
     assert an._c_count_agrees(an.Ctx(mod, 1), {"spec": "declared_totals"}, "WARN") == []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G2 — a declared HTTP status must be one the platform can produce
+# ----------------------------------------------------------------------------
+# `error_code_format` declares a code's SHAPE, and `FIN-503` obeyed it perfectly
+# on a platform whose status enum has no 503. The toy declares a status set of
+# its own and its own code format; the checker knows neither.
+# ════════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def toy_codes(toy_analyzable):
+    import render
+    mod, art, an = toy_analyzable
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["backend"]["api"]["error_code_format"] = "{MOD}-{http}[-{SLUG}]"
+    pdata["stack"]["backend"]["api"]["http_statuses"] = [200, 404, 418]
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    doc = render.contracts_path(CFG)
+    spec = yaml.safe_load(doc.read_text(encoding="utf-8").split("---")[1])
+    spec["contracts"][0]["clauses"].append(
+        {"id": "T1.6", "check": "code-format",
+         "args": {"artifact": ["prd"], "format": "stack.backend.api.error_code_format",
+                  "statuses": "stack.backend.api.http_statuses", "require_declaration": False},
+         "severity": "WARN"})
+    doc.write_text("---\n" + yaml.safe_dump(spec, sort_keys=False) + "---\n\n# toy contracts\n", encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    return mod, art, an
+
+
+def _code_findings(mod, an):
+    import state as st
+    st.build_state(mod, 1)
+    return [f for f in an.run(mod, 1, scope="all", write=False).findings if f.check == "code-format"]
+
+
+def test_toy_status_outside_the_declared_set_is_a_finding(toy_codes):
+    mod, art, an = toy_codes
+    art.write_text(f"# toy prd\n\n| {mod}-503-NO-SLOT | the clinic is busy |\n", encoding="utf-8")
+    fs = _code_findings(mod, an)
+    assert len(fs) == 1 and "503" in fs[0].message and "cannot emit it" in fs[0].message, [str(f) for f in fs]
+    assert "418" in fs[0].message, "the message names the declared set, which is the toy's own"
+
+
+def test_toy_status_inside_the_declared_set_passes(toy_codes):
+    mod, art, an = toy_codes
+    art.write_text(f"# toy prd\n\n| {mod}-418-NO-COFFEE | the clinic is a teapot |\n", encoding="utf-8")
+    assert _code_findings(mod, an) == []
+
+
+def test_a_profile_that_declares_no_status_set_checks_only_the_shape(toy_codes):
+    """The membership half is an optional convention (C5) — remove the set and a
+    row the shape accepts passes again, with no clause change."""
+    mod, art, an = toy_codes
+    prof = CFG.profiles_dir() / "toy.yaml"
+    pdata = yaml.safe_load(prof.read_text(encoding="utf-8"))
+    pdata["stack"]["backend"]["api"].pop("http_statuses")
+    prof.write_text(yaml.safe_dump(pdata, sort_keys=False), encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    art.write_text(f"# toy prd\n\n| {mod}-503-NO-SLOT | the clinic is busy |\n", encoding="utf-8")
+    assert _code_findings(mod, an) == []
+    # …and the shape half still holds
+    art.write_text(f"# toy prd\n\n| {mod}-9 | not a status at all |\n", encoding="utf-8")
+    assert [f for f in _code_findings(mod, an) if "not an instance" in f.message]

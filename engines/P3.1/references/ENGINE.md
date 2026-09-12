@@ -430,6 +430,14 @@ is fine; a second table is a duplicate). Envelope: `{{ api.error_envelope | defa
 ERROR CATALOG — {{ MOD }} v{{ ver }}
 code (runtime value per envelope) │ RULE-* (or PLATFORM-STD + ADR) │ API-* │ HTTP │ trigger │ {% for l in langs.all %}message-{{ l | upper }}{% if not loop.last %} │ {% endif %}{% endfor %}
 ```
+- The `HTTP` cell is **not free text**: {% if api.http_statuses %}it holds one of
+  `{{ api.http_statuses | join('`, `') }}` (profile.stack.backend.api.http_statuses) — the statuses this
+  platform can actually emit. A row on any other status is raisable by no code path in the
+  platform, however well-formed its code string is; `gov.py analyze` → `code-format` refuses it.
+  If a row genuinely needs a status outside the set, that is a platform change and an ADR, never a
+  catalog row written anyway{% else %}`profile.stack.backend.api.http_statuses` declares no status set for this
+  platform, so only the code's shape is checked — state the status the platform really emits and
+  do not assume one the runtime has no member for{% endif %}.
 - Every RULE that produces a user-facing message has a row; message text is copied
   character-perfect from the SRS in every language ({{ langs.all | join(', ') }}); a missing
   language → `PENDING ADR-<id>`, never invented.
@@ -463,7 +471,7 @@ a prose pass reads past:
 | Mechanical check | What it resolves |
 |---|---|
 | `value-agreement` | the physical column a `DBF-*` names in this plan is character-identical to the one the db-script declares for it (registry row, `CREATE TABLE`, `COMMENT ON`) |
-| `code-format` | every Error Catalog code is an instance of the format R1 declares{% if api.error_code_format %} (`{{ api.error_code_format }}`){% endif %} |
+| `code-format` | every Error Catalog code is an instance of the format R1 declares{% if api.error_code_format %} (`{{ api.error_code_format }}`){% endif %}{% if api.http_statuses %}, and its HTTP status is one the platform can emit{% endif %} |
 | `data-source` | every `RULE-*` this plan turns into a runtime check has a declared source for the data the check *reads* — or an explicit deferral |
 | `xref-resolve` | every id of another module cited here is defined in that module's own registry |
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
@@ -487,7 +495,7 @@ TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the P
 BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
 MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`)
 QRC (§5)          every API with a DB operation has a QR │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
-API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
+API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
 RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
 CROSS-MODULE      every XM from the db-script placed exactly once │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every REST row names a target-module `API-*` id that the target module's registry actually defines
 SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix{% else %}n/a — no security model in profile{% endif %}

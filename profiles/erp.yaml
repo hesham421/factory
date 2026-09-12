@@ -121,6 +121,13 @@ stack:
                                              # status, {SLUG} = SCREAMING-KEBAB, [ ] = optional half.
                                              # {SLUG} = SCREAMING-KEBAB. The plan states this format once
                                              # and every catalog code must match it (analyze: code-format).
+      http_statuses: [200, 201, 204, 400, 401, 403, 404, 409, 422, 500]
+                                             # the statuses this platform can emit. A catalog row whose
+                                             # {http} is outside this set is raisable by no code path: the
+                                             # shipped FIN catalog carried a 503 the platform's status enum
+                                             # has no member for, and it was struck during implementation.
+                                             # Correct THIS list when the platform's enum changes — never
+                                             # the rows that were checked against it.
     layers: [controller, service, mapper, domain, repository]
   frontend:
     framework: react-ts-vite
