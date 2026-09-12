@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 **/modules/*/**/receipts/    # modules/ nests under the active profile's own folder (factory.yaml paths.modules)
 *.orig
+
+# macOS Finder metadata — never content
+.DS_Store

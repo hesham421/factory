@@ -256,6 +256,8 @@ class FactoryConfig:
     @property
     def inputs(self) -> dict:       return self.data.get("inputs", {})
     @property
+    def publications(self) -> dict: return self.data.get("publications", {})
+    @property
     def commands(self) -> list[dict]: return self.data.get("commands", [])
 
     # profile -----------------------------------------------------------------
@@ -443,6 +445,12 @@ class FactoryConfig:
 
     def decisions_dir(self, mod: str) -> Path:
         return self.dir("decisions") / mod.upper()
+
+    def repo_receives(self, repo: str, publication: str) -> Path | None:
+        """Where `repo` keeps its own copy of a factory publication — INSIDE that
+        checkout, always. None when this repo does not receive that publication."""
+        rel = self.repos[repo].get("receives", {}).get(publication)
+        return (self.repo_checkout(repo) / rel) if rel else None
 
     def repo_checkout(self, repo: str) -> Path:
         r = self.repos[repo]

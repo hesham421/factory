@@ -17,6 +17,7 @@ and the active profile (`config.CFG`).
   state -m MOD [-v N]
   version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
   deliver --track T -m MOD -v N [--push] · status -m MOD
+  publish [name] [--dry-run]                                           # factory publications → into each consumer repo
   structure/archive/split (toolkit) · render · lint [--profile ID]
   new-domain ID [--yes|--force] [--module CODE]   # resets stale project content, then starts ID
 
@@ -47,7 +48,7 @@ import toolkit.structure as tk_struct         # noqa: E402
 # function, not the submodule, so `tk_archive.archive(...)` would raise
 # AttributeError (see the caution in toolkit/__init__.py).
 from toolkit.archive import archive as tk_archive   # noqa: E402
-from toolkit.common import blocks, counts_line, now_iso, rel, write_json   # noqa: E402
+from toolkit.common import blocks, counts_line, now_iso, read_json, rel, write_json   # noqa: E402
 
 OK, BLOCKED, AWAITING = 0, 1, 2
 
@@ -508,6 +509,82 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
     return OK
 
 
+def _publication_payload(name: str, existing: list[dict]) -> dict:
+    """The published module registry, derived from the ONE authority this factory
+    recognises for the module set and its versions: the filesystem (versioning.authority).
+
+    Two rules keep a derived file from destroying what it did not author:
+      * `preserve` — fields the factory has no opinion about (a human-written description,
+        the moment a module was first registered) are carried over from the copy already
+        on disk instead of being regenerated. A rewrite that silently blanked descriptions
+        would be indistinguishable from an intentional edit in the consumer's diff.
+      * `additive` — a module that exists in a consumer's copy but not in this factory
+        (registered by an earlier toolchain, or built before this factory existed) is KEPT
+        exactly as it stands. Deriving is not a licence to forget.
+    """
+    spec = CFG.publications[name]
+    preserve = spec.get("preserve", [])
+    key = "modules"
+    merged: dict = {}
+    for prior in existing:                      # consumer copies first — oldest facts win for `preserve`
+        for code, row in (prior.get(key) or {}).items():
+            merged.setdefault(code, {}).update(row)
+    for mod in CFG.modules():
+        row = merged.setdefault(mod, {})
+        man = _module_manifest(mod)
+        # `preserve` yields to the factory only where the factory actually states the field:
+        # a manifest that carries a description is an authored fact, not a regenerated blank.
+        keep = {f: row[f] for f in preserve if f in row and not man.get(f)}
+        versions = CFG.module_versions(mod)
+        row.update({"code": mod, "description": man.get("description", ""),
+                    "registered_at": man.get("created_at") or now_iso(),
+                    "versions": versions, "current_version": (max(versions) if versions else None)})
+        row.update(keep)
+    return {key: {c: merged[c] for c in sorted(merged, key=lambda c: merged[c].get("registered_at") or "")}}
+
+
+def _module_manifest(mod: str) -> dict:
+    """The module's own manifest — the factory-side place where a module states the
+    facts a consumer's registry copy shows (when it was registered, what it is)."""
+    return read_json(CFG.module_root(mod) / CFG.paths["module"]["manifest_file"], {}) or {}
+
+
+def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
+    """Write every factory publication INTO each consumer repo that declares it.
+
+    A consumer reads only paths inside its own checkout — no file above a repo root,
+    no reach into a sibling repo's tree. The factory is the single writer; the consumer
+    copies are read-only mirrors, byte-identical by construction rather than by hand.
+    """
+    names = [name] if name else list(CFG.publications)
+    rc = OK
+    for pub in names:
+        targets = {r: CFG.repo_receives(r, pub) for r in CFG.repos}
+        targets = {r: p for r, p in targets.items() if p}
+        if not targets:
+            _say(f"{pub}: no repo declares it under `receives` — nothing to publish")
+            continue
+        live = {r: p for r, p in targets.items() if CFG.repo_checkout(r).exists()}
+        for r in targets.keys() - live.keys():
+            _say(f"{pub}: SKIPPED {r} — checkout not found at {CFG.repo_checkout(r)} "
+                 f"(set ${CFG.repos[r]['checkout_env']})")
+            rc = BLOCKED
+        payload = _publication_payload(pub, [read_json(p, {}) or {} for p in live.values()])
+        body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+        for r, path in live.items():
+            before = path.read_text(encoding="utf-8") if path.exists() else None
+            if before == body:
+                _say(f"{pub} → {r}: unchanged")
+                continue
+            if dry_run:
+                _say(f"{pub} → {r}: WOULD WRITE {path} ({'new' if before is None else 'changed'})")
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding="utf-8")
+            _say(f"{pub} → {r}: wrote {path} ({'new' if before is None else 'updated'})")
+    return rc
+
+
 def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
     repo = CFG.repos[track]
     checkout = CFG.repo_checkout(track)
@@ -548,6 +625,11 @@ def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
     if push:
         _git("push", "-u", "origin", branch, cwd=checkout)
     _say(f"delivered {delivered} + {state_file.name} to {checkout.name}:{branch}")
+    # A delivery that adds or re-versions a module makes every consumer's copy of the
+    # published registry stale the moment it lands. Refreshing it here is what keeps
+    # "written by hand, keep the two byte-identical" from being a standing instruction
+    # to a human who will eventually forget.
+    cmd_publish()
     dangling = _dangling(index, dest, checkout)
     if dangling:
         _say("WARNING: the delivered index names paths that do not exist in the consumer repo:")
@@ -1112,6 +1194,8 @@ def main(argv: list[str] | None = None) -> int:
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
+    p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
+    p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
     p = mv(sub.add_parser("verify-delivery")); p.add_argument("--track", required=True)
     mv(sub.add_parser("status"), version=False)
@@ -1168,6 +1252,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
     if a.cmd == "deliver":
         return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
+    if a.cmd == "publish":
+        return cmd_publish(a.name, a.dry_run)
     if a.cmd == "verify-split":
         return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
     if a.cmd == "verify-delivery":

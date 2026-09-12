@@ -301,12 +301,28 @@ repos:
     deliver_to: "governance/modules/{MOD}"
     publishes:
       api-docs: "governance/api-docs/api-docs-{mod}.md"
+    receives:
+      modules-registry: "governance/modules-registry.json"
   frontend:
     url: ""
     checkout_env: GOV_FRONTEND_CHECKOUT
     checkout_default: "../frontend"
     deliver_to: "governance/modules/{MOD}"
     publishes: {}
+    receives:
+      modules-registry: "governance/modules-registry.json"
+
+# ── Cross-repo publications — written BY the factory INTO each consumer repo ─
+# A consumer repo must be self-sufficient: everything it reads lives inside its
+# own checkout, never at a path above it. `repos.<name>.receives.<publication>`
+# is where that repo keeps its copy; the content is identical in every repo and
+# is derived here, so no consumer hand-maintains it and no consumer reaches into
+# another repo's tree to read it.
+publications:
+  modules-registry:
+    derived_from: filesystem       # same authority as versioning.authority
+    preserve: [description, registered_at]   # fields the factory does not own: carried over, never regenerated
+    additive: true                 # a module present in a consumer's copy but unknown here is KEPT, never dropped
 
 delivery:
   items: [packages, execution-state]
