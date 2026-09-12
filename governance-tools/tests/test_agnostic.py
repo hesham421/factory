@@ -1318,3 +1318,25 @@ def test_toy_registered_row_the_plan_never_places_is_still_a_finding(toy_xm):
     art.write_text("# toy prd\n\nnothing placed here\n", encoding="utf-8")
     fs = _xm_findings(mod, an, "T1.11")
     assert len(fs) == 1 and declared in fs[0].message, [str(f) for f in fs]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G10 — concurrency is asked once, per mutating endpoint
+# ----------------------------------------------------------------------------
+# Not mechanically checkable, and no check pretends to verify it: the template
+# asks the question and the reviewer has a row for it.
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_the_endpoint_and_query_templates_ask_the_concurrency_question(toy):
+    out = _exec_brief(toy, "P3.1")
+    assert "Concurrency  :" in out, "the endpoint block does not ask about two simultaneous requests"
+    assert "Locking      :" in out, "the query catalog entry does not ask what stops a repeated read"
+    assert "both validate, both pass, both write" in out, "the template accepts 'validated first' as an answer"
+
+
+def test_the_reviewer_carries_a_concurrency_row(toy):
+    from conftest import REAL_ROOT
+    text = (REAL_ROOT / CFG.paths["reviewers"] / "pass-review.md").read_text(encoding="utf-8")
+    row = next((l for l in text.splitlines() if l.startswith("| concurrency:")), None)
+    assert row and "two simultaneous requests" in row, "the gate brief has no concurrency row"
+    assert "nothing mechanical can check this" in row, "the row must say it is the reviewer's, not a check's"

@@ -97,6 +97,7 @@ fewer) and report PASS / FAIL(id, why):
 | change manifest: ADDED are new, MODIFIED exist in v{{ previous_version }}, REMOVED only if BREAKING, UNCHANGED listed | C12 |
 {% endif -%}
 | cross-module: every XM has a state and, if DEFERRED, a workaround + unblock condition; no OPEN resolution event unacknowledged | XM-PROTOCOL.md §4–5 |
+| concurrency: every operation that allocates a unique value or decides on a value it then writes says what stops two simultaneous requests both succeeding — a named guard, not "validated first" (nothing mechanical can check this; it is yours) | engine template (the endpoint block and the query catalog) |
 {% if pass_cfg.track == 'frontend' -%}
 | every API the plan cites exists in the fetched api-docs; every UXD and SCR is referenced by a plan block | C8, C9 |
 {% endif %}

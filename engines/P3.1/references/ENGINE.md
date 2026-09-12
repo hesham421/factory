@@ -246,11 +246,21 @@ Intent       : <what business question this answers / what it must return or cha
 Logical spec : SELECT … FROM <exact table> [JOIN <table> ON …] WHERE <conditions from RULE-*> [ORDER BY …] [page/size]
 Join         : NONE | required — ADR-<id> (why)
 Transaction  : READ_ONLY (reads) | READ_WRITE (writes) | REQUIRES_NEW — ADR-<id> if non-default
+Locking      : NONE | <the read that must not be repeatable>: a query whose result is decided on
+               and then written back says here what stops a second caller deciding on the same
+               result. A read-then-write with no answer on this line is a race, written down
 Pagination   : YES ({{ api.paging | default('per profile') }}) | NO
 Filters      : <field: EXACT | LIKE | DATE_RANGE | SET>
 Result shape : full entity | projection <fields> | count
 Null handling: <per optional field>
 ```
+
+Two simultaneous requests are the case a specification forgets: the only occurrence of the word
+in the whole factory used to be inside the cross-module contract, so the endpoint block and the
+catalog entry asked nothing and two races shipped — a unique document number allocated from a
+read-then-write, and a guard both parallel requests passed. This is **not** mechanically
+checkable and no check pretends to verify it: the question is asked here, and scored at the gate
+(`reviewers/pass-review.md`).
 
 Standard operation defaults (apply unless a QR entry overrides them):
 
@@ -369,6 +379,12 @@ Validations  : RULE-* full text (statement, trigger, message per language) — e
 Errors       : catalog rows this endpoint can raise (code, HTTP, RULE-*)
 Orchestration: load → validate (RULE-*) → integrate (XM-*) → persist (QR-*, table, generation object)   — WHAT in sequence, layer placement per R1; every column this endpoint writes that the request does not carry (a flag it flips, a status it advances) names its `DBF-*` here
 Repository   : QR-* · operation · join (NONE | ADR) · transaction
+Concurrency  : NONE — this endpoint neither allocates a unique value nor reads-then-writes
+               | <the guard, named>: what two simultaneous requests must not both be allowed to
+               do, and what makes that impossible (a unique constraint, a locking read, an
+               atomic allocation). Required for every endpoint that allocates a unique value or
+               decides on a value it then writes. "Validated first" is not an answer: two
+               requests both validate, both pass, both write.
 Security     : screen · permission name{% if sec %} (`{{ sec.permission_pattern }}`){% endif %} — enforced before processing
 Localization : every message in {{ langs.all | join(' + ') }}; every name field per language
 <!-- API:API-{{ MOD }}-<seq>:END -->
