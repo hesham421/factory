@@ -405,6 +405,7 @@ commands:
   - {id: reanalyze,     runs: "analyze --all-modules", args: "[--scope all|stage:ID|pass:N|gate:ID]"}   # sweep after a rules change
   - {id: gate,          runs: "gate",                   args: "<1|2> MOD --version N [--model …] [--effort …]"}
   - {id: micro-feature, runs: "version --new + run-pass 1 + run-pass 2 (delta)", args: "MOD \"<free text>\""}
+  - {id: verify-split,  runs: "verify-split",          args: "MOD --track T [--plan P] [--version N]"}   # re-run the split digest compare on demand
   - {id: verify-delivery, runs: "verify-delivery",     args: "MOD --track T [--version N]"}   # resolution checks IN the consumer repo
   - {id: link-repos,    runs: "edit factory.yaml repos", args: ""}
   - {id: new-domain,    runs: "new-domain",             args: "ID"}

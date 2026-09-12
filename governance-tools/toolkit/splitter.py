@@ -178,7 +178,13 @@ def _package_blocks(container: Path, track: str, plan: str) -> dict[tuple[str, s
 
 def verify(mod: str, track: str, plan: str, version: int | None = None) -> dict:
     """Digest-compare every atom and every split unit of the source plan with
-    its copy inside the package files. Pure read; returns the verification dict."""
+    its copy inside the package files. Pure read; returns the verification dict.
+
+    Re-runnable on purpose. This comparison used to happen ONCE, at split time,
+    and every hand edit to a package after that drifted silently — the packages
+    the implementer reads stopped being the plan the gate approved and nothing
+    said so. `gov.py verify-split` runs it on demand, and `gov.py
+    verify-delivery` runs it where a consumer reconciles."""
     mod = mod.upper()
     version = CFG.current_version(mod) if version is None else int(version)
     src = plan_path_or_none(mod, track, plan, version)

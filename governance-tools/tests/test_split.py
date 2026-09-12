@@ -199,3 +199,41 @@ def test_split_version_none_uses_current_version(factory_root, mod):
     assert rep.version == 2 and rep.ok
     assert CFG.packages_dir(mod, "backend", "exec", 2).is_relative_to(CFG.version_root(mod, 2))
     assert _md(CFG.packages_dir(mod, "backend", "exec", 1), recursive=True) == set()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G9 — the split verification is re-runnable
+# ----------------------------------------------------------------------------
+# The digest comparison already existed; it ran ONCE, at split time, so every
+# hand edit to a package after that drifted silently — and did.
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_verify_is_re_runnable_and_reports_post_split_drift(factory_root):
+    import gov
+    from config import CFG
+    from toolkit import ensure_structure, split, verify
+    import planfx as fx
+
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    ensure_structure(mod, 1)
+    track, plan = "backend", "exec"
+    CFG.plan_path(mod, track, plan, 1).write_text(fx.exec_plan(mod), encoding="utf-8")
+    assert split(mod, track, plan, 1).ok
+
+    # re-run, untouched: the same comparison, independent of any split
+    again = verify(mod, track, plan, 1)
+    assert again["ok"] and again["checked"] > 0
+    assert gov.cmd_verify_split(track, mod, 1, plan) == gov.OK
+
+    # a hand edit inside a package file after the split
+    container = CFG.packages_dir(mod, track, plan, 1)
+    edited = next(f for f in sorted(container.rglob("*.md"))
+                  if f.name != "index.md" and "<!-- " in f.read_text(encoding="utf-8"))
+    lines = edited.read_text(encoding="utf-8").splitlines()
+    start = max(i for i, l in enumerate(lines) if ":START" in l)      # inside the block's own content
+    lines.insert(start + 1, "an edit nobody recorded")
+    edited.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    drifted = verify(mod, track, plan, 1)
+    assert not drifted["ok"] and drifted["mismatched"], drifted
+    assert gov.cmd_verify_split(track, mod, 1, plan) == gov.BLOCKED

@@ -677,6 +677,43 @@ def _execution_state(track: str, mod: str, version: int, delivered: list[str], i
     }
 
 
+def cmd_verify_split(track: str, mod: str, version: int, plan: str | None) -> int:
+    """Re-run the split verification, independently of a split.
+
+    The digest comparison between a plan's blocks and their split copies already
+    existed — it just ran ONCE, at split time. Every hand edit after that drifted
+    silently, and did: the packages the implementer reads stopped being the plan
+    the gate approved, and nothing said so. This runs the same comparison, on
+    demand, over whatever is on disk now. No new mechanism, no new check."""
+    plans = [plan] if plan else [pl for pl in CFG.tracks[track]["packages"] if pl in CFG.profile.plans(track)]
+    if not plans:
+        _say(f"BLOCKED: track {track} declares no plan that the active profile also declares.")
+        return BLOCKED
+    rc, checked_any = OK, False
+    for pl in plans:
+        v = tk_split.verify(mod, track, pl, version)
+        if v.get("missing") == ["source plan or package container not found"]:
+            _say(f"verify-split {track}/{pl}: skipped — no plan or no package container yet")
+            if plan:
+                rc = BLOCKED
+            continue
+        checked_any = True
+        for m in v.get("missing", []):
+            _say("  MISSING   ", m)
+        for m in v.get("mismatched", []):
+            # the whole point: the package copy no longer digests to the plan block
+            _say("  DRIFTED   ", m, "— the package no longer matches the plan it was split from")
+        _say(f"verify-split {track}/{pl} v{v['version']}: {v['checked']} block(s) checked, "
+             f"{len(v.get('missing', []))} missing, {len(v.get('mismatched', []))} drifted — "
+             f"{'OK' if v.get('ok') else 'BLOCKED'}")
+        if not v.get("ok"):
+            rc = BLOCKED
+    if not checked_any and not plan:
+        _say(f"BLOCKED: nothing verified for [{mod.upper()}] — no split output exists to compare against.")
+        rc = BLOCKED
+    return rc
+
+
 def cmd_verify_delivery(track: str, mod: str, version: int) -> int:
     """Re-run the resolution checks AGAINST THE DELIVERED TREE, in the consumer repo.
 
@@ -750,6 +787,18 @@ def cmd_verify_delivery(track: str, mod: str, version: int) -> int:
                     findings.append(f"{cl['id']} ({cl['check']}): the delivered tree consumes `{m.group(0)}` "
                                     f"but `{fmod}` is not delivered in {checkout.name} — the reference "
                                     f"resolves in the factory and nowhere the implementer can read it")
+    # the split comparison, re-run here: what a consumer reconciles against is the
+    # package tree, and the digest compare that proves it still matches the plan
+    # ran once, at split time. A hand edit since then drifts silently (G9).
+    for pl in (pl for pl in CFG.tracks[track]["packages"] if pl in CFG.profile.plans(track)):
+        v = tk_split.verify(mod, track, pl, version)
+        if v.get("missing") == ["source plan or package container not found"]:
+            continue
+        for m in v.get("mismatched", []):
+            findings.append(f"split/{pl}: `{m}` no longer matches the plan it was split from — "
+                            f"the packages delivered here and the plan the gate approved have diverged")
+        for m in v.get("missing", []):
+            findings.append(f"split/{pl}: {m}")
     for f in sorted(set(findings)):
         _say("  ", f)
     _say(f"verify-delivery {track}/{mod.upper()} v{version} @ {checkout.name}: "
@@ -1063,6 +1112,7 @@ def main(argv: list[str] | None = None) -> int:
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
+    p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
     p = mv(sub.add_parser("verify-delivery")); p.add_argument("--track", required=True)
     mv(sub.add_parser("status"), version=False)
     p = mv(sub.add_parser("structure")); p.add_argument("--dry-run", action="store_true")
@@ -1114,6 +1164,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
     if a.cmd == "deliver":
         return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
+    if a.cmd == "verify-split":
+        return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
     if a.cmd == "verify-delivery":
         return cmd_verify_delivery(a.track, a.module, _version(a.module, a.version))
     if a.cmd == "status":
