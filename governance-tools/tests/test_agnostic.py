@@ -1452,3 +1452,53 @@ def test_every_engine_brief_loads_the_shared_rules_that_carry_it(toy):
         if not (toy.root / "engines" / stage.id / "references" / "ENGINE.md").exists():
             continue
         assert "GOVERNANCE-CORE.md" in dp.render_engine(stage, mod, 1), stage.id
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G13 — every self-check row names the check that backs it
+# ----------------------------------------------------------------------------
+# A row nothing can falsify manufactures confidence: four rows of the shipped
+# block were false and the verdict beneath them said PASSED.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _self_check_rows(brief: str, block_token: str) -> list[str]:
+    """The rows of the rendered self-check block: the fenced section headed by the
+    profile's own block token, minus its header and its verdict line."""
+    lines = brief.splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith(block_token + " —"))
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("```"))
+    return [l for l in lines[start + 1:end] if l.strip() and not l.startswith("row ")]
+
+
+def test_every_self_check_row_names_a_check_that_analyze_implements(toy):
+    """The decisive one. Every row of every rendered self-check block names a check
+    from `analyze.CHECKS`, or is the explicitly-marked report row. A row backed by
+    nothing is not softened — it is not there."""
+    import analyze as an
+    import yaml as _y
+    prof = CFG.profiles_dir() / "toy.yaml"
+    data = _y.safe_load(prof.read_text(encoding="utf-8"))
+    data["self_check"] = dict(TOY_SELF_CHECK)
+    prof.write_text(_y.safe_dump(data, sort_keys=False), encoding="utf-8")
+    CFG.reload(profile_id="toy")
+    block, label = TOY_SELF_CHECK["block"], TOY_SELF_CHECK["verdict_label"]
+    for sid in (s.id for s in CFG.stages if s.track):
+        rows = _self_check_rows(_exec_brief(toy, sid), block)
+        assert rows, f"{sid}: no self-check rows rendered"
+        for row in rows:
+            if row.startswith(label):
+                continue
+            named = [c for c in an.CHECKS if c in row]
+            assert named or "(the report)" in row, f"{sid}: row backed by nothing — {row!r}"
+
+
+def test_no_self_check_row_asserts_a_dimension_no_check_examines(toy):
+    """The rows deleted in this round, by name: each described something real and
+    nothing could falsify any of them."""
+    for sid in (s.id for s in CFG.stages if s.track):
+        out = _exec_brief(toy, sid)
+        for gone in ("no placeholder table/column", 'no "see SRS"',
+                     "layers declared │ domain placement declared",
+                     "no BLOCKED ADR left unsurfaced", "tree routes before :id",
+                     "no hard-coded message", "no enum models"):
+            assert gone not in out, f"{sid}: an unfalsifiable self-check row survives — {gone!r}"

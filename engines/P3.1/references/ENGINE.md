@@ -563,6 +563,10 @@ a prose pass reads past:
 
 | Mechanical check | What it resolves |
 |---|---|
+| `traces` | every `PHASE`/`SUB`/atom block carries `traces=`, and every `API-*` traces to its `REQ-*` and its `DBF-*` |
+| `orphans` (REQ) | every `REQ-*` is covered by at least one `API-*` or `DBF-*` |
+| `registry-agree` | every `XM-*` the register declares is placed here, and every `XM-*` minted here is back-registered into it |
+| `forward-refs` | every column this stage cannot resolve at its own stage carries the proposed token, or a value the resolving artifact really defines |
 | `value-agreement` | the physical column a `DBF-*` names in this plan is character-identical to the one the db-script declares for it (registry row, `CREATE TABLE`, `COMMENT ON`) |
 | `code-format` | every Error Catalog code is an instance of the format R1 declares{% if api.error_code_format %} (`{{ api.error_code_format }}`){% endif %}{% if api.http_statuses %}, and its HTTP status is one the platform can emit{% endif %} |
 | `data-source` | every `RULE-*` this plan turns into a runtime check has a declared source for the data the check *reads* — or an explicit deferral |
@@ -577,8 +581,18 @@ a prose pass reads past:
 {% endif %}
 | `verdict-agrees` | the `{{ sc.verdict_label }}` line does not claim fewer findings than `analyze` produced for this plan |
 
-Write {{ sc.block }} so that a ✗ is **stated**, with the fix that was applied. When a row below
-cannot be confirmed from the inputs, that row is a finding, not a silent ✓.
+**Every row of {{ sc.block }} names the check that backs it, and there are no other rows.** The
+block used to assert traceability, binding, manifest integrity and coverage in prose that no
+check could falsify; four of those rows were false in a delivered module and the verdict beneath
+them read `{{ sc.pass_token }}`. A self-check row nothing can falsify is worse than no row — it
+manufactures confidence — so a row whose assertion no named check examines was **deleted**, not
+softened. Do not add one back: if a dimension matters and no check covers it, the fix is a clause
+in `shared/ARTIFACT-CONTRACTS.md`, not a sentence here.
+
+Each row's mark is therefore **the analyze report's result for that check**, copied, not an
+independent judgement: you do not adjudicate a row the machine already decided. Where the report
+says a clause examined nothing, that row is written `— examined nothing`, never ✓: no finding over
+an empty set is not a pass, and the COVERAGE row carries the report's own list.
 
 **Do not author the `{{ sc.verdict_label }}` line.** Write the label and leave the rest as it
 stands; the orchestrator overwrites it from the analyze report after the stage completes
@@ -589,17 +603,23 @@ so the count is no longer a thing a model is asked to be honest about.
 
 ```
 {{ sc.block }} — {{ MOD }} v{{ ver }}
-TRACEABILITY      every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index │ every block carries traces= │ every traces target exists upstream
-BINDING (§2A)     no placeholder table/column/key/generation object │ no "see SRS" │ every column cites a DBF AND spells the same column string the db-script declares for it │ PK generation named per `{{ pkgen }}` │ every message present in {{ langs.all | join(' + ') }} │ business code format explicit
-MANIFEST (§4)     only the manifest's columns │ every DBF of every bound table listed │ ⏸ rows have an XM │ every stated total equals its row count (`count-agrees`) │ every required column has an endpoint that writes it or a stated reason why not (`required-writer`)
-QRC (§5)          every API with a DB operation has a QR │ every QR is reached by ≥1 API (`orphans`) │ every QR carries the agent-reference warning │ no join for lookup labels │ exact generation object named
-API (R3)          every RULE in Validations has a catalog row │ every catalog code is an instance of the format R1 declares and carries a status the platform can emit (`code-format`) │ platform errors have RULE = PLATFORM-STD + ADR │ create/update exclude system fields │ business code in responses
-RULE INPUTS       every RULE enforced at runtime names where the data it READS comes from (an ENT/DBF, or an explicit deferral) — a rule whose input has no declaration surface is DEFERRED, never silently emitted
-CROSS-MODULE      every XM from the db-script placed exactly once │ every XM minted here back-registered (C7.5b) │ every DEFERRED has strategy + unblock │ inbound stubs use XM-INBOUND-STUB │ every row's interface is {% if conv.get('module_interface') %}`{{ conv.get('module_interface') }}`{% else %}the one mechanism the profile declares{% endif %} and names something the target module's own registry defines (`xref-resolve`)
-{% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it (`bootstrap-complete`)
-{% endif %}SECURITY (R7)     {% if sec %}every API serving a screen declares its permission │ every screen has a seed row in {{ sec.page_registry }} │ no permission outside the matrix │ every marked matrix cell names its API and its permission, and every declared entity operation resolves to an API (`operation-resolves`){% else %}n/a — no security model in profile{% endif %}
-CORE (R1)         layers declared │ domain placement declared │ error signalling declared │ type mapping declared
-DECISIONS         every non-obvious inference is an ADR in decisions/{{ MOD }}/ │ no BLOCKED ADR left unsurfaced
+row               backing check        assertion
+TRACEABILITY      traces               every PHASE/SUB/atom block carries traces=, and every API traces to its REQ and its DBF
+COVERED           orphans              every REQ is covered by ≥1 API or DBF
+BINDING (§2A)     value-agreement      every DBF names the same physical column here as the db-script declares for it
+MANIFEST (§4)     count-agrees         every total this plan states equals the rows it heads
+WRITERS           required-writer      every required column is written by an endpoint, or the row states why not
+QRC (§5)          orphans              every catalogued query is reached by ≥1 API
+API (R3)          code-format          every catalog code is an instance of the declared format{% if api.http_statuses %} and carries a status the platform can emit{% endif %}
+RULE INPUTS       data-source          every RULE enforced at runtime names where the data it READS comes from, or is deferred
+CROSS-MODULE      registry-agree       every registered XM is placed here, and every XM minted here is back-registered
+FOREIGN IDS       xref-resolve         every id of another module cited here is defined in that module's own registry
+CONTRACT DOC (R4) forward-refs         every forward-referencing column carries the proposed token or a value the resolving artifact defines
+{% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}bootstrap-complete   every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it
+{% endif %}SECURITY (R7)     operation-resolves   every declared entity operation resolves to an API, and every marked matrix cell names its API and its permission
+DECISIONS         refs-exist           every ADR this plan cites exists on disk in {{ factory.paths.decisions }}/{{ MOD }}/
+PATHS             paths-resolve        every path the generated manifest and execution state emit resolves to something that exists
+COVERAGE          (the report)         the clauses the analyze report lists as having examined nothing — verbatim, or `none`
 {{ sc.verdict_label }}            (written by the orchestrator from the analyze report — leave it alone)
 ```
 Coverage tables (ENT/DBF → phases → QR → XM; RULE → API → catalog code; XM → status → blocks

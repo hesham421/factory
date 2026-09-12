@@ -152,6 +152,7 @@ contracts:
       - {id: C9.10, check: no-questions,  args: {stage: P3.2},                                                               severity: CRITICAL}
       - {id: C9.11, check: ids-continue,  args: {stage: P3.2},                                                               severity: CRITICAL}
       - {id: C9.13, check: xref-surface,  args: {artifact: [frontend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
+      - {id: C9.14, check: languages,     args: {stage: P3.2},                                                        severity: MAJOR}
       - {id: C9.12, check: verdict-agrees, args: {artifact: [frontend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C10
     title: acceptance criteria → test generation (standalone)
@@ -206,7 +207,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
 | `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 23 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
-| `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 13 |
+| `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 14 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
@@ -351,7 +352,7 @@ these are mechanical clauses here and not a checklist line there.
 | Consumer | `gov.py split` / `deliver`; the pass-2 gate reads it first |
 | What crosses | `flow-diagram`, `ui-ux-spec` with `UXD` → `REQ`/`AC` and `SCR` → `REQ`/`UXD`; `frontend-execution-plan` whose phase blocks carry `traces` and cite only `API` IDs present in api-docs; `registry-exec-fe`. When `profile.conventions.composite_screen` is true a screen group is one `SCR` (scored via `profile.review.extra_checks`) |
 | What does not cross | fields, rules or permissions not in the SRS; endpoints not in api-docs; backend content; a UI implementation of any kind (a mockup is a design artifact, never a build) |
-| Clauses | C9.1 markers valid for `track: frontend`, `plan: exec` · C9.2 every `PHASE`/`SUB` block carries `traces` · C9.3 `UXD` → `REQ`/`AC` · C9.4 `SCR` → `REQ`/`UXD` · C9.5 every `API` cited by the plan is defined in api-docs · C9.6 every `UXD` is referenced by a plan block (this is where a UX decision closes) · C9.7 every `SCR` is referenced by a plan block · C9.8 plan ↔ registry-exec-fe agree · C9.9 only `stages[P3.2].owns_ids` defined · C9.10 no questions · C9.11 sequences continue |
+| Clauses | C9.1 markers valid for `track: frontend`, `plan: exec` · C9.2 every `PHASE`/`SUB` block carries `traces` · C9.3 `UXD` → `REQ`/`AC` · C9.4 `SCR` → `REQ`/`UXD` · C9.5 every `API` cited by the plan is defined in api-docs · C9.6 every `UXD` is referenced by a plan block (this is where a UX decision closes) · C9.7 every `SCR` is referenced by a plan block · C9.8 plan ↔ registry-exec-fe agree · C9.9 only `stages[P3.2].owns_ids` defined · C9.10 no questions · C9.11 sequences continue · C9.14 languages |
 | Violation | C9.1/C9.5/C9.9/C9.10/C9.11 CRITICAL; the rest MAJOR |
 
 ## C10 — acceptance criteria → test generation (standalone)

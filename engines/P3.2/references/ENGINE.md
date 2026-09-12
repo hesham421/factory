@@ -289,7 +289,7 @@ Cross-module : UXD-* cited for every foreign-data field (missing → ADR, never 
 
 **RF5 — Security (frontend half).**{% if sec %} Per `SCR-*`: navigation guard (no `{{ sec.gateway_action }}` → unauthorized redirect) and UI behaviour per action ({% for a in sec.actions %}no {{ a }} → its affordance hidden / read-only{% if not loop.last %}; {% endif %}{% endfor %}); forbidden responses shown as the localized catalog message. Permission names are the backend registry's — never redeclared.{% else %} No security model in the profile: write "no permission model — screens open per the SRS" and cite the REQs.{% endif %}
 
-**RF6 — Alignment.** The ALIGN-FE table (§4) as the alignment-role phase content (never
+**RF6 — Alignment.** The {{ sc.block }} table (§4) as the alignment-role phase content (never
 split); trailing content if the profile has no such phase.
 
 ### 3.3 Phase-by-phase
@@ -305,23 +305,33 @@ Every `SCR-*` in the ui-ux-spec has an F-block in **each** `sub_bearing` phase
 `SCR-*` that exists in the spec; every `UXD-*` in the spec is cited by an F-block. `gov.py
 analyze` checks this at the gate — a mismatch is MAJOR.
 
-## 4. ALIGN-FE self-check
+## 4. {{ sc.block }} self-check
 
-Against the plan itself, the api-docs and the SRS ceiling (cross-artifact = `gov.py analyze`):
+Against the plan itself, the api-docs and the SRS ceiling (cross-artifact = `gov.py analyze`).
+
+**Every row names the check that backs it, and there are no other rows.** The block used to
+assert screen coverage, validation, routing and security in prose no check could falsify, and a
+sibling plan shipped four such rows false under a verdict that read `{{ sc.pass_token }}`. A row
+nothing can falsify manufactures confidence and is worse than no row, so every unbacked row was
+**deleted** rather than softened — if a dimension matters and no check covers it, the fix is a
+clause in `shared/ARTIFACT-CONTRACTS.md`, not a sentence here. Each mark is the analyze report's
+result for that check, copied; a clause the report says examined nothing is written
+`— examined nothing`, never ✓.
+
 ```
-ALIGN-FE — {{ MOD }} v{{ ver }}
-SCREENS      every SRS screen entry ↔ one SCR │ every SCR has a block in each sub-bearing phase │ composite separation declared │ container pattern set for every entry screen
-API          every documented endpoint the module uses has an RF2 block │ no endpoint used that the api-docs lack │ every mutation declares invalidation │ page/size inside the cache key
-{% if conv.get('lookups') %}LOOKUPS      every lookup key has one shared hook │ no enum models │ lookup validators use runtime options
-{% endif -%}
-VALIDATION   every form RULE has an RF3 block citing a catalog code │ no hard-coded message │ no frontend-only rule
-ROUTES       every route guarded │ tree routes before :id │ pages use the facade │ naming matches the container pattern
-UXD          every UXD cited by an F-block │ no foreign-data field without a UXD
-SECURITY     {% if sec %}every SCR has an RF5 block │ every permission name exists in the backend registry{% else %}n/a{% endif %}
-LANGUAGES    labels and messages in {{ langs.all | join(' + ') }}
-TRACES       every PHASE/SUB carries traces= │ every target exists (REQ/AC/API/UXD/SCR)
-DECISIONS    every non-obvious choice is an ADR in decisions/{{ MOD }}/
-{{ sc.verdict_label }}       (written by the orchestrator from the analyze report — leave it alone)
+{{ sc.block }} — {{ MOD }} v{{ ver }}
+row           backing check   assertion
+SCREENS       orphans         every SCR is referenced by a plan block
+UXD           orphans         every UXD is cited by a plan block — this is where a UX decision closes
+TRACES        traces          every PHASE/SUB carries traces=, every UXD traces to its REQ/AC, every SCR to its REQ/UXD
+API           traces          every API this plan cites is defined in the fetched api-docs — never in the backend plan's contract draft
+FOREIGN       xref-surface    every reference to another module's surface resolves in that module's own artifacts
+REGISTRY      registry-agree  every UXD and SCR defined here is in the stage registry, and nothing else is
+LANGUAGES     languages       labels and messages in {{ langs.all | join(' + ') }}
+MARKERS       markers         the parser reports no structural or semantic error for this track and plan
+DECISIONS     refs-exist      every ADR this plan cites exists on disk in {{ factory.paths.decisions }}/{{ MOD }}/
+COVERAGE      (the report)    the clauses the analyze report lists as having examined nothing — verbatim, or `none`
+{{ sc.verdict_label }}    (written by the orchestrator from the analyze report — leave it alone)
 ```
 Operations coverage table (operation │ API │ SCR action │ route │ status) closes the section —
 a row with an empty route is a ✗.
@@ -334,7 +344,7 @@ ID RANGES     {% for x in st.owns_ids %}{{ x }}-{{ MOD }}-<first>..<last>{% if n
 SCREENS       SCR │ name │ container pattern │ owning ENT │ permissions
 UXD INDEX     UXD │ screen │ field │ owner module · API used
 API COVERAGE  documented endpoints used / unused (with ADR)
-ALIGN-FE      PASSED ✓ · findings fixed
+{{ sc.block }}      verdict as stamped · findings fixed
 ADRs          decisions/{{ MOD }}/ADR-{{ MOD }}-<seq> … (status)
 TRACEABILITY  REQ covered by ≥1 SCR/F-block: <n>/<total> · orphan REQ: <list — a gate blocker>
 ```
@@ -367,7 +377,7 @@ for the best-practice choice. No question is raised at this stage.
 
 | Owns (mints) | References (read-only) | Never touches |
 |---|---|---|
-| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; flow diagram; ui-ux-spec; mockup spec; F-blocks; ALIGN-FE; ADRs it raises | `REQ/AC/ENT/RULE` ({{ atoms.REQ.owner }}), `API` ({{ atoms.API.owner }} — shape from the api-docs), catalog codes, permission names, `US` ({{ atoms.US.owner }}) | `DBF/XM` ({{ atoms.DBF.owner }} — backend-only), `QR`, `TC` ({{ atoms.TC.owner }}), any code, any build |
+| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; flow diagram; ui-ux-spec; mockup spec; F-blocks; {{ sc.block }}; ADRs it raises | `REQ/AC/ENT/RULE` ({{ atoms.REQ.owner }}), `API` ({{ atoms.API.owner }} — shape from the api-docs), catalog codes, permission names, `US` ({{ atoms.US.owner }}) | `DBF/XM` ({{ atoms.DBF.owner }} — backend-only), `QR`, `TC` ({{ atoms.TC.owner }}), any code, any build |
 
 Hand-off (the orchestrator prints it): plan + registry split by the toolkit into
 `{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/`, delivered on
