@@ -37,6 +37,18 @@ Corollaries that used to be separate rules and now follow from this one:
   predecessor (the orchestrator refuses to build a brief whose inputs are
   missing from `_state/`).
 
+**A quotation carries its source.** Any text an artifact presents as the words of
+another artifact — a requirement, a rule statement, a message, a policy — is
+written with the ID it came from and the line or section it was read at. Text
+without that attribution is written as the stage's own paraphrase, never in
+quotation marks and never as "the SRS says". A generated artifact quoted text as
+one module's requirement that exists only in a *different* module's file, copied
+from a neighbour during generation; by the time anyone noticed, the artifact was
+immutable and the false attribution is permanent. The rule costs a citation and
+makes the next occurrence self-evident: a quotation whose source id is not this
+module's, or whose cited location does not hold that text, is visible to any
+reader at a glance, and an unattributed paraphrase claims nothing it cannot keep.
+
 ## 2. Vocabulary — the domain's ubiquitous language
 
 Every domain word comes from `profile.vocabulary` and nowhere else:

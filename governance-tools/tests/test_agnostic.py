@@ -1421,3 +1421,34 @@ def test_the_schema_says_a_module_scoped_stage_records_and_never_fixes(toy_categ
     doc = (CFG.dir("shared") / "REGISTRY-SCHEMA.md").read_text(encoding="utf-8")
     assert "records** a platform finding; it never fixes one" in doc
     assert "is **not** a module gap" in doc, "nothing stops it being read as a module gap"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# G12 — a quotation carries its source
+# ----------------------------------------------------------------------------
+# A standing rule, not a check: a generated artifact quoted text as one module's
+# requirement that exists only in another module's file, and by the time it was
+# found the artifact was immutable, so the false attribution is permanent.
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_the_shared_rules_require_a_quotation_to_carry_its_source(toy):
+    from conftest import REAL_ROOT
+    doc = (REAL_ROOT / CFG.paths["shared"] / "GOVERNANCE-CORE.md").read_text(encoding="utf-8")
+    assert "A quotation carries its source" in doc
+    assert "paraphrase" in doc, "the rule offers no alternative to quoting with a source"
+
+
+def test_every_engine_brief_loads_the_shared_rules_that_carry_it(toy):
+    """The rule is only binding where it is read: every engine brief loads the
+    core rules document, under the toy profile as under any other."""
+    import shutil
+    import dispatch as dp
+    from conftest import REAL_ROOT
+    for d in ("engines", "standalone"):
+        if not (toy.root / d).exists():
+            shutil.copytree(REAL_ROOT / d, toy.root / d)
+    mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
+    for stage in CFG.stages:          # the governed line: every artifact that can quote another
+        if not (toy.root / "engines" / stage.id / "references" / "ENGINE.md").exists():
+            continue
+        assert "GOVERNANCE-CORE.md" in dp.render_engine(stage, mod, 1), stage.id
