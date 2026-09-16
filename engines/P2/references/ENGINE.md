@@ -1,5 +1,4 @@
 {#- rendered at brief-build time: profile, factory, stage, mod, version -#}
-{%- set langs = profile.languages -%}
 {%- set conv = profile.conventions or {} -%}
 {%- set db = profile.stack.db -%}
 {%- set dialect = db.target_dialect -%}{#- REQUIRED: stated, not the list's first element -#}

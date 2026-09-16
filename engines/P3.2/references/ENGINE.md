@@ -18,7 +18,6 @@
 {%- set inputs_dir = factory.paths.module.inputs_dir -%}
 {%- set atoms = factory.ids.atoms -%}
 {%- set api_docs = factory.inputs['api-docs'].file.replace('{mod}', MOD | lower) -%}
-{%- set plan_art = st.produces | selectattr('plan', 'defined') | first -%}
 {%- set reg_art = st.produces | selectattr('registry', 'defined') | first -%}
 {%- set sub_phases = phases | selectattr('sub_bearing', 'defined') | selectattr('sub_bearing') | list -%}
 {%- set sc = profile.self_check | default({}) -%}
@@ -56,9 +55,6 @@ code lookup only).
 
 Questions are `{{ st.questions }}`. Ambiguity → `factory.yaml → ambiguity` (§7). No human
 approval sits inside this engine: the human decision is the `{{ st.next }}` gate.
-
-Mockups are a **design artifact** (a per-screen mockup spec, optionally one generated image)
-— never an implemented shell, never code, never a gate for anything.
 
 {% if ver | int > 1 -%}
 **Delta run (v{{ ver }}).** Baseline = `{{ state_dir }}/`; emit only ADDED / MODIFIED / REMOVED
@@ -120,24 +116,12 @@ One block per `SCR-*`, fields and permissions copied from the SRS (no additions,
 ```
 ## SCR-{{ MOD }}-<seq> — <name>                 traces=REQ-{{ MOD }}-<seq>,AC-{{ MOD }}-<seq>[,UXD-{{ MOD }}-<seq>]
 UI pattern        : <from the SRS screen entry — do not change>
-Container pattern : SIDE_DRAWER | FULL_PAGE | TREE_MASTER_DETAIL   (entry screens only — decided here, §A.4)
 Sub-views         : {% if conv.get('composite_screen') %}Search · Entry (· Detail · Wizard) under this ONE SCR{% else %}as the SRS declares{% endif %}
 Fields shown      : <every SRS field of the owning ENT — label per language ({{ langs.all | join('/') }}), read-only flags>
 Permissions       : <SRS matrix rows for this screen — reference only>{% if sec %} — names follow `{{ sec.permission_pattern }}`, gateway `{{ sec.gateway_action }}`{% endif %}
 Cross-module data : <field → UXD-{{ MOD }}-<seq> (owner module)> | none
 States            : empty · loading · error (generic — catalog codes are Part B's) · offline (if the SRS says so)
-Design intent     : <proposal, clearly marked PROPOSAL — never a rule>
-Mockup            : <optional — see §A.6>
 ```
-
-### A.4 Container pattern — decision order (stop at the first match)
-
-1. hierarchical parent–child data (trees) → `TREE_MASTER_DETAIL` (two-pane, tree + permanently visible form);
-2. header + repeating line items with a computed total (document-style) → `FULL_PAGE`;
-3. otherwise (bounded field count, no repeating rows) → `SIDE_DRAWER`.
-
-A screen that fits none is a signal to re-read the SRS field list, not to invent a fourth
-pattern. The choice is authoritative input to Part B's screens/routes role.
 
 ### A.5 Cross-module display dependencies — `UXD-*`
 
@@ -164,26 +148,18 @@ B4 every screen entry of the SRS has exactly one SCR-* block          → gap: b
 RESULT  reconciled <n> · reworked <n> (bounded to flagged blocks) · ADRs <list>
 ```
 
-### A.7 Mockup spec (optional design artifact)
-
-Per screen, a bounded brief: the A.3 block as the sole input, "render exactly these fields,
-pattern and states — nothing more, nothing less; anything that seems missing is flagged back,
-never added". Output = the spec (+ one generated image if the run produces one), verified
-against B1–B4 (every SRS field present, none extra, permission-gated actions represented,
-container pattern respected). It is never implemented, never a prerequisite for Part B.
-
 ## 3. Part B — frontend execution plan
 
 ### 3.0 Binding to the real API surface
 
-Before writing any phase, extract from `{{ inputs_dir }}/{{ api_docs }}` and bind:
+Before writing any phase, bind this plan to `{{ inputs_dir }}/{{ api_docs }}`. Record only
+what exists in neither source alone — the shapes stay where they are published:
 ```
-API SURFACE — {{ MOD }} v{{ ver }}   (source: {{ api_docs }} — the ONLY endpoint source)
-ENDPOINTS   API-{{ MOD }}-<seq> │ verb │ path │ request DTO (fields, types, required) │ response DTO │ paging ({{ api.get('paging') | default('as documented') }}) │ envelope ({{ api.get('envelope') | default('as documented') }})
-ERRORS      runtime code (per {{ api.get('error_envelope') | default('the documented envelope') }}) │ HTTP │ RULE-* │ message per language ({{ langs.all | join(', ') }})
-{% if conv.get('lookups') %}LOOKUPS     endpoint per lookup key — rule: {{ conv.get('lookups') }}
-{% endif -%}
-PERMISSIONS names the backend registry declares{% if sec %} (`{{ sec.permission_pattern }}`){% endif %}
+API SURFACE — {{ MOD }} v{{ ver }}   (shapes: {{ api_docs }} — cited by API-* id, never restated)
+BINDING     REQ-{{ MOD }}-<seq> → API-{{ MOD }}-<seq> — the binding only; verb, path, request/response
+            DTO, paging and envelope are read there, not copied here
+UNMAPPED    REQ needing an endpoint that has none · documented endpoint mapping to no REQ → ADR
+CODES       runtime error code → RULE-{{ MOD }}-<seq> — the link neither the api-docs nor the SRS carries
 ```
 Reconcile once against the SRS: every REQ that needs an endpoint has one (missing/renamed
 → ADR — naming diffs continue, a missing core operation is breaking); every documented
@@ -223,26 +199,18 @@ Phase table for `profile.tracks.{{ track }}.plans.exec` (plan order):
 ### 3.2 Content roles
 
 The profile names the phases; the engine supplies content **by role**, matched on the words
-in the phase display ("Models & Types", "Data Hooks", "Forms & Validators", "Screens & Routes",
+in the phase display ("Models & Types", "Data Hooks", "Screens & Routes",
 security, alignment). A phase matching no role is filled as the profile describes it. Stack
 facts come from `profile.stack.frontend`: framework `{{ fe.framework }}`{% if libs %}; libraries — {% for role, lib in libs.items() %}{{ role }}: `{{ lib }}`{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}{% if fe.get('lazy_chunk_per') %}; lazy chunk per `{{ fe.get('lazy_chunk_per') }}`{% endif %}.
 
-**RF1 — Models & types.** Per `ENT-*` (from the response DTOs in the api-docs) and per `SCR-*`:
-```
-### <role>-MODEL — ENT-{{ MOD }}-<seq> — <name>          (inside SUB:<phase>-SCR-… of the owning screen)
-Source DTO   : <api-docs DTO>            fields: <property : type · read-only · system-only · lookup (code string, never enum) · deferred ⏸>
-Read-only    : PK, business code, audit fields — never form input
-### <role>-SCREEN — SCR-{{ MOD }}-<seq>
-Search model : filters (type, filter kind EXACT|LIKE|DATE_RANGE|SET) · paging + sort params (per {{ api.get('paging') | default('the documented envelope') }})
-Form model   : fields (required/optional) · excluded system fields · read-only on edit
-Container    : <from A.3>
-```
-Rules: {% if conv.get('lookups') %}lookup fields are strings holding the code ({{ conv.get('lookups') }}); {% endif %}both names per language ({{ langs.all | join(', ') }}); no internal/tenant identifiers in any model; nothing modelled that the api-docs do not return.
+**RF1 — Models & types.**
+Field/DTO binding : see {{ inputs_dir }}/{{ api_docs }} — the published request/response
+                     shapes for this module are the source, not restated here.
 
 **RF2 — Data hooks.** Declares WHAT each screen needs from the API — not hook code:
 ```
 ### <role>-QUERY — API-{{ MOD }}-<seq>            traces=API-…,REQ-…
-Verb · path (exact from api-docs) · request shape · response shape · kind (read query | mutation)
+Kind (read query | mutation) — verb, path and request/response shape are cited by the API-* id above, never restated
 Cache key    : [resource, filters] — every filter that changes the response is in the key
 Errors       : catalog code → routing (field validation → inline · business rule → user message · unauthenticated → login · forbidden → unauthorized · server → generic)
 Loading      : NONE | LOCAL | GLOBAL (GLOBAL only when the SRS says the call is slow → ADR)
@@ -257,35 +225,13 @@ State rule: page and page size live **inside** the filter object that forms the 
 never as independent state. Components use the facade only; the facade uses the declared
 queries only (server-state library: {% if libs.get('server-state') %}`{{ libs.get('server-state') }}`{% else %}as the profile declares{% endif %}).
 
-**RF3 — Forms & validators.** One block per `RULE-*` enforced on a form:
-```
-### <role>-VALIDATION — RULE-{{ MOD }}-<seq>      traces=REQ-…,AC-…
-Statement · message per language (from the catalog code, never hard-coded) · scope (CREATE|UPDATE|ALL)
-Field · kind (REQUIRED | LENGTH | PATTERN | LOOKUP_VALID | UNIQUE_CHECK | BUSINESS_RULE | DATE_RANGE) · when (change | blur | submit — declared once per form)
-Validation shape : <what the schema must express — the implementer writes it with {% if libs.get('validation') %}`{{ libs.get('validation') }}`{% else %}the profile's validation library{% endif %}{% if libs.get('forms') %} + `{{ libs.get('forms') }}`{% endif %}>
-UNIQUE_CHECK     : async, on blur, via API-…; current record excluded on edit
-LOOKUP_VALID     : value ∈ runtime-loaded options — never a static list
-```
-Rules: no frontend-only validation the SRS does not state; business code displayed read-only,
-never an input; locale from session → browser → `{{ langs.primary }}`; permission-driven field
-behaviour (no edit permission → read-only form).
-
 **RF4 — Screens & routes.** One block per `SCR-*`:
 ```
 ### <role>-SCREEN — SCR-{{ MOD }}-<seq>            traces=REQ-…,UXD-…,API-…
-Routes       : base slug (lower, plural, kebab) · new · :id · :id/edit · [tree — registered BEFORE :id routes]
-Chunk        : one lazy chunk per {{ fe.get('lazy_chunk_per') | default('the profile unit') }} (routing: {% if libs.get('routing') %}`{{ libs.get('routing') }}`{% else %}per profile{% endif %})
 Guard        : every route element guarded by its permission{% if sec %} (`{{ sec.permission_pattern }}` from the SRS matrix — never invented here){% endif %}
-Components   : route-level pages (suffix "Page") · presentational parts (no suffix) — named by container pattern:
-               FULL_PAGE → SearchPage + EntryPage (separate routes)
-               SIDE_DRAWER → SearchPage + FormDrawer (drawer toggled by a route param, never local-only state)
-               TREE_MASTER_DETAIL → TreePage hosting tree + detail (node route param)
-Mode         : CREATE | EDIT | VIEW resolved from the route match, never from a parent prop
 Facade       : the RF2 facade of this screen · pages never call queries directly
-Shared UI    : only the design-system components this screen renders
 Cross-module : UXD-* cited for every foreign-data field (missing → ADR, never minted here)
 ```
-{% if conv.get('composite_screen') %}Composite invariant: Search and Entry are always separate components under ONE `SCR-*`, one lazy chunk, linked by route params — never a second chunk for the sub-view.{% endif %}
 
 **RF5 — Security (frontend half).**{% if sec %} Per `SCR-*`: navigation guard (no `{{ sec.gateway_action }}` → unauthorized redirect) and UI behaviour per action ({% for a in sec.actions %}no {{ a }} → its affordance hidden / read-only{% if not loop.last %}; {% endif %}{% endfor %}); forbidden responses shown as the localized catalog message. Permission names are the backend registry's — never redeclared.{% else %} No security model in the profile: write "no permission model — screens open per the SRS" and cite the REQs.{% endif %}
 
@@ -341,7 +287,7 @@ a row with an empty route is a ✗.
 ```
 REGISTRY — {{ stage.id }} — {{ MOD }} v{{ ver }}
 ID RANGES     {% for x in st.owns_ids %}{{ x }}-{{ MOD }}-<first>..<last>{% if not loop.last %} · {% endif %}{% endfor %}
-SCREENS       SCR │ name │ container pattern │ owning ENT │ permissions
+SCREENS       SCR │ name │ owning ENT │ permissions
 UXD INDEX     UXD │ screen │ field │ owner module · API used
 API COVERAGE  documented endpoints used / unused (with ADR)
 {{ sc.block }}      verdict as stamped · findings fixed
@@ -377,7 +323,7 @@ for the best-practice choice. No question is raised at this stage.
 
 | Owns (mints) | References (read-only) | Never touches |
 |---|---|---|
-| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; flow diagram; ui-ux-spec; mockup spec; F-blocks; {{ sc.block }}; ADRs it raises | `REQ/AC/ENT/RULE` ({{ atoms.REQ.owner }}), `API` ({{ atoms.API.owner }} — shape from the api-docs), catalog codes, permission names, `US` ({{ atoms.US.owner }}) | `DBF/XM` ({{ atoms.DBF.owner }} — backend-only), `QR`, `TC` ({{ atoms.TC.owner }}), any code, any build |
+| {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; flow diagram; ui-ux-spec; F-blocks; {{ sc.block }}; ADRs it raises | `REQ/AC/ENT/RULE` ({{ atoms.REQ.owner }}), `API` ({{ atoms.API.owner }} — shape from the api-docs), catalog codes, permission names, `US` ({{ atoms.US.owner }}) | `DBF/XM` ({{ atoms.DBF.owner }} — backend-only), `QR`, `TC` ({{ atoms.TC.owner }}), any code, any build |
 
 Hand-off (the orchestrator prints it): plan + registry split by the toolkit into
 `{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/`, delivered on

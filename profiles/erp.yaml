@@ -153,7 +153,7 @@ stack:
       server-state: tanstack-query
       forms: react-hook-form
       validation: zod
-      state: "useState/useReducer + Context (no global store by default)"
+      state: zustand
     lazy_chunk_per: composite-screen
   mobile:
     framework: flutter-dart
