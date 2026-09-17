@@ -257,3 +257,84 @@ def test_lint_says_so_when_it_cannot_run_the_freshness_check(factory_root, monke
     # and it must BLOCK, exactly where a stale render would
     from toolkit.common import blocking_severities
     assert unavailable[0].severity in blocking_severities()
+
+
+def test_the_human_approval_gate_refuses_to_approve_an_absent_artifact(factory_root, mod):
+    """CONSTITUTION.md §2: the user approves the PRD FILE itself. The gate used to
+    record an approval whose `artifact_sha` was `{}` and exit 0 — a human decision
+    point certifying a file that was never written."""
+    gate = next(g for g in CFG.gates if g["type"] == "human-approval")
+    stage = CFG.stage(gate["after"])
+    ensure_structure(mod, 1)
+    for a in stage.produces:                       # make sure none of them exist
+        p = CFG.artifact_path(mod, stage.id, a.artifact, 1)
+        if p.exists():
+            p.unlink()
+
+    r = _run(factory_root, "gov.py", "approve", gate["id"], "--module", mod, "--version", "1", "--by", "test", "--no-commit")
+    assert r.returncode != 0, r.stdout
+    assert "nothing to approve" in r.stdout
+
+    # and with the artifact present it approves, binding the record to its bytes
+    for a in stage.produces:
+        p = CFG.artifact_path(mod, stage.id, a.artifact, 1)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("# present\n", encoding="utf-8")
+    r = _run(factory_root, "gov.py", "approve", gate["id"], "--module", mod, "--version", "1", "--by", "test", "--no-commit")
+    assert r.returncode == 0, r.stdout
+    rec = json.loads((CFG.state_dir(mod, 1) / "approvals" / f"{gate['id']}.json").read_text())
+    assert set(rec["artifact_sha"]) == {a.artifact for a in stage.produces}
+
+
+# ── a dialogue stage's artifact, lost between rounds ────────────────────────
+
+def _response(path: Path, target_rel: str | None, body: str = "x\n", converged: bool = False) -> Path:
+    parts = []
+    if target_rel:
+        parts.append(f"<<<FILE: {target_rel}>>>\n{body}<<<END FILE>>>")
+    if converged:
+        parts.append("<!-- CONVERGED -->")
+    path.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    return path
+
+
+def test_a_file_emitted_in_an_earlier_round_is_not_discarded(factory_root, mod, tmp_path):
+    """Only the LAST round used to be ingested. A dialogue whose final round is a
+    self-review carrying no file block therefore wrote nothing at all — the normal
+    shape for a converging stage, and the artifact vanished with it."""
+    import dispatch
+
+    rel = f"{CFG.paths['modules']}/{mod.upper()}/round-one-artifact.md"
+    target = CFG.root / rel
+    if target.exists():
+        target.unlink()
+
+    r1 = _response(tmp_path / "r1.md", rel, "from round one\n")
+    r2 = _response(tmp_path / "r2.md", None, converged=True)
+
+    assert dispatch.ingest(r2) == [], "the converging round carries no file block"
+    written = [p for resp in (r1, r2) for p in dispatch.ingest(resp)]
+    assert target.exists(), "the earlier round's artifact must survive the rounds that do not re-emit it"
+    assert target.read_text() == "from round one\n"
+    assert written == [target]
+    target.unlink()
+
+
+def test_a_block_never_overwrites_a_newer_out_of_band_write(factory_root, mod, tmp_path):
+    """The dispatched runners hold write tools and one may save the artifact itself
+    rather than emit a block. Replaying an older round's block over that would
+    substitute a superseded draft for the delivered artifact."""
+    import dispatch
+
+    rel = f"{CFG.paths['modules']}/{mod.upper()}/out-of-band.md"
+    target = CFG.root / rel
+    r1 = _response(tmp_path / "r1.md", rel, "the superseded draft\n")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("the amended artifact, written by the operator\n", encoding="utf-8")
+    import os, time
+    os.utime(target, (time.time() + 10, time.time() + 10))     # written after the response
+
+    assert dispatch.ingest(r1) == []
+    assert target.read_text() == "the amended artifact, written by the operator\n"
+    target.unlink()

@@ -440,10 +440,23 @@ def approve(gate_id: str, mod: str, version: int | None, by: str, no_commit: boo
     if g["type"] != "human-approval":
         _say(f"BLOCKED: `{gate_id}` is a {g['type']} gate; use gov.py gate")
         return BLOCKED
+    # What this gate approves is the ARTIFACT, not the fact that a stage ran
+    # (CONSTITUTION.md §2: "the user approves the PRD file itself"). An approval
+    # whose subject is not on disk approves nothing, and `artifact_sha` — the
+    # field that exists to bind the two — would record `{}` and say so to
+    # nobody. Refuse instead: a gate that cannot see its subject does not open.
+    shas = _artifact_shas(mod, version, g["after"])
+    absent = [a.artifact for a in CFG.stage(g["after"]).produces if a.artifact not in shas]
+    if absent:
+        _say(f"BLOCKED: `{gate_id}` has nothing to approve — {g['after']} declares "
+             f"{', '.join(absent)} and no such file exists for {mod.upper()} v{version}:\n  "
+             + "\n  ".join(str(CFG.artifact_path(mod, g["after"], a, version).relative_to(CFG.root))
+                            for a in absent))
+        return BLOCKED
     p = an.approval_path(mod, version, gate_id)
     p.parent.mkdir(parents=True, exist_ok=True)
     write_json(p, {"gate": gate_id, "module": mod.upper(), "version": version, "by": by, "at": now_iso(),
-                   "after": g["after"], "artifact_sha": _artifact_shas(mod, version, g["after"])})
+                   "after": g["after"], "artifact_sha": shas})
     _commit([CFG.version_root(mod, version)], CFG.commit_msg("gate", **{"pass": g["after"]}, mod=mod, version=version, verdict="APPROVED"), no_commit)
     _say(f"approved `{gate_id}` for {mod.upper()} v{version} by {by}")
     return OK

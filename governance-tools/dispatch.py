@@ -301,16 +301,29 @@ def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,
 
 
 def ingest(response: Path) -> list[Path]:
-    """Write every <<<FILE: path>>> block of a response into the repo (path must stay inside the repo)."""
+    """Write every <<<FILE: path>>> block of a response into the repo (path must stay inside the repo).
+
+    A block NEVER overwrites a file written after the response that carries it.
+    The runner contract asks for file blocks, but the runners actually dispatched
+    to are agents holding write tools, and one of them may save the artifact
+    itself — this run's P0.5 said so in as many words ("written to …/prd-note.md
+    (as operator, not a file block)"). Replaying an older round's block over that
+    would substitute a superseded draft for the delivered artifact, silently.
+    A response cannot supersede a write that happened after it.
+    """
     written = []
     text = response.read_text(encoding="utf-8")
+    cutoff = response.stat().st_mtime
     for m in _FILE_BLOCK.finditer(text):
         rel = m.group("path").strip()
         target = (CFG.root / rel).resolve()
         if CFG.root not in target.parents and target != CFG.root:
             raise ValueError(f"response tries to write outside the repo: {rel}")
+        body = m.group("body").rstrip("\n") + "\n"
+        if target.exists() and target.stat().st_mtime > cutoff and target.read_text(encoding="utf-8") != body:
+            continue                      # written out of band, after this response
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(m.group("body").rstrip("\n") + "\n", encoding="utf-8")
+        target.write_text(body, encoding="utf-8")
         written.append(target)
     return written
 
@@ -342,8 +355,20 @@ def dispatch(stage: Stage, mod: str, version: int) -> DispatchResult:
         if max_rounds == 1 or CONVERGED in resp.read_text(encoding="utf-8"):
             res.converged = True
             break
-    if previous is not None:
-        res.written = ingest(previous)
+    # Ingest EVERY round, oldest first, so a later round overwrites a file it
+    # re-emits and a file emitted once survives the rounds that do not mention
+    # it. Only `previous` used to be ingested, which silently discarded every
+    # earlier round's blocks — and the shape that triggers it is the NORMAL one
+    # for a dialogue stage: the last round is a self-review that argues about
+    # the artifact instead of re-emitting it. P0.5 of this run did exactly that
+    # (round 1 carried the PRD, round 2 carried only `<!-- CONVERGED -->`), and
+    # the artifact survived solely because the runner happened to be an agent
+    # with write access that had saved it itself — which the documented runner
+    # contract does not promise.
+    for resp in res.responses:
+        for path in ingest(resp):
+            if path not in res.written:
+                res.written.append(path)
     return res
 
 
