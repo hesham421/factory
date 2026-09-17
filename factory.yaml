@@ -326,6 +326,23 @@ repos:
     receives:
       modules-registry: "governance/modules-registry.json"
 
+  # The one copy of everything that crosses a repository boundary. Consumed as a
+  # submodule by all three, so each still reads only from inside its own checkout
+  # (the self-sufficiency rule below is kept, not bent). `partitions` is what lets
+  # this factory address a side without spelling a path twice — it is the only
+  # reader of both, because reconciling the two sides IS its job.
+  shared:
+    url: "https://github.com/hesham421/governance-shared.git"
+    checkout_env: GOV_SHARED_CHECKOUT
+    checkout_default: "../governance-shared"
+    partitions:
+      platform: "platform"
+      backend: "backend/modules/{MOD}"
+      frontend: "frontend/modules/{MOD}"
+    publishes: {}
+    receives:
+      modules-registry: "platform/modules-registry.json"
+
 # ── Cross-repo publications — written BY the factory INTO each consumer repo ─
 # A consumer repo must be self-sufficient: everything it reads lives inside its
 # own checkout, never at a path above it. `repos.<name>.receives.<publication>`

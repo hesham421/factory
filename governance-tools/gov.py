@@ -601,6 +601,69 @@ def _module_manifest(mod: str) -> dict:
     return read_json(CFG.module_root(mod) / CFG.paths["module"]["manifest_file"], {}) or {}
 
 
+def _shared_dir(part: str, mod: str | None = None) -> Path:
+    """A partition of the shared repo, addressed by name so no path is spelled twice."""
+    rel = CFG.repos["shared"]["partitions"][part]
+    return CFG.repo_checkout("shared") / (CFG.fmt(rel, mod=mod) if mod else rel)
+
+
+def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
+    """Report — and optionally close — the distance between this factory and the
+    shared repo every consumer pins.
+
+    Without this command the design it serves is a regression, not an advance.
+    Each sync would otherwise be three commits and three submodule-pointer bumps
+    done by hand; measured against the real rate (~3 syncs a week) that is more
+    ceremony than the manual copying it replaces. The whole case for a shared
+    repository rests on one command hiding that.
+
+    It never rewrites what it does not own: the partitions are single-writer by
+    design and this reports each one's state rather than reconciling them.
+    """
+    shared = CFG.repo_checkout("shared")
+    if not (shared / ".git").exists():
+        _say(f"BLOCKED: shared checkout not found at {shared}\n"
+             f"  clone it, or set {CFG.repos['shared']['checkout_env']} — and if this is a\n"
+             f"  fresh clone of a consumer, it is a submodule: `git submodule update --init`")
+        return BLOCKED
+
+    _git("fetch", "--quiet", "origin", cwd=shared, check=False)
+    head = _git("rev-parse", "--short", "HEAD", cwd=shared).stdout.strip()
+    upstream = _git("rev-parse", "--short", "@{u}", cwd=shared, check=False).stdout.strip()
+    behind = ahead = "0"
+    if upstream:
+        counts = _git("rev-list", "--left-right", "--count", "@{u}...HEAD", cwd=shared, check=False).stdout.split()
+        if len(counts) == 2:
+            behind, ahead = counts
+    dirty = [l for l in _git("status", "--porcelain", cwd=shared).stdout.splitlines() if l.strip()]
+
+    _say(f"shared @ {head}" + (f" · upstream {upstream} (behind {behind}, ahead {ahead})" if upstream else " · no upstream"))
+    for part in CFG.repos["shared"]["partitions"]:
+        mods = CFG.modules() if part != "platform" else [None]
+        present = [m for m in mods if _shared_dir(part, m).exists()]
+        _say(f"  {part:<9} {len(present)} present" + (f" ({', '.join(x for x in present if x)})" if present and present[0] else ""))
+    if dirty:
+        _say(f"  uncommitted in shared: {len(dirty)} path(s)")
+        for l in dirty[:8]:
+            _say(f"    {l}")
+
+    if not push:
+        if behind != "0":
+            _say("BEHIND — a consumer pinning this commit is building on stale inputs; "
+                 "`git -C %s pull --ff-only` before fetch-inputs" % shared)
+        return OK
+
+    if dry_run or not dirty:
+        _say("dry-run" if dry_run else "nothing to push — shared is clean")
+        return OK
+    _git("add", "-A", cwd=shared)
+    _git("commit", "-m", "sync from factory", cwd=shared)
+    _git("push", cwd=shared)
+    _say(f"pushed shared @ {_git('rev-parse', '--short', 'HEAD', cwd=shared).stdout.strip()}")
+    _say("now bump the submodule pointer in each consumer that should move")
+    return OK
+
+
 def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
     """Write every factory publication INTO each consumer repo that declares it.
 
@@ -1248,6 +1311,7 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
     p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
     p = mv(sub.add_parser("verify-delivery")); p.add_argument("--track", required=True)
     mv(sub.add_parser("status"), version=False)
@@ -1304,6 +1368,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
     if a.cmd == "deliver":
         return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
+    if a.cmd == "sync":
+        return cmd_sync(push=a.push, dry_run=a.dry_run)
     if a.cmd == "publish":
         return cmd_publish(a.name, a.dry_run)
     if a.cmd == "verify-split":
