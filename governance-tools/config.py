@@ -256,6 +256,8 @@ class FactoryConfig:
     @property
     def inputs(self) -> dict:       return self.data.get("inputs", {})
     @property
+    def feedback(self) -> dict:     return self.data.get("feedback", {})
+    @property
     def publications(self) -> dict: return self.data.get("publications", {})
     @property
     def commands(self) -> list[dict]: return self.data.get("commands", [])

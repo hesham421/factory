@@ -388,6 +388,30 @@ publications:
     builder: profile_summary
     derived_from: profile
 
+# ── Feedback — what a consumer records FOR the factory to answer ────────────
+# The factory writes the plan. The consumer discovers, while implementing it,
+# what the plan could not know: an endpoint the api-docs never published, a
+# field named two ways, a cross-module dependency with no counterpart. That
+# discovery has to reach the factory or it reaches nobody — SEC gained a whole
+# requirement inside a delivered copy and the factory never saw it (F-23).
+#
+# The consumer records into ITS OWN partition, so one writer per path still
+# holds; the factory READS and never writes here. `gov.py feedback` is the read.
+feedback:
+  file: execution-state.json         # inside repos.shared.partitions.<track>
+  channels:                          # each is a list of objects in that file
+    api_doc_gaps: {label: "API gap",     key: endpoint}
+    blocked:      {label: "blocked",     key: id}
+    deferred_xm:  {label: "deferred XM", key: id}
+  status:
+    field: resolution
+    # The first word of `resolution`, case- and punctuation-insensitive. A word
+    # that is in none of these lists is reported UNRECOGNISED, never bucketed by
+    # guess: the whole point is that the factory learns what it does not know.
+    open:   [OPEN, DEFERRED, PENDING]        # the factory still owes an answer
+    closed: [RESOLVED, CLOSED, IMPLEMENTED]  # the consumer settled it in code
+    human:  [HUMAN, ADR]                     # needs a decision, not a plan edit
+
 # ── Delegate lanes — model/effort per reasoning step (implementers = list) ──
 lanes:
   analysis:

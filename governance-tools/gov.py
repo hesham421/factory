@@ -887,6 +887,100 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
     return OK
 
 
+def _feedback_status(raw: str) -> tuple[str, str]:
+    """Normalise a consumer's free-text resolution to a declared bucket.
+
+    Only the FIRST word is read, stripped of punctuation and case: the field is
+    prose written by an implementer, and it was already being written eleven
+    ways ("RESOLVED", "RESOLVED.", "Resolved", "Implemented", "OPEN,"). A word
+    in none of the declared lists comes back UNRECOGNISED rather than guessed
+    into a bucket — a gap silently filed as closed is worse than one filed
+    nowhere."""
+    spec = CFG.feedback["status"]
+    word = re.split(r"[\s,.;:]+", (raw or "").strip(), maxsplit=1)[0].upper()
+    if not word:
+        return "UNRECOGNISED", "(no resolution recorded)"
+    for bucket in ("open", "closed", "human"):
+        if word in [w.upper() for w in spec[bucket]]:
+            return bucket.upper(), word
+    return "UNRECOGNISED", word
+
+
+def _feedback_rows(mod: str | None = None) -> list[dict]:
+    """Every item every consumer has recorded for the factory, across tracks."""
+    from toolkit.common import read_json
+    spec = CFG.feedback
+    rows: list[dict] = []
+    for track in CFG.tracks:
+        if track not in _partitions():
+            continue
+        for m in ([mod.upper()] if mod else CFG.modules()):
+            state = _shared_dir(track, m) / spec["file"]
+            if not state.exists():
+                continue
+            data = read_json(state, {}) or {}
+            for channel, cspec in spec["channels"].items():
+                for item in data.get(channel) or []:
+                    if not isinstance(item, dict):
+                        continue
+                    bucket, word = _feedback_status(item.get(spec["status"]["field"], ""))
+                    rows.append({
+                        "module": m, "track": track, "channel": channel,
+                        "label": cspec["label"],
+                        "id": str(item.get(cspec["key"]) or item.get("id") or "?"),
+                        "type": item.get("type") or "",
+                        "phase": item.get("phase") or "",
+                        "detail": (item.get("detail") or "").replace("\n", " "),
+                        "status": bucket, "word": word,
+                    })
+    return rows
+
+
+def cmd_feedback(mod: str | None = None, verbose: bool = False) -> int:
+    """What the consumers have discovered that the plan could not know.
+
+    The factory writes the plan; the implementer finds out, while building it,
+    what the plan got wrong or left out. Without this the discovery stays in the
+    consumer's file and reaches nobody — which is how a requirement was added to
+    SEC inside a delivered copy and never came back (F-23), and how the frontend
+    ran into features with no endpoints far too late.
+
+    Read-only, always: these paths belong to the tracks."""
+    rows = _feedback_rows(mod)
+    if not rows:
+        scope = f" for {mod.upper()}" if mod else ""
+        _say(f"no consumer feedback{scope} — nothing recorded, "
+             f"or the shared checkout is behind (`gov.py sync`)")
+        return OK
+
+    order = {"OPEN": 0, "HUMAN": 1, "UNRECOGNISED": 2, "CLOSED": 3}
+    by_mod: dict[str, list[dict]] = {}
+    for r in sorted(rows, key=lambda r: (order.get(r["status"], 9), r["module"], r["phase"])):
+        by_mod.setdefault(r["module"], []).append(r)
+
+    owed = 0
+    for m, items in by_mod.items():
+        counts = {b: sum(1 for i in items if i["status"] == b) for b in order}
+        _say(f"{m} — " + " · ".join(f"{n} {b.lower()}" for b, n in counts.items() if n))
+        for i in items:
+            if i["status"] == "CLOSED" and not verbose:
+                continue
+            owed += i["status"] in ("OPEN", "HUMAN", "UNRECOGNISED")
+            head = f"  [{i['status']:12s}] {i['track']:8s} {i['label']:12s} {i['phase']:12s} {i['id']}"
+            _say(head if len(head) < 150 else head[:147] + "...")
+            if i["status"] == "UNRECOGNISED":
+                _say(f"                 resolution `{i['word']}` is not a declared status "
+                     f"(feedback.status) — the factory cannot tell whether this is still owed")
+            if verbose and i["detail"]:
+                _say(f"                 {i['detail'][:200]}")
+
+    _say("")
+    _say(f"{owed} item(s) the factory has not answered. "
+         f"An OPEN gap is a plan the implementation disagrees with; "
+         f"answer it in the plan, or record why not in an ADR.")
+    return OK
+
+
 def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
     """Write every factory publication INTO each consumer repo that declares it.
 
@@ -1266,6 +1360,7 @@ def main(argv: list[str] | None = None) -> int:
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
+    p = sub.add_parser("feedback"); p.add_argument("-m", "--module"); p.add_argument("-v", "--verbose", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
@@ -1325,6 +1420,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_sync(push=a.push, dry_run=a.dry_run)
     if a.cmd == "publish":
         return cmd_publish(a.name, a.dry_run)
+    if a.cmd == "feedback":
+        return cmd_feedback(a.module, a.verbose)
     if a.cmd == "verify-split":
         return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
     if a.cmd == "status":

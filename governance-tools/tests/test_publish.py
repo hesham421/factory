@@ -157,3 +157,52 @@ def test_a_publication_whose_builder_is_not_registered_is_a_lint_finding(factory
     found = lint.scan_config(cfg)
     assert len(found) == 1 and "not registered" in found[0].message
     CFG.reload()
+
+
+# ── feedback: what a consumer records for the factory to answer ──────────────
+
+def _write_state(track, mod, items):
+    import gov, json as _j
+    d = gov._shared_dir(track, mod)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / CFG.feedback["file"]).write_text(_j.dumps({"module": mod, **items}), encoding="utf-8")
+
+
+def test_an_unknown_resolution_word_is_reported_not_bucketed(linked, capsys):
+    """`resolution` is prose an implementer types, and it was already written
+    eleven ways. A word in none of the declared lists must come back
+    UNRECOGNISED: a gap silently filed as closed is worse than one filed
+    nowhere."""
+    gov, mod, _ = linked
+    track = next(iter(CFG.tracks))
+    _write_state(track, mod, {"api_doc_gaps": [
+        {"type": "ABSENT", "phase": "P", "endpoint": "e1", "resolution": "OPEN"},
+        {"type": "ABSENT", "phase": "P", "endpoint": "e2", "resolution": "Resolved."},
+        {"type": "ABSENT", "phase": "P", "endpoint": "e3", "resolution": "ABSENT"},
+        {"type": "ABSENT", "phase": "P", "endpoint": "e4", "resolution": ""},
+    ]})
+    rows = {r["id"]: r["status"] for r in gov._feedback_rows(mod)}
+    assert rows["e1"] == "OPEN"
+    assert rows["e2"] == "CLOSED", "punctuation and case must not change the bucket"
+    assert rows["e3"] == "UNRECOGNISED"
+    assert rows["e4"] == "UNRECOGNISED", "an empty resolution is not a closed one"
+
+    assert gov.cmd_feedback(mod) == 0
+    out = capsys.readouterr().out
+    assert "UNRECOGNISED" in out and "not a declared status" in out
+    assert "3 item(s) the factory has not answered" in out
+
+
+def test_feedback_reads_every_declared_channel(linked):
+    gov, mod, _ = linked
+    track = next(iter(CFG.tracks))
+    _write_state(track, mod, {ch: [{"id": f"{ch}-1", "endpoint": f"{ch}-1", "resolution": "OPEN"}]
+                              for ch in CFG.feedback["channels"]})
+    got = {r["channel"] for r in gov._feedback_rows(mod)}
+    assert got == set(CFG.feedback["channels"]), "a declared channel nothing reads is a channel that does not exist"
+
+
+def test_feedback_says_so_when_it_examined_nothing(linked, capsys):
+    gov, mod, _ = linked
+    assert gov.cmd_feedback(mod) == 0
+    assert "nothing recorded" in capsys.readouterr().out
