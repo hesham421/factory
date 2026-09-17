@@ -305,7 +305,8 @@ def test_a_file_emitted_in_an_earlier_round_is_not_discarded(factory_root, mod, 
     import dispatch
 
     rel = f"{CFG.paths['modules']}/{mod.upper()}/round-one-artifact.md"
-    target = CFG.root / rel
+    # a module path names the CONTENT root, never the tool tree (paths.external)
+    target = CFG.modules_root() / mod.upper() / "round-one-artifact.md"
     if target.exists():
         target.unlink()
 
@@ -327,7 +328,7 @@ def test_a_block_never_overwrites_a_newer_out_of_band_write(factory_root, mod, t
     import dispatch
 
     rel = f"{CFG.paths['modules']}/{mod.upper()}/out-of-band.md"
-    target = CFG.root / rel
+    target = CFG.modules_root() / mod.upper() / "out-of-band.md"
     r1 = _response(tmp_path / "r1.md", rel, "the superseded draft\n")
 
     target.parent.mkdir(parents=True, exist_ok=True)

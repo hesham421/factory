@@ -3,7 +3,10 @@
 > ريبو رابع، مقسَّم داخلياً، الكتابة فيه **مباشرة**، الباك معزول عن الفرونت،
 > والمصنع يرى الطرفين.
 >
-> الحالة: **تصميم — لم يُنفَّذ.**
+> الحالة: **مُنفَّذ.** الريبو قائم على `https://github.com/hesham421/governance-shared.git`،
+> مركَّب submodule في المصنع (`governance-shared/`) وفي الطرفين، والتقسيم أدناه هو
+> ما يقرؤه `factory.yaml → repos.shared.partitions` فعلاً. §٥ و§٦ محدَّثان إلى ما نُفِّذ؛
+> ما تغيّر عن التصميم الأول مذكور في موضعه.
 > يُقرأ بعد [SHARED-GOVERNANCE-PLAN.md](SHARED-GOVERNANCE-PLAN.md) §٧.
 
 ---
@@ -273,18 +276,27 @@ frontend @ xyz789 ──►  shared @ def456    ← نفس النسخة بالض
 ```
 4. git submodule update --remote  في factory
 5. gov.py fetch-inputs -m {MOD}
-   → يقرأ من shared/backend/modules/{MOD}/api-docs/
+   → يقرأ من {profile_id}/modules/{MOD}/api-docs/
    → يدمج index.md + endpoints/*.md → _inputs/api-docs-{mod}.md
+   → يسجّل commit الريبو المشترك الذي قُرئ عنده + digest
+     في _inputs/api-docs-{mod}.md.meta.json وفي manifest.json → status.inputs
 ```
 
 ### ٥-٣ المصنع يسلّم
 
 ```
-6. gov.py deliver --track backend   → shared/backend/modules/{MOD}/packages/
-   gov.py deliver --track frontend  → shared/frontend/modules/{MOD}/packages/
-   gov.py publish                   → shared/platform/
+6. gov.py split --track backend   → {profile_id}/modules/{MOD}/packages/backend-execution/
+   gov.py split --track frontend  → {profile_id}/modules/{MOD}/packages/frontend-execution/
+   gov.py publish                 → platform/
 7. commit + push داخل الـ submodule → shared@newer
 ```
+
+> **`deliver` أُلغي.** كان ينسخ الحزم من المصنع إلى ريبو المستهلك؛ والآن يكتب
+> `split` مباشرةً في القسم الذي يقرؤه المستهلك، فلا نسخة ثانية ولا أمر يزامنها.
+> والـ `execution-state.json` الذي كان `deliver` يكتبه صار ملكاً للمسار وحده
+> (§٣)؛ وما يخصّ المصنع من حالة التنفيذ — أيّ commit قُرئت عنده الـ api-docs،
+> ونسب التغطية التي قاستها البوابة — يعيش في `manifest.json → status`، الفهرس
+> الذي يكتبه المصنع أصلاً (`gov.py::_execution_state`).
 
 ### ٥-٤ المستهلك يرقّي بوعي
 
@@ -351,23 +363,31 @@ modules/{MOD}/{track}/execution-state.json
 
 ## ٦ · وعي المصنع بالطرفين
 
-المصنع اليوم يعرف `repos.backend` و `repos.frontend`. يضاف ثالث:
+المصنع يعرف `repos.backend` و `repos.frontend`، والثالث كما نُفِّذ في `factory.yaml`
+(كل قسم يحمل كاتبه، وقرّاءه حين يتّسعون عن الكاتب):
 
 ```yaml
+paths:
+  external:                              # المفاتيح التي تُحلّ على الريبو المشترك
+    repo: shared
+    keys: [domain, platform, modules, decisions]
+
 repos:
   shared:
     url: "https://github.com/hesham421/governance-shared.git"
     checkout_env: GOV_SHARED_CHECKOUT
-    checkout_default: "shared"          # submodule داخل المصنع
-    partitions:                          # ← جديد: وعي المصنع بالتقسيم
-      platform: "platform/"
-      backend:  "backend/modules/{MOD}/"
-      frontend: "frontend/modules/{MOD}/"
+    checkout_default: "governance-shared"          # submodule داخل المصنع
+    partitions:                                    # وعي المصنع بالتقسيم — جدول §٣ بصيغة تقرؤها الأدوات
+      platform: {path: "platform",                            writer: factory}
+      factory:  {path: "{profile_id}/modules/{MOD}",          writer: factory}
+      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend, readers: all}
+      backend:  {path: "{profile_id}/modules/{MOD}/backend",  writer: backend}
+      frontend: {path: "{profile_id}/modules/{MOD}/frontend", writer: frontend}
 
   backend:
-    publishes:
-      api-docs: "backend/modules/{MOD}/api-docs/"   # داخل shared الآن
     reads_from: shared
+    publishes:
+      api-docs: "{profile_id}/modules/{MOD}/api-docs"   # داخل shared
   frontend:
     reads_from: shared
 ```

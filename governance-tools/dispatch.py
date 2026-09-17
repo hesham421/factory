@@ -301,8 +301,59 @@ def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,
     return None   # manual
 
 
+def write_roots() -> list[Path]:
+    """Where a response may write: this repo, and the checkout that owns the
+    external path keys (`paths.external`) — the content root.
+
+    The content root used to be assumed to sit INSIDE this repo (the submodule
+    layout), so a relative block path was joined to `CFG.root` and the escape
+    check knew one root. Point `GOV_SHARED_CHECKOUT` anywhere else and every
+    automated stage write failed: the brief carried absolute paths (`rel()`
+    falls back to them outside the root) and the check refused each one."""
+    roots = [CFG.root.resolve()]
+    ext = CFG.external
+    if ext.get("keys"):
+        shared = CFG.repo_checkout(ext["repo"]).resolve()
+        if shared not in roots:
+            roots.append(shared)
+    return roots
+
+
+def _content_prefixes() -> list[str]:
+    """The first path segment of every external key's declared path — how a
+    relative block path says which root it means."""
+    out = []
+    for key in (CFG.external.get("keys") or ()):
+        v = CFG.paths.get(key)
+        if isinstance(v, str) and v:
+            out.append(Path(v).parts[0])
+    return out
+
+
+def resolve_target(rel: str) -> Path:
+    """A `<<<FILE:>>>` path → the file it names, inside one of `write_roots()`.
+
+    Absolute paths are taken as given. A relative path resolves against this
+    repo, unless its first segment is one of the content root's declared
+    top-level folders (`paths.<external key>`) and the content root is not
+    nested here — then it resolves against the content root. Anything that
+    lands outside every allowed root is refused."""
+    p = Path(rel)
+    roots = write_roots()
+    if p.is_absolute():
+        target = p.resolve()
+    else:
+        target = (roots[0] / p).resolve()
+        if len(roots) > 1 and p.parts and p.parts[0] in _content_prefixes() and not (roots[0] / p).exists():
+            target = (roots[1] / p).resolve()
+    if not any(target == r or r in target.parents for r in roots):
+        raise ValueError(f"response tries to write outside the factory and the content root: {rel}")
+    return target
+
+
 def ingest(response: Path) -> list[Path]:
-    """Write every <<<FILE: path>>> block of a response into the repo (path must stay inside the repo).
+    """Write every <<<FILE: path>>> block of a response into the repo that owns
+    the path (`resolve_target`: this repo or the content root, never elsewhere).
 
     A block NEVER overwrites a file written after the response that carries it.
     The runner contract asks for file blocks, but the runners actually dispatched
@@ -317,9 +368,7 @@ def ingest(response: Path) -> list[Path]:
     cutoff = response.stat().st_mtime
     for m in _FILE_BLOCK.finditer(text):
         rel = m.group("path").strip()
-        target = (CFG.root / rel).resolve()
-        if CFG.root not in target.parents and target != CFG.root:
-            raise ValueError(f"response tries to write outside the repo: {rel}")
+        target = resolve_target(rel)
         body = m.group("body").rstrip("\n") + "\n"
         if target.exists() and target.stat().st_mtime > cutoff and target.read_text(encoding="utf-8") != body:
             continue                      # written out of band, after this response

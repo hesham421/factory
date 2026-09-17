@@ -139,6 +139,32 @@ def _commit(paths: list[Path], message: str, no_commit: bool = False) -> str | N
     return " · ".join(shas) or None
 
 
+def _head_sha(checkout: Path) -> str | None:
+    """The commit a checkout stands at — None when it is not inside a git tree."""
+    r = _git("rev-parse", "HEAD", cwd=checkout, check=False)
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def _execution_state(mod: str, version: int, **fields) -> dict:
+    """The factory's OWN execution facts for a module version — what it fetched
+    and at which commit, what the last gate measured — kept in `manifest.json →
+    status`, the index this factory writes anyway.
+
+    Not in the track's `execution-state.json`: that file sits in a partition a
+    track writes (`repos.shared.partitions.<track>`), and one writer per path is
+    the rule the shared repo exists to keep (GOVERNANCE-SHARED-DESIGN.md §3).
+    A dict value is merged key by key under `status.<field>`; anything else
+    replaces `status.<field>` whole."""
+    data: dict | None = None
+    for key, value in fields.items():
+        if isinstance(value, dict):
+            for sub, v in value.items():
+                data = tk_struct.set_status(mod, version, key, v, sub=sub)
+        else:
+            data = tk_struct.set_status(mod, version, key, value)
+    return data if data is not None else (tk_struct.load_manifest(mod, version) or {})
+
+
 def _version(mod: str, v: int | None) -> int:
     return CFG.current_version(mod) if v is None else int(v)
 
@@ -772,13 +798,14 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
             text = _merge_published(src, spec, mod)
             if dst.exists() and dst.read_text(encoding="utf-8") == text:
                 _say(f"unchanged {name} → {rel(dst)}")
-                continue
-            dst.write_text(text, encoding="utf-8")
-            n = len(sorted(src.glob(spec["merge"].get("include") or "**/*.md")))
-            _say(f"fetched {name} ({n} files folded) → {rel(dst)}")
+            else:
+                dst.write_text(text, encoding="utf-8")
+                n = len(sorted(src.glob(spec["merge"].get("include") or "**/*.md")))
+                _say(f"fetched {name} ({n} files folded) → {rel(dst)}")
         else:
             shutil.copy2(src, dst)
             _say(f"fetched {name} → {rel(dst)}")
+        _record_input(name, mod, version, host, checkout, src, dst)
         companion = (spec.get("merge") or {}).get("keep_alongside")
         if companion:
             c = dst.parent / CFG.fmt(companion, mod=mod)
@@ -788,6 +815,25 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
         _say("GATE CLOSED — missing inputs:\n  " + "\n  ".join(missing))
         return BLOCKED
     return OK
+
+
+def _record_input(name: str, mod: str, version: int, host: str, checkout: Path, src: Path, dst: Path) -> dict:
+    """WHICH published surface a fetched input is — the shared-repo commit it was
+    read at, and a digest of what landed — written beside the input
+    (`paths.module.input_meta`) and into the module's execution state.
+
+    The merged file's header already says what it was folded from; nothing said
+    at which commit. A pass-2 plan built against api-docs that the backend then
+    republished was indistinguishable from one built against the current ones,
+    and the pin every consumer keeps is only worth something if the factory can
+    say which pin it read."""
+    meta = {"input": name, "repo": host, "commit": _head_sha(checkout),
+            "source": src.as_posix(), "file": dst.name,
+            "digest": hashlib.sha256(dst.read_bytes()).hexdigest(), "fetched_at": now_iso()}
+    write_json(dst.with_name(CFG.fmt(CFG.paths["module"]["input_meta"], file=dst.name)), meta)
+    _execution_state(mod, version, inputs={name: {k: meta[k] for k in ("repo", "commit", "digest", "fetched_at")}})
+    _say(f"  recorded {name} @ {host}" + (f" {meta['commit'][:12]}" if meta["commit"] else " (not a git checkout)"))
+    return meta
 
 
 def _shared_repo() -> str:

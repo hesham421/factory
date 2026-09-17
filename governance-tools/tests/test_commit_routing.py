@@ -129,3 +129,69 @@ def test_the_factory_itself_is_never_blocked_by_it(two_repos):
     head = _git("rev-parse", "HEAD", cwd=factory).stdout.strip()
     _git("checkout", "-q", "--detach", head, cwd=factory)
     assert gov._commit([p], "engine")
+
+
+# ── where a response may write (dispatch.ingest) ─────────────────────────────
+
+def test_ingest_resolves_a_content_path_against_an_external_checkout(factory_root, tmp_path, monkeypatch, mod):
+    """The content root does not have to nest inside this repo. Pointed anywhere
+    else, a relative block path that names the content root's own top-level
+    folder lands there, and an absolute path inside it is accepted — before,
+    every such write was refused as an escape and every automated stage failed."""
+    import dispatch as dp
+    elsewhere = tmp_path / "elsewhere-shared"
+    elsewhere.mkdir()
+    monkeypatch.setenv(CFG.repos[CFG.external["repo"]]["checkout_env"], str(elsewhere))
+    CFG.reload()
+    assert dp.write_roots() == [CFG.root.resolve(), elsewhere.resolve()]
+
+    target = CFG.state_dir(mod, 1) / "note.md"
+    rel_path = target.relative_to(elsewhere).as_posix()
+    resp = tmp_path / "resp.md"
+    resp.write_text(f"<<<FILE: {rel_path}>>>\nrelative\n<<<END FILE>>>\n"
+                    f"<<<FILE: {target.with_name('abs.md')}>>>\nabsolute\n<<<END FILE>>>\n"
+                    f"<<<FILE: {CFG.paths['engines']}/x/ENGINE.md>>>\nfactory\n<<<END FILE>>>\n", encoding="utf-8")
+    written = dp.ingest(resp)
+    assert target in written and target.read_text(encoding="utf-8") == "relative\n"
+    assert target.with_name("abs.md") in written
+    assert (CFG.root / CFG.paths["engines"] / "x" / "ENGINE.md") in written
+
+
+def test_ingest_still_refuses_a_path_outside_both_roots(factory_root, tmp_path):
+    import dispatch as dp
+    resp = tmp_path / "resp.md"
+    resp.write_text(f"<<<FILE: {tmp_path / 'nowhere.md'}>>>\nx\n<<<END FILE>>>\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        dp.ingest(resp)
+    resp.write_text("<<<FILE: ../../escape.md>>>\nx\n<<<END FILE>>>\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        dp.ingest(resp)
+
+
+# ── what fetch-inputs records (the pin it read) ──────────────────────────────
+
+def test_fetch_inputs_records_the_shared_commit_it_read(two_repos, mod, tmp_path):
+    """The merged input said what it was folded from; nothing said at which
+    commit. The sidecar and the module's execution state now carry the shared
+    repo's HEAD, so a plan can prove which published surface it was built on."""
+    import json
+    gov, factory, shared = two_repos
+    name, spec = next(iter(CFG.inputs.items()))
+    host = CFG.repos[spec["from_repo"]].get("reads_from", spec["from_repo"])
+    src = CFG.repo_checkout(host) / CFG.fmt(CFG.repos[spec["from_repo"]]["publishes"][name], mod=mod)
+    src.mkdir(parents=True, exist_ok=True)
+    (src / "index.md").write_text("# published\n", encoding="utf-8")
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=shared)
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "publish", cwd=shared)
+    head = _git("rev-parse", "HEAD", cwd=shared).stdout.strip()
+
+    CFG.module_root(mod).mkdir(parents=True, exist_ok=True)
+    assert gov.cmd_fetch_inputs(mod, 1, pull=False) == gov.OK
+    dst = CFG.inputs_dir(mod, 1) / CFG.fmt(spec["file"], mod=mod)
+    meta = json.loads(dst.with_name(CFG.fmt(CFG.paths["module"]["input_meta"], file=dst.name)).read_text(encoding="utf-8"))
+    assert meta["commit"] == head and meta["repo"] == host and len(meta["digest"]) == 64
+    state = json.loads((CFG.module_root(mod) / CFG.paths["module"]["manifest_file"]).read_text(encoding="utf-8"))
+    assert state["status"]["inputs"][name]["commit"] == head
+    # a second fetch of the same surface is reported unchanged and keeps the record
+    assert gov.cmd_fetch_inputs(mod, 1, pull=False) == gov.OK
+    assert json.loads(dst.with_name(CFG.fmt(CFG.paths["module"]["input_meta"], file=dst.name)).read_text(encoding="utf-8"))["commit"] == head

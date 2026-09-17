@@ -47,6 +47,9 @@ paths:
   module:
     state_dir: _state            # generated current-state files (read by engines)
     inputs_dir: _inputs          # inputs fetched back from consumer repos
+    input_meta: "{file}.meta.json"   # beside each fetched input: the shared-repo commit it was
+                                     # read at, its digest, when — so a pass-2 plan can prove
+                                     # which published surface it was built against
     packages_dir: packages       # split output
     manifest_file: manifest.json
     analyze_report: "_state/analyze-{stage}.md"
