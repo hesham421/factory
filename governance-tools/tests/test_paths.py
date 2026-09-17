@@ -203,3 +203,45 @@ def test_a_partition_declares_who_writes_it(factory_root):
     assert foreign, "no partition is protected from the factory — the table says nothing"
     assert all(CFG.partition_writer(p) != CFG.FACTORY_WRITER
                for p in CFG.partitions() if CFG.partition_dir(p, "SEC").name in foreign)
+
+
+# ── who may SEE what (sparse checkout) ───────────────────────────────────────
+
+def test_a_track_sees_its_own_partition_and_not_the_others(factory_root):
+    """`CODEOWNERS` decides who may write; a submodule hands every consumer the
+    whole repository, so sparse-checkout is the only lever on the read. The
+    patterns are derived from the same declarations as everything else."""
+    import gov
+    per_track = {t: set(gov._sparse_patterns(t)) for t in CFG.tracks}
+    for part in CFG.partitions():
+        if not CFG.partition_is_per_module(part):
+            continue
+        pat = CFG.fmt(CFG.partitions()[part], mod="*") + "/**"
+        for track in CFG.tracks:
+            allowed = CFG.partition_is_readable_by(part, track)
+            assert (pat in per_track[track]) == allowed, \
+                f"{track} {'cannot see' if allowed else 'can see'} {part}"
+
+
+def test_a_stage_that_names_a_track_is_hidden_from_the_other(factory_root):
+    import gov
+    per_track = {t: set(gov._sparse_patterns(t)) for t in CFG.tracks}
+    tracked = [s for s in CFG.all_stages() if s.track]
+    assert tracked, "no stage names a track — nothing is being separated"
+    for s in tracked:
+        pat = f"{CFG.paths['modules']}/*/{s.folder}/**"
+        assert pat in per_track[s.track]
+        for other in CFG.tracks:
+            if other != s.track:
+                assert pat not in per_track[other], f"{other} can see {s.id}"
+
+
+def test_shared_analysis_stays_visible_to_everyone(factory_root):
+    """P0…P2 name no track: they are the analysis both sides implement against.
+    Narrowing must not hide the thing the plan is derived from."""
+    import gov
+    per_track = {t: set(gov._sparse_patterns(t)) for t in CFG.tracks}
+    for s in CFG.all_stages():
+        if s.track is None:
+            pat = f"{CFG.paths['modules']}/*/{s.folder}/**"
+            assert all(pat in p for p in per_track.values()), f"{s.id} hidden from someone"

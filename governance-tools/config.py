@@ -497,6 +497,15 @@ class FactoryConfig:
         ownership table in the form the tools address."""
         return {k: v["path"] for k, v in self._partition_specs().items()}
 
+    def partition_readers(self, part: str) -> str | list[str]:
+        """Who may READ it. Defaults to its writer — the narrow answer — so a
+        partition that others must see has to say so."""
+        return self._partition_specs()[part].get("readers", self.partition_writer(part))
+
+    def partition_is_readable_by(self, part: str, who: str) -> bool:
+        r = self.partition_readers(part)
+        return r == "all" or who == r or (isinstance(r, list) and who in r)
+
     def partition_writer(self, part: str) -> str:
         """Who may write it. Read, not merely documented: it is what stops a
         factory regeneration from clearing a path a track wrote."""

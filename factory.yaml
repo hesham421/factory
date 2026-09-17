@@ -366,7 +366,10 @@ repos:
     partitions:
       platform: {path: "platform",                            writer: factory}
       factory:  {path: "{profile_id}/modules/{MOD}",          writer: factory}
-      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend}
+      # `readers: all` — api-docs are the published contract: the backend writes
+      # them, the frontend builds against them, the factory binds to them. Every
+      # other partition is read by its own writer, which is the default.
+      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend, readers: all}
       backend:  {path: "{profile_id}/modules/{MOD}/backend",  writer: backend}
       frontend: {path: "{profile_id}/modules/{MOD}/frontend", writer: frontend}
     publishes: {}

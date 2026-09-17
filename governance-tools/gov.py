@@ -806,6 +806,60 @@ def _shared_dir(part: str, mod: str | None = None) -> Path:
     return CFG.partition_dir(part, mod)
 
 
+def _sparse_patterns(track: str) -> list[str]:
+    """What one track may SEE of the shared repo.
+
+    `CODEOWNERS` decides who may write; git decides who may read, and a
+    submodule hands every consumer the whole repository. Sparse-checkout is the
+    only lever that narrows the read, and this derives its patterns rather than
+    listing them — from the same declarations everything else here reads:
+
+      * a stage folder belongs to a track when the stage names that track, and
+        to everyone when it names none (P0…P2 are shared analysis)
+      * a package folder is `tracks.<t>.packages`
+      * a partition is visible to its own `writer`, and api-docs to both,
+        because the frontend builds against what the backend published
+
+    Hiding is not isolation. The bytes are still in `.git`, and a consumer can
+    widen its own checkout. What it buys is that the wrong tree is not in front
+    of someone by accident — which is how a frontend session came to delete six
+    modules' backend governance."""
+    mods = f"{CFG.paths['modules']}/*"
+    pats = [f"{CFG.partitions()[p]}/**" for p in CFG.partitions()
+            if not CFG.partition_is_per_module(p)]
+    pats += [f"{CFG.paths['platform']}/*.md", f"{CFG.paths['decisions']}/**"]
+    m = CFG.paths["module"]
+    pats += [f"{mods}/{m['manifest_file']}", f"{mods}/{m['state_dir']}/**", f"{mods}/{m['inputs_dir']}/**"]
+    for s in CFG.all_stages():
+        if s.track in (None, track):
+            pats.append(f"{mods}/{s.folder}/**")
+    for pkg in CFG.tracks[track]["packages"].values():
+        pats.append(f"{mods}/{m['packages_dir']}/{pkg}/**")
+    for part in CFG.partitions():
+        if CFG.partition_is_per_module(part) and CFG.partition_is_readable_by(part, track):
+            pats.append(CFG.fmt(CFG.partitions()[part], mod="*") + "/**")
+    return sorted(dict.fromkeys(CFG.fmt(x) for x in pats))
+
+
+def cmd_sparse(track: str, apply_to: str | None = None) -> int:
+    """Print (or apply) the sparse-checkout patterns for one track."""
+    if track not in CFG.tracks:
+        _say(f"BLOCKED: `{track}` is not a track ({', '.join(CFG.tracks)})")
+        return BLOCKED
+    pats = _sparse_patterns(track)
+    if not apply_to:
+        for x in pats:
+            _say(x)
+        return OK
+    root = Path(apply_to)
+    if not (root / ".git").exists():
+        _say(f"BLOCKED: not a checkout: {root}")
+        return BLOCKED
+    _git("sparse-checkout", "set", "--no-cone", *pats, cwd=root)
+    _say(f"{track}: {len(pats)} pattern(s) applied to {root}")
+    return OK
+
+
 def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
     """Report — and optionally close — the distance between this factory and the
     shared repo every consumer pins.
@@ -1429,6 +1483,7 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("feedback"); p.add_argument("-m", "--module"); p.add_argument("-v", "--verbose", action="store_true")
+    p = sub.add_parser("sparse"); p.add_argument("--track", required=True); p.add_argument("--apply-to", dest="apply_to")
     p = mv(sub.add_parser("waive-feedback")); p.add_argument("--pass", dest="pass_no", required=True); p.add_argument("--by", required=True); p.add_argument("--why", required=True)
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
@@ -1490,6 +1545,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_publish(a.name, a.dry_run)
     if a.cmd == "feedback":
         return cmd_feedback(a.module, a.verbose)
+    if a.cmd == "sparse":
+        return cmd_sparse(a.track, a.apply_to)
     if a.cmd == "waive-feedback":
         return cmd_waive_feedback(a.module, a.version, a.pass_no, a.by, a.why)
     if a.cmd == "verify-split":
