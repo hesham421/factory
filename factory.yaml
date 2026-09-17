@@ -230,6 +230,17 @@ inputs:
   api-docs:
     from_repo: backend
     file: "api-docs-{mod}.md"
+    # The backend publishes api-docs as a FOLDER (an index plus one file per
+    # endpoint group); this stage reads ONE file. `merge` is how the folder
+    # becomes that file — deterministically, so re-fetching an unchanged source
+    # reproduces the same bytes and a diff only ever shows a real change.
+    # Without it `fetch-inputs` copied a path that does not exist and the
+    # consolidation was done by hand, annex and all.
+    merge:
+      lead: index.md          # emitted first when present
+      include: "**/*.md"      # then every other file, ordered by relative path
+      # a hand-written companion the fetch must never overwrite (see `binding`)
+      keep_alongside: "api-docs-binding-{mod}.md"
 
 # ── ID grammar — core atoms (profiles may ADD atoms, never redefine these) ──
 ids:
@@ -300,7 +311,10 @@ repos:
     checkout_default: "../backend"
     deliver_to: "governance/modules/{MOD}"
     publishes:
-      api-docs: "governance/api-docs/api-docs-{mod}.md"
+      # the real published shape: a folder per module, written by the backend's
+      # own generator from the RUNNING app. `inputs.api-docs.merge` folds it into
+      # the single file this factory reads.
+      api-docs: "governance/modules/{MOD}/api-docs"
     receives:
       modules-registry: "governance/modules-registry.json"
   frontend:
