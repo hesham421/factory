@@ -322,6 +322,16 @@ def scan_structure(cfg: FactoryConfig) -> list[Finding]:
     for extra in (cfg.dir("engines")).glob("*"):
         if extra.is_dir() and extra.name not in cfg.stage_ids():
             out.append(Finding(sev(0), "C1-structure", f"engines/{extra.name}", 0, "engine folder not declared in factory.yaml stages"))
+    # the command tree equals `factory.yaml → commands`, exactly. `render` removes a
+    # stale generated command but never a file without the marker (it did not write
+    # it); such a file is reported here instead, so the tree still converges.
+    expected_cmds = {f"{c['id']}.md" for c in cfg.commands}
+    cmds = cfg.dir("commands")
+    if cmds.exists():
+        for f in sorted(cmds.glob("*.md")):
+            if f.name not in expected_cmds:
+                out.append(Finding(sev(1), "C1-structure", f"{cfg.paths['commands']}/{f.name}", 0,
+                                   "not produced by factory.yaml → commands — declare the command there, or remove the file by hand (render never deletes an unmarked file)"))
     return out
 
 

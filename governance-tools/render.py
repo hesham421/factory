@@ -236,6 +236,24 @@ def block_files(cfg: FactoryConfig) -> dict[Path, str]:
     return out
 
 
+def unmanaged_commands(cfg: FactoryConfig) -> list[Path]:
+    """Files under `paths.commands` that no `factory.yaml → commands` entry
+    produces AND that carry no generated marker.
+
+    Not this renderer's to delete: a file without the marker was written by a
+    person, and a render that removed it would erase work it never generated —
+    silently, under a command that claims to only regenerate. They are reported
+    here, and `lint` refuses them (`C1-structure`), so the tree still ends up
+    equal to `factory.yaml → commands` — by a hand, not by a sweep."""
+    marker = cfg.data["lint"]["generated_marker"]
+    expected = {f"{c['id']}.md" for c in cfg.commands}
+    d = cfg.dir("commands")
+    if not d.exists():
+        return []
+    return sorted(f for f in d.glob("*.md")
+                  if f.name not in expected and marker not in f.read_text(encoding="utf-8"))
+
+
 def render_all(cfg: FactoryConfig | None = None, write: bool = True) -> list[Path]:
     cfg = cfg or CFG.reload()
     changed: list[Path] = []
@@ -249,9 +267,15 @@ def render_all(cfg: FactoryConfig | None = None, write: bool = True) -> list[Pat
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
     if write:
-        for extra in cfg.dir("commands").glob("*.md"):
-            if extra not in targets:
-                extra.unlink()          # commands are fully owned by factory.yaml → commands
+        marker = cfg.data["lint"]["generated_marker"]
+        for extra in sorted(cfg.dir("commands").glob("*.md")):
+            if extra in targets:
+                continue
+            # a stale GENERATED command (its entry left factory.yaml → commands) is
+            # this renderer's own output and goes; an unmarked file is not — see
+            # unmanaged_commands(): reported, refused by lint, never deleted here
+            if marker in extra.read_text(encoding="utf-8"):
+                extra.unlink()
                 changed.append(extra)
     return changed
 

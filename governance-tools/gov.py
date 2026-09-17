@@ -1655,6 +1655,9 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "render":
         for pth in rd.render_all():
             _say("rendered", rel(pth))
+        for pth in rd.unmanaged_commands(CFG):
+            _say(f"KEPT {rel(pth)} — no generated marker, so not this render's to delete; "
+                 f"declare it in factory.yaml → commands or remove it by hand (lint refuses it until then)")
         return OK
     if a.cmd == "lint":
         import lint
