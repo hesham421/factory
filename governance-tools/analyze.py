@@ -1247,8 +1247,31 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
             # project names in words the factory never anticipated (read, search,
             # reorder, activate) — which is the whole class of gap being hunted.
             if d.get("verbatim"):
-                words = (w.strip().lower() for w in re.split(r"[,;/]", re.sub(r"\([^)]*\)", " ", stated)))
+                # The operation WORDS are the project's own, so the SEPARATOR between
+                # them is a project fact too and comes from the profile. It used to be
+                # the literal `[,;/]`, and a line written with any other one — `·`, which
+                # is what the engines render as their own list separator throughout —
+                # split into a single token that `isalpha()` rejects, leaving NO
+                # operations. The clause then reported "examined nothing", which reads
+                # as "this subject declares no operations" and is indistinguishable from
+                # the check having failed to parse the line in front of it.
+                # optional field: absent means the behaviour is not applied (C5), so the
+                # previous separator set stands rather than the clause refusing to run
+                seps = CFG.profile.get(d["separators"]) if d.get("separators") else None
+                cls = "[" + re.escape("".join(seps)) + "]" if seps else r"[,;/]"
+                words = (w.strip().lower() for w in re.split(cls, re.sub(r"\([^)]*\)", " ", stated)))
                 names = sorted({w for w in words if w and w.isalpha()})
+                if not names:
+                    # a check that cannot read its subject SAYS so; it does not report
+                    # the subject as having nothing to say
+                    out.append(Finding(sev, "", "operation-resolves",
+                                       f"`{r.id}` has a `{label}` line that yields no operation this "
+                                       f"check can read — it separates them with something outside "
+                                       f"`plan_vocabulary.operation_separators` "
+                                       f"({', '.join(repr(x) for x in (seps or [',', ';', '/']))}), so the "
+                                       f"operations it declares were examined against nothing: {stated!r}",
+                                       d.get("source") or c["artifact"], r.line))
+                    continue
             else:
                 names = list(actions)
             ids = (_subject_ids(r) if subj_rx else []) or [r.id]

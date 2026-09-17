@@ -117,10 +117,12 @@ contracts:
                                              declared: {source: srs, kind: SCR-REQ, verbatim: true, subject_kind: ENT,
                                                         label: plan_vocabulary.screen_operations_line,
                                                         subjects_label: plan_vocabulary.screen_subjects_line,
+                                                        separators: plan_vocabulary.operation_separators,
                                                         exclusions: plan_vocabulary.exclusion_reasons}}, severity: MAJOR}
       - {id: C7.20, check: operation-resolves, args: {artifact: backend-execution-plan, resolves_to: API,
                                              actions: conventions.security_model.actions,
-                                             declared: {kind: ENT, label: plan_vocabulary.operations_line},
+                                             declared: {kind: ENT, label: plan_vocabulary.operations_line,
+                                                        separators: plan_vocabulary.operation_separators},
                                              matrix: {present: plan_vocabulary.present_token, permission: conventions.security_model.permission_pattern}}, severity: MAJOR}
       - {id: C7.19, check: required-writer, args: {kind: DBF, declared_in: db-script, required_marker: stack.db.required_marker,
                                              writer_kind: API, writer_in: backend-execution-plan,

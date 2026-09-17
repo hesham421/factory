@@ -202,6 +202,10 @@ plan_vocabulary:                           # the labels the plans use on the lin
   # operations act on (an endpoint block carries the entity id, not the screen's).
   screen_operations_line: Operations
   screen_subjects_line: Entities
+  operation_separators: [",", ";", "/", "·"]   # the engines render "·" as their own list separator
+                                               # throughout, so a plan reaches for it naturally; "/" is
+                                               # what the P1 template's own Operations example uses.
+                                               # Both are legal, and the checker reads this list.
   present_token: "✓"
   exclusion_reasons: [system-generated, derived, seeded, DEFERRED]
 

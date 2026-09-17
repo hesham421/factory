@@ -169,6 +169,13 @@ plan_vocabulary?:                           # OPTIONAL — the labels this proje
   operations_line?: "str"                   # the line on a subject listing the operations it exposes
   screen_operations_line?: str
   screen_subjects_line?: str
+  operation_separators?: "list[str]"        # what separates the operations listed on one of the lines
+                                             # above. The operation WORDS are the project's own
+                                             # (clauses read them `verbatim`), so the separator between
+                                             # them is a project fact too — a checker that fixes the set
+                                             # in code silently parses zero operations out of a line
+                                             # written with any other one, and reports the clause as
+                                             # having nothing to examine rather than as unreadable.
   present_token?: "str"                     # the token marking a matrix cell as claimed
   exclusion_reasons?: "list[str]"           # the stated reasons a required column is legitimately
                                              # written by nothing (a silent gap is the defect)

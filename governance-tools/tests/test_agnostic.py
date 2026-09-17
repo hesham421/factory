@@ -55,6 +55,7 @@ TOY = {
     "plan_vocabulary": {"request_line": "Intake", "effect_line": "Follow-up",
                         "operations_line": "OFFERS", "present_token": "yes",
                         "screen_operations_line": "Offers", "screen_subjects_line": "Things",
+                        "operation_separators": ["+", "&"],
                         "exclusion_reasons": ["filled-by-the-clinic"]},
     "stack": {
         # F5a — the toy states the OPPOSITE answer to the ERP profile for every

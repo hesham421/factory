@@ -709,3 +709,56 @@ operations, one screen, zero cross-module dependencies, and said growth beyond
 that was itself a finding. Measured: 1 `ENT`, 1 `SCR-REQ`, 18 `REQ`, 9 `DBF`,
 0 `XM`. Nothing inflated it.
 
+## F-19 — a clause reported "examined nothing" when it had failed to READ its subject
+Where   : governance-tools/analyze.py:1250 (`_c_operation_resolves`, the
+          `verbatim` branch) · surfaced as C7.23 on NOTE's P3.1
+Expected: invariant 3. `analyze`'s own vacuous-clause paragraph sets the test:
+          "Confirm each is empty by nature and not because the check failed to
+          find its subject." Those two cases must be distinguishable.
+Actual   : P3.1 analyzed `CLEAN · 3 clause(s) examined nothing (C7.23, C7.5,
+          C7.5b)`. C7.5/C7.5b are XM clauses and NOTE has no XM — empty by
+          nature. C7.23 was NOT: its subject was right there.
+          The SRS's `SCR-REQ-NOTE-001` block carries both lines the clause
+          needs — `Entities : ENT-NOTE-001` and
+          `Operations   : search · list · create · read · update · deactivate`
+          — and instrumenting the clause confirmed it resolved the subject and
+          read the line: `stated='search · list · create · read · update ·
+          deactivate'`. Then:
+            words = re.split(r"[,;/]", stated)   → ONE token, the whole line
+            names = {w for w in words if w.isalpha()}  → empty (spaces, `·`)
+          so `for a in names:` never ran, `seen` stayed 0, and the clause
+          reported itself vacuous. The operation vocabulary is read `verbatim`
+          precisely so the factory never has to anticipate a project's words —
+          but the SEPARATOR between those words was the literal `[,;/]` in the
+          checker, a factory-side constant with no home in config, and `·` is
+          what the engines render as their own list separator throughout (the
+          P3.1 template alone uses it on a dozen lines). An author reaching for
+          it is following the house style.
+          Two defects, then: a C1/C2 literal, and a check that answered "nothing
+          to examine" when the truthful answer was "I could not read this".
+Fix     : both, and the separator is declared where `plan_vocabulary`'s own
+          rationale says it belongs — "the labels the plans use on the lines the
+          checks read; the engine renders these same values, so neither side can
+          drift into looking for a line the other never writes".
+          · `profiles/erp.yaml` → `plan_vocabulary.operation_separators:
+            [",", ";", "/", "·"]`, and the optional field added to
+            `profiles/_schema.yaml`;
+          · C7.20 and C7.23 pass it as `separators:
+            plan_vocabulary.operation_separators`;
+          · `analyze` builds the split class from it, falling back to the old
+            set when the field is absent (C5 — absent optional field means the
+            behaviour is not applied, not that the clause refuses to run);
+          · and when a non-empty line yields no readable operation, the clause
+            now RAISES A FINDING naming the line and the legal separators,
+            instead of counting zero.
+          The engine renders the separator list beside the `Entity`-line rule,
+          so the author is told. That last part was NOT my idea — the suite's
+          `test_every_label_a_clause_reads_is_one_the_engine_actually_renders`
+          failed the moment I added a `plan_vocabulary.*` address no engine
+          rendered, which is exactly the drift it exists to catch. The guard
+          worked on a live change.
+          Verified: C7.23 for NOTE goes from `0 ⚠ nothing` to `6` subjects
+          examined with a real verdict; SEC (62), FIN (166) and MDL (30) are
+          byte-identical to baseline; lint `0 · 0 · 0`; 242 passed, 1 skipped.
+Status  : FIXED
+

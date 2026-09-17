@@ -30,6 +30,7 @@
 {%- set L_sops = vocab.get('screen_operations_line') or '<profile.plan_vocabulary.screen_operations_line — not declared>' -%}
 {%- set L_subj = vocab.get('screen_subjects_line') or '<profile.plan_vocabulary.screen_subjects_line — not declared>' -%}
 {%- set T_yes = vocab.get('present_token') or '<profile.plan_vocabulary.present_token — not declared>' -%}
+{%- set SEPS = vocab.get('operation_separators') or [] -%}
 {%- set R_why = vocab.get('exclusion_reasons') or [] -%}
 {%- set totals = (profile.declared_totals | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 ```
@@ -402,6 +403,14 @@ mentions is the gap this closes: it used to surface at the frontend stage, two s
 gate later, when the screen had no endpoint to call. Every `API-*` block therefore carries its
 `Entity` line (the `{{ L_subj }}` the screen names) — without it no operation can be resolved to it at all. `gov.py analyze` →
 `operation-resolves`.
+{% if SEPS %}
+A `{{ L_sops }}` or `{{ L_ops }}` line separates the operations it lists with one of
+{% for x in SEPS %}`{{ x }}`{% if not loop.last %} · {% endif %}{% endfor %} and nothing else. The operation WORDS are this
+project's own — the check reads them verbatim, so it never has to anticipate them — but it
+splits the line on these separators, and one written with any other yields no operation at
+all. That failure is silent from the author's side: the clause reports having examined
+nothing rather than having failed to read the line.
+{% endif %}
 
 **Every required column needs a writer.** A column the db-script declares NOT NULL and the
 platform does not fill itself must be named by at least one `API-*` block, on its `{{ L_req }}` line
