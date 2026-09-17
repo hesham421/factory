@@ -27,11 +27,11 @@
 {%- set L_req = vocab.get('request_line') or '<profile.plan_vocabulary.request_line — not declared>' -%}
 {%- set L_eff = vocab.get('effect_line') or '<profile.plan_vocabulary.effect_line — not declared>' -%}
 {%- set L_ops = vocab.get('operations_line') or '<profile.plan_vocabulary.operations_line — not declared>' -%}
+{%- set L_sops = vocab.get('screen_operations_line') or '<profile.plan_vocabulary.screen_operations_line — not declared>' -%}
+{%- set L_subj = vocab.get('screen_subjects_line') or '<profile.plan_vocabulary.screen_subjects_line — not declared>' -%}
 {%- set T_yes = vocab.get('present_token') or '<profile.plan_vocabulary.present_token — not declared>' -%}
 {%- set R_why = vocab.get('exclusion_reasons') or [] -%}
-{%- set fwd = (profile.forward_columns | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
 {%- set totals = (profile.declared_totals | default([])) | selectattr('artifact', 'equalto', plan_art.artifact) | list -%}
-{%- set proposed = factory.forward_reference.proposed_token -%}
 ```
 ENGINE        : {{ stage.id }} — {{ st.title }}
 PASS / TRACK  : pass {{ st['pass'] }} · track {{ track }} · lane {{ st.lane }} · questions {{ st.questions }}
@@ -331,11 +331,6 @@ go in the phase whose `split_threshold.kind` is `API`, `XM-*` blocks in the phas
 kind is `XM`.
 
 **R1 — Core / configuration (architecture policies).** Declared once, applies to the module:
-- Layers and responsibilities: {% if profile.stack.backend.layers %}{{ profile.stack.backend.layers | join(' → ') }}{% else %}as `profile.stack.backend.layers` declares{% endif %} — each layer's "does / never does" stated; boundary violations are review findings.
-- Domain-behaviour placement — **not a per-module choice**. A rule that answers *"is this operation allowed?"* (guards, immutability, state transitions, cycle prevention, balance/count invariants) lives {% if conv.get('domain_behaviour_placement') == 'domain_classes' %}in a dedicated domain class per entity (`profile.conventions.domain_behaviour_placement: domain_classes`){% elif conv.get('domain_behaviour_placement') == 'entity_methods' %}in entity methods (`profile.conventions.domain_behaviour_placement: entity_methods`){% else %}in the single placement `profile.conventions.domain_behaviour_placement` declares — state it verbatim{% endif %}, for **every** such rule without exception. The **service layer is never a placement**: it orchestrates (load → delegate → persist → return) and carries no rule conditional of its own. How many entities or tables a rule reads is **not** a placement criterion — the service fetches those facts and passes them in as plain arguments, so a multi-entity rule sits in exactly the same place as a single-entity one. Never emit a split such as "entity methods for single-entity invariants, service layer for multi-entity rules"; that is the defect this clause exists to prevent.
-- Error signalling: `{{ api.error_envelope | default('profile.stack.backend.api.error_envelope') }}`; every catalog row is registered in every place the framework needs (declare the list once here).
-- Transaction scope defaults; search contract (request shape, allowed sort fields, paging `{{ api.paging | default('per profile') }}`).
-- Audit fields {% if (db.naming or {}).get('audit_fields') %}(`{{ db.naming.audit_fields | join('`, `') }}`) {% endif %}are framework-filled — never in create/update requests, never set by mappers or services.
 - Type mapping {{ db.target_dialect }} → language types, stated once as a table (from `profile.stack.db.syntax_map` rows, PK column type included) — a deviation needs an ADR. The table states column types only; the PK-generation clause is not a type (§2A).
 - Runtime error-code format: {% if api.error_code_format %}`{{ api.error_code_format }}` (profile.stack.backend.api.error_code_format) — state this string verbatim and make **every** Error Catalog row (§7) an instance of it; the declared format and the emitted codes come from this one profile value, never from free text{% else %}state the exact shape of the codes §7 emits, derived from the catalog itself — never a shape no catalog row obeys{% endif %}.
 {% if conv.get('lookups') %}- Lookup values: {{ conv.get('lookups') }}.
@@ -344,8 +339,9 @@ kind is `XM`.
 {% endif -%}
 {% if conv.get('workflow_engine') %}- Workflow engine: **{{ conv.get('workflow_engine') }}**.
 {% endif -%}
+- Search contract: the sort fields each screen allows — read from that screen's SRS filter
+  list, never widened here; paging {{ api.paging | default('per profile') }}; an empty result is success.
 - Languages: every named entity carries a name per language ({{ langs.all | join(', ') }}){% if langs.require_all %}; a single-language artifact is incomplete{% endif %}.
-- Cross-module contract placement: inversion-of-control interfaces consumed by other modules live in the service layer; a domain class may depend on another module's service interface (module boundary, not a layer violation).
 If nothing module-specific applies, write "Standard configuration — no module-specific abstractions".
 
 **R2 — Data + domain.** One entity block per `ENT-*`, every value bound (§2A):
@@ -396,6 +392,17 @@ Security     : screen · permission name{% if sec %} (`{{ sec.permission_pattern
 Localization : every message in {{ langs.all | join(' + ') }}; every name field per language
 <!-- API:API-{{ MOD }}-<seq>:END -->
 ```
+**Every operation the SRS names needs an endpoint.** Each screen requirement's `{{ L_sops }}`
+line is the module's demand, read from the SRS — never from this plan, which cannot both
+state its own demand and be the proof it was met. Every operation on it is closed here, in
+one of three ways and no fourth: an `API-*` that names the operation **and** the `ENT-*` the
+screen names on its `{{ L_subj }}` line; or an explicit exclusion carrying one of the profile's stated reasons; or an
+ADR that leaves it for a later version — and the gate stays shut. An operation the plan never
+mentions is the gap this closes: it used to surface at the frontend stage, two stages and one
+gate later, when the screen had no endpoint to call. Every `API-*` block therefore carries its
+`Entity` line (the `{{ L_subj }}` the screen names) — without it no operation can be resolved to it at all. `gov.py analyze` →
+`operation-resolves`.
+
 **Every required column needs a writer.** A column the db-script declares NOT NULL and the
 platform does not fill itself must be named by at least one `API-*` block, on its `{{ L_req }}` line
 (the caller supplies it) or its `{{ L_eff }}` line (the endpoint sets it). A required column no
@@ -413,21 +420,6 @@ errors (not found, forbidden, server) are catalog rows with RULE = `PLATFORM-STD
 repository deviations (eager fetch, compound update, native query) need an ADR. Business code
 (if any) is excluded from create/update bodies and always present in responses. No hard-coded
 role checks in services — permission names only.
-
-**R4 — Contract documentation (internal).** API contract summary (API │ path │ verb │ request
-DTO │ response DTO │ stability), DTO typing constraints ({% if conv.get('lookups') %}lookup fields are
-strings holding the code, never enums; {% endif %}business code never in create/update), and the
-pagination + filter standard (request shape, sort validation, empty result = success). This
-section is a **backend self-check only** — the frontend stage binds to the real
-`{{ factory.inputs['api-docs'].file.replace('{mod}', MOD | lower) }}` published after implementation, never to this summary.
-{% if fwd %}
-This stage runs before any implementation exists, so {% for f in fwd %}`{{ f.column }}`{% if not loop.last %} and {% endif %}{% endfor %}
-{{ 'name' if fwd | length > 1 else 'names' }} something that does not exist yet. Every cell of {{ 'those columns' if fwd | length > 1 else 'that column' }}
-carries `{{ proposed }}` unless the value is already resolvable in {% for r in fwd | map(attribute='resolved_from') | unique %}`{{ r }}`{% if not loop.last %} / {% endif %}{% endfor %} —
-a guess printed beside facts is read downstream as a decision, and the implementer has no way to
-tell which columns were derived and which were imagined. The stage that CAN resolve them fills
-them in from the built artifact. `gov.py analyze` → `forward-refs`.
-{% endif %}
 
 **R5 — Cross-module consume (contracts).** Place **every** XM the db-script register declares.
 Where this stage's own content — a security role, a rule turned into a runtime check — is the
@@ -573,11 +565,11 @@ a prose pass reads past:
 | `traces` | every `PHASE`/`SUB`/atom block carries `traces=`, and every `API-*` traces to its `REQ-*` and its `DBF-*` |
 | `orphans` (REQ) | every `REQ-*` is covered by at least one `API-*` or `DBF-*` |
 | `registry-agree` | every `XM-*` the register declares is placed here, and every `XM-*` minted here is back-registered into it |
-| `forward-refs` | every column this stage cannot resolve at its own stage carries the proposed token, or a value the resolving artifact really defines |
 | `value-agreement` | the physical column a `DBF-*` names in this plan is character-identical to the one the db-script declares for it (registry row, `CREATE TABLE`, `COMMENT ON`) |
 | `code-format` | every Error Catalog code is an instance of the format R1 declares{% if api.error_code_format %} (`{{ api.error_code_format }}`){% endif %}{% if api.http_statuses %}, and its HTTP status is one the platform can emit{% endif %} |
 | `data-source` | every `RULE-*` this plan turns into a runtime check has a declared source for the data the check *reads* — or an explicit deferral |
 | `xref-resolve` | every id of another module cited here is defined in that module's own registry |
+| `operation-resolves` | every operation an SRS screen names is built by an `API-*`, or the plan states why it is not |
 | `refs-exist` | every `ADR-*` file this plan cites by path exists on disk in `{{ factory.paths.decisions }}/{{ MOD }}/` |
 | `paths-resolve` | every path the generated manifest and execution state emit resolves to something that exists |
 | `orphans` (QR) | every catalogued query is reached by at least one `API-*` — the direction the QRC's own four assertions never ran, so a query nobody runs was invisible to all of them |
@@ -621,9 +613,9 @@ API (R3)          code-format          every catalog code is an instance of the 
 RULE INPUTS       data-source          every RULE enforced at runtime names where the data it READS comes from, or is deferred
 CROSS-MODULE      registry-agree       every registered XM is placed here, and every XM minted here is back-registered
 FOREIGN IDS       xref-resolve         every id of another module cited here is defined in that module's own registry
-CONTRACT DOC (R4) forward-refs         every forward-referencing column carries the proposed token or a value the resolving artifact defines
 {% if boot %}{{ boot.section }}{{ ' ' * (18 - boot.section | length if boot.section | length < 18 else 1) }}bootstrap-complete   every {{ boot['items'] | map(attribute='label') | join(' and every ') }} has a row naming who produces it
 {% endif %}SECURITY (R7)     operation-resolves   every declared entity operation resolves to an API, and every marked matrix cell names its API and its permission
+DEMAND (SRS)      operation-resolves   every operation an SRS screen names is built by an API, or the plan states why it is not
 DECISIONS         refs-exist           every ADR this plan cites exists on disk in {{ factory.paths.decisions }}/{{ MOD }}/
 PATHS             paths-resolve        every path the generated manifest and execution state emit resolves to something that exists
 COVERAGE          (the report)         the clauses the analyze report lists as having examined nothing — verbatim, or `none`

@@ -196,6 +196,11 @@ plan_vocabulary:                           # the labels the plans use on the lin
   request_line: Request
   effect_line: Orchestration
   operations_line: OPERATIONS
+  # the SRS side of the same question: the line on which a screen requirement
+  # names the operations it offers, and the line naming the entities those
+  # operations act on (an endpoint block carries the entity id, not the screen's).
+  screen_operations_line: Operations
+  screen_subjects_line: Entities
   present_token: "✓"
   exclusion_reasons: [system-generated, derived, seeded, DEFERRED]
 
@@ -218,14 +223,6 @@ declared_totals:                           # every total the plan hand-counts, a
   - {artifact: backend-execution-plan, label: "API ROWS",  kind: API}
   - {artifact: backend-execution-plan, label: "QR ROWS",   kind: QR}
 
-forward_columns:                           # the backend plan names request/response types for an
-                                           # implementation that does not exist yet; the real api-docs,
-                                           # published after implementation, is where they resolve.
-                                           # 14 of 27 rows in the shipped SEC table named types that
-                                           # never existed — each one indistinguishable from a decision.
-  - {artifact: backend-execution-plan, column: "Request DTO",  resolved_from: api-docs}
-  - {artifact: backend-execution-plan, column: "Response DTO", resolved_from: api-docs}
-
 self_check:                                # the verdict line inside the plan; the ORCHESTRATOR writes it
   block: ALIGN                             # from the analyze report (gov.py), the author leaves it alone.
   verdict_label: RESULT                    # `verdict-agrees` (C7.15/C9.12) guards it for anything still
@@ -243,5 +240,4 @@ review:
     - {id: ERP-2, stage: P1,   check: "every screen maps to exactly one composite SCR and one SEC_PAGES row", severity: MAJOR}
     - {id: ERP-3, stage: P2,   check: "every flag column ends with the flag_suffix", severity: MINOR}
     - {id: ERP-4, stage: P3.1, check: "every mutation endpoint declares its PERM_* requirement", severity: MAJOR}
-    - {id: ERP-5, stage: P3.1, check: "CORE states domain-behaviour placement as the single value conventions.domain_behaviour_placement declares, for every rule alike — no split by entity count, and the service layer never named as a placement", severity: CRITICAL}
     - {id: ERP-6, stage: P3.1, check: "every cross-module row states the access mechanism conventions.module_interface declares — no per-row choice, no HTTP client and no network error path where the platform is one deployable", severity: CRITICAL}
