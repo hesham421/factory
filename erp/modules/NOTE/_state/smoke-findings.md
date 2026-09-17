@@ -383,6 +383,16 @@ Fix     : `run_pass` now skips a stage whose non-optional `produces` are all
                         business-policies
             skipped P0.5: already produced prd
           and the approved PRD's md5 was unchanged.
+          LIMITATION, stated rather than left to be discovered: the skip rule
+          is "the declared artifacts exist", not "they are still current". Edit
+          the SRS by hand and re-run the pass, and P2/P3.1 are skipped though
+          they should re-run. `state.is_fresh()` cannot close this — it
+          compares one module-wide `inputs_mtime` against the newest file under
+          the version root, and every stage commit moves that, so wiring it in
+          would make `is_fresh` false on every resume and skip nothing at all.
+          A per-stage freshness stamp (each stage recording the digests of the
+          inputs it consumed) is the real answer and is a larger change than
+          this defect warranted. `--redo` is the escape hatch meanwhile.
 Status  : FIXED
 
 ## F-14 — the track's phase list is restated in both consumer generators
