@@ -167,9 +167,9 @@ def backend_plan(mod: str) -> str:
         out.append(f"## {p.display}{_lang_tag()}")
         kind = _phase_atom_kind(p)
         if kind == "API" and not api_done:
-            out += [f"<!-- API:{mid('API', mod, 1)}:START traces={req1},{dbf1} -->", f"### {mid('API', mod, 1)} — create endpoint", "POST create.",
+            out += [f"<!-- API:{mid('API', mod, 1)}:START traces={req1},{dbf1} -->", f"### {mid('API', mod, 1)} — create endpoint", f"  Entity     : {mid('ENT', mod, 1)}", "POST create.",
                     f"<!-- API:{mid('API', mod, 1)}:END -->",
-                    f"<!-- API:{mid('API', mod, 2)}:START traces={req2},{dbf1} -->", f"### {mid('API', mod, 2)} — search endpoint", "GET search.",
+                    f"<!-- API:{mid('API', mod, 2)}:START traces={req2},{dbf1} -->", f"### {mid('API', mod, 2)} — search endpoint", f"  Entity     : {mid('ENT', mod, 1)}", "GET search.",
                     # the catalogued query is REACHED by an endpoint (C7.22): a QR no API cites
                     # is a query nobody runs, and the catalog is checked in both directions now
                     f"  Repository : {mid('QR', mod, 1)}",

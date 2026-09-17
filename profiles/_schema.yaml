@@ -167,6 +167,8 @@ plan_vocabulary?:                           # OPTIONAL — the labels this proje
   request_line?: "str"                      # the line naming what the CALLER supplies to an endpoint
   effect_line?: "str"                       # the line naming what the ENDPOINT itself writes
   operations_line?: "str"                   # the line on a subject listing the operations it exposes
+  screen_operations_line?: str
+  screen_subjects_line?: str
   present_token?: "str"                     # the token marking a matrix cell as claimed
   exclusion_reasons?: "list[str]"           # the stated reasons a required column is legitimately
                                              # written by nothing (a silent gap is the defect)

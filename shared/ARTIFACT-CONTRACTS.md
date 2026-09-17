@@ -91,7 +91,7 @@ contracts:
     title: backend execution plan → split / deliver
     owner: P3.1
     consumer: split
-    artifacts: [backend-execution-plan, registry-exec-be]
+    artifacts: [backend-execution-plan, registry-exec-be, srs]
     clauses:
       - {id: C7.1, check: markers,        args: {artifact: backend-execution-plan, track: backend, plan: exec},                  severity: CRITICAL}
       - {id: C7.2, check: traces,         args: {from: backend-execution-plan, blocks: [PHASE, SUB, API, XM], min: 1},          severity: MAJOR}
@@ -112,6 +112,12 @@ contracts:
       - {id: C7.16, check: forward-refs,  args: {spec: forward_columns, when: "profile.forward_columns"},                       severity: MAJOR}
       - {id: C7.22, check: orphans,       args: {kind: QR, referenced_by: [API], min: 1},                                     severity: MAJOR}
       - {id: C7.21, check: bootstrap-complete, args: {artifact: backend-execution-plan, spec: bootstrap_data, when: "profile.bootstrap_data"}, severity: MAJOR}
+      - {id: C7.23, check: operation-resolves, args: {artifact: backend-execution-plan, resolves_to: API,
+                                             actions: conventions.security_model.actions,
+                                             declared: {source: srs, kind: SCR-REQ, verbatim: true, subject_kind: ENT,
+                                                        label: plan_vocabulary.screen_operations_line,
+                                                        subjects_label: plan_vocabulary.screen_subjects_line,
+                                                        exclusions: plan_vocabulary.exclusion_reasons}}, severity: MAJOR}
       - {id: C7.20, check: operation-resolves, args: {artifact: backend-execution-plan, resolves_to: API,
                                              actions: conventions.security_model.actions,
                                              declared: {kind: ENT, label: plan_vocabulary.operations_line},
@@ -205,7 +211,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be` | 23 |
+| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
 | `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 14 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |

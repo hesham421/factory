@@ -1182,19 +1182,92 @@ def _c_operation_resolves(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     if d:
         label = ctx.need(d["label"], "the label of the line listing a subject's operations")
         label_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(label) + r"\s*\**\s*:?\s*(.+)$", re.I)
-        for r in idmodel.by_prefix(recs, d["kind"]):
+        # WHERE the demand is read from. Left unset it is the plan itself — and a
+        # plan that declares its own demand and then meets it can only ever pass:
+        # an operation it never wrote down is invisible to the check that exists to
+        # find exactly that. `source` points the demand at the artifact UPSTREAM
+        # (the SRS names the operations each screen offers), so an operation the
+        # plan never mentioned is a finding at THIS stage — before implementation —
+        # instead of surfacing two stages later when the frontend cannot call it.
+        d_text = ctx.text(d["source"]) if d.get("source") else text
+        if d_text is None:
+            return out
+        d_recs = idmodel.records(d_text) if d.get("source") else recs
+        # WHOSE id the endpoint carries. A screen is not named by an endpoint block;
+        # the entities it works on are, so the screen's subject line names them.
+        subj_label = ctx.need(d["subjects_label"], "the label of the line naming a subject's entities") if d.get("subjects_label") else None
+        subj_rx = re.compile(r"^\s*[-*]?\s*\**\s*" + re.escape(subj_label) + r"\s*\**\s*:?\s*(.+)$", re.I) if subj_label else None
+        # a deliberately unbuilt operation states why, in the plan, with one of the
+        # profile's own reasons — silence is the defect (as with `required-writer`)
+        ex_tokens = list(ctx.need(d["exclusions"], "the stated reasons an operation is not built")) if d.get("exclusions") else []
+        subjects = list(idmodel.by_prefix(d_recs, d["kind"]))
+        # An endpoint block that names no subject at all cannot answer "is this
+        # operation built?" — every operation would resolve to nothing and the run
+        # would report a gap per operation, none of them true. That is one defect
+        # (the plan omits the line its own template requires), not N, and saying it
+        # once is the only honest reading: a check that cannot see the answer must
+        # say so rather than manufacture findings out of its own blindness.
+        def _subject_ids(rec) -> list[str]:
+            found = []
+            for ln in rec.text.splitlines():
+                m = subj_rx.match(ln) if subj_rx else None
+                if m:
+                    found.append(m.group(1))
+            return idmodel.find_ids(" ".join(found)) if found else []
+
+        # The resolution reads the subject off each endpoint block. Where blocks omit
+        # it the check cannot tell "never built" from "built but not annotated", and
+        # every unresolved operation would be reported as a gap that is not one. So
+        # the convention must be COMPLETE before any conclusion is drawn from its
+        # absence: one finding naming the real defect, and nothing examined.
+        # one endpoint yields two records — its marker line and its `###` definition —
+        # and only the second carries the body. Judge the ENDPOINT, not each record:
+        # an id is unannotated only when none of its records names the subject.
+        sk = d.get("subject_kind")
+        annotated: dict[str, bool] = {}
+        for e in endpoints:
+            has = any((s := idmodel.split_id(i)) and s[0] == sk for i in idmodel.find_ids(e.text))
+            annotated[e.id] = annotated.get(e.id, False) or has
+        bare = sorted(i for i, ok in annotated.items() if not ok) if sk else []
+        if subj_rx and subjects and endpoints and bare:
+            ctx.saw(0)
+            return out + [Finding(sev, "", "operation-resolves",
+                                  f"{len(bare)} of {len(annotated)} `{kind}` blocks name no "
+                                  f"`{sk}` ({', '.join(bare[:6])}{' …' if len(bare) > 6 else ''}), so an "
+                                  f"operation that resolves to none of them cannot be told apart from one that was "
+                                  f"never built — the demand each `{d['kind']}` declares stays unchecked until every "
+                                  f"block carries the subject its own template requires",
+                                  c["artifact"], 0)]
+        for r in subjects:
             stated = " ".join(m.group(1) for ln in r.text.splitlines() if (m := label_rx.match(ln)))
-            for a in actions:
+            if not stated:
+                continue
+            # the vocabulary is the SRS's own words when it supplies the demand:
+            # a fixed action list here would silently ignore every operation the
+            # project names in words the factory never anticipated (read, search,
+            # reorder, activate) — which is the whole class of gap being hunted.
+            if d.get("verbatim"):
+                words = (w.strip().lower() for w in re.split(r"[,;/]", re.sub(r"\([^)]*\)", " ", stated)))
+                names = sorted({w for w in words if w and w.isalpha()})
+            else:
+                names = list(actions)
+            ids = (_subject_ids(r) if subj_rx else []) or [r.id]
+            for a in names:
                 if not _word_rx(a).search(stated):
                     continue
                 seen += 1
-                if not any(r.id in e.text and _word_rx(a).search(e.text) for e in endpoints):
-                    out.append(Finding(sev, "", "operation-resolves",
-                                       f"`{r.id}` declares the operation `{a}` on its `{label}` line "
-                                       f"but no `{kind}` block names both that operation and `{r.id}` — "
-                                       f"the operation was specified and never built, and no shape check "
-                                       f"can see the gap because every id in both halves resolves",
-                                       c["artifact"], r.line))
+                if any(any(i in e.text for i in ids) and _word_rx(a).search(e.text) for e in endpoints):
+                    continue
+                if ex_tokens and any(_word_rx(a).search(ln) and any(x.lower() in ln.lower() for x in ex_tokens)
+                                     for ln in text.splitlines()):
+                    continue                       # not built, and the plan says why
+                out.append(Finding(sev, "", "operation-resolves",
+                                   f"`{r.id}` declares the operation `{a}` on its `{label}` line "
+                                   f"but no `{kind}` block names both that operation and "
+                                   f"{' or '.join('`'+i+'`' for i in ids)} — "
+                                   f"the operation was specified and never built, and no shape check "
+                                   f"can see the gap because every id in both halves resolves",
+                                   d.get("source") or c["artifact"], r.line))
 
     mx = c.get("matrix")
     if mx:

@@ -54,6 +54,7 @@ TOY = {
     # the same declaration; the toy's words are nothing like the other profile's
     "plan_vocabulary": {"request_line": "Intake", "effect_line": "Follow-up",
                         "operations_line": "OFFERS", "present_token": "yes",
+                        "screen_operations_line": "Offers", "screen_subjects_line": "Things",
                         "exclusion_reasons": ["filled-by-the-clinic"]},
     "stack": {
         # F5a — the toy states the OPPOSITE answer to the ERP profile for every
