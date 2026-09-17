@@ -10,7 +10,7 @@ evidence. **The findings are the deliverable; the module is scaffolding.**
 | Findings | **22** — 11 FIXED · 10 OPEN · 1 WONTFIX |
 | Baseline before | lint `0 critical · 0 major · 0 minor` · `237 passed, 1 skipped` |
 | Baseline after | lint `0 critical · 0 major · 0 minor` · `242 passed, 1 skipped` (+5 regression tests) |
-| Detailed log | [`erp/modules/NOTE/_state/smoke-findings.md`](erp/modules/NOTE/_state/smoke-findings.md) — full evidence per finding |
+| Detailed log | [`governance-shared/erp/modules/NOTE/_state/smoke-findings.md`](governance-shared/erp/modules/NOTE/_state/smoke-findings.md) — full evidence per finding (moved into the shared repo by `ee543b1`, after this report was written) |
 
 Every claim below has a command behind it. Nothing here was concluded by reading.
 
