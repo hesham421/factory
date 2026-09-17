@@ -128,6 +128,21 @@ Every reasoning step (a stage, a gate review, a revise) is a brief `gov.py` buil
 - `manual` — the brief is written, the command exits 2, and the operator (Claude Code + the delegate skills) executes it by hand and calls the command again with `--complete`; a pass is one bundled brief.
 - `fake` — the test hook (the nightly job drives the whole line through it under a non-ERP toy profile).
 
+## Operator setup — once, in the shell you run the factory from
+1. `$delegate-setup` — make sure these lanes exist, named **exactly** as below, all on `claude`. The factory passes the model explicitly per round; the lane of the same name supplies the effort and, where marked, the read-only dial:
+   - `analysis` — claude:opus, effort `high`
+   - `analysis-dialogue` — claude:opus ↔ claude:sonnet, effort `high` (dialogue: ≤ 4 rounds, converge on *mutually-acceptable*)
+   - `review-pass` — claude:sonnet ↔ claude:opus, effort `medium`, **read-only** (dialogue: ≤ 2 rounds, converge on *merged-scorecard*)
+   - `merge-review-notes` — claude:sonnet, effort `low`
+   - `test-gen` — claude:opus, effort `high`
+2. Environment — scoped to that shell (a project `.envrc`, a `direnv`, or the session), never `.zshrc`-global:
+   ```
+   export GOV_RUNNER=cmd
+   export GOV_RUNNER_CMD='governance-tools/runner/claude_delegate.sh {brief} {lane} {model} {read_only_flag} {out}'
+   ```
+   `{model}` is mandatory in the template: a dialogue lane alternates implementers, and a lane-name-only mapping would collapse the debate to one model. `GOV_DELEGATE_RELAY` points the adapter at a relay other than `delegate-skills/skills/claude-delegate/scripts/relay.mjs` (it also searches every parent's `.agents/skills/` and `~/.agents/skills/`).
+3. Drive a module with `gov.py next -m MOD --run` until it reports the version complete. The only stops are the human decision points (`gov.py approve prd-approval`), a `[QUESTION]` from a questions-forbidden stage, a BLOCKED ADR, a blocking finding, and an ESCALATE after 1 REVISE.
+
 ## Quality gates in code
 - `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.
 - `gov.py lint` — the constitution: profile schema, no removed concepts, no domain literals outside profiles, no stage/phase/prefix literals in code, generated files fresh.
