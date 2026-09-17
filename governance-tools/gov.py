@@ -60,17 +60,64 @@ def _git(*args: str, cwd: Path | None = None, check: bool = True, capture: bool 
     return subprocess.run(["git", *args], cwd=str(cwd or CFG.root), check=check, capture_output=capture, text=True)
 
 
+def _owning_checkout(path: Path) -> Path:
+    """The checkout that owns a path — the innermost declared root containing it.
+
+    Artifacts live in the shared repo now (`paths.external`), and that repo
+    reaches this one as a submodule. `git add` run in the factory root over a
+    submodule path stages the POINTER, not the content, and commits cleanly
+    while saving nothing — the worst shape a failure can take. So the repo is
+    derived from the declared checkouts rather than assumed to be this one, and
+    innermost wins so a submodule beats the parent that contains it."""
+    p = Path(path).resolve()
+    roots = {CFG.root, *(CFG.repo_checkout(r) for r in CFG.repos)}
+    inside = [r for r in roots if p == r or r in p.parents]
+    return max(inside, key=lambda r: len(r.parts)) if inside else CFG.root
+
+
+def _commit_in(root: Path, rels: list[str], message: str) -> str | None:
+    """Commit exactly `rels` in `root` — nothing else the index happens to hold.
+
+    Every git call here is pathspec-limited. Without that, `git commit` takes
+    the WHOLE index, so anything staged out of band rides along under this
+    message: a probe of this function swept 36 pending deletions into a commit
+    that claimed to add one file. A stage commit must contain the stage's own
+    output and nothing it did not write."""
+    _git("add", "-A", "--", *rels, cwd=root)
+    if _git("diff", "--cached", "--quiet", "--", *rels, check=False, cwd=root).returncode == 0:
+        return None
+    _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory",
+         "commit", "-q", "-m", message, "--", *rels, cwd=root)
+    return _git("rev-parse", "--short", "HEAD", cwd=root).stdout.strip()
+
+
 def _commit(paths: list[Path], message: str, no_commit: bool = False) -> str | None:
+    """Commit each path in the repository that owns it.
+
+    When a write lands in a submodule, the parent's pointer is advanced in the
+    same operation: a factory commit that produced artifacts should record the
+    shared commit it produced them AT, which is the whole reason the pointer is
+    pinned. Leaving it unbumped would also leave this repo permanently dirty,
+    which hides the changes that matter."""
     if no_commit:
         return None
-    rels = [str(p.relative_to(CFG.root)) for p in paths if p.exists()]
-    if not rels:
-        return None
-    _git("add", "-A", "--", *rels)
-    if _git("diff", "--cached", "--quiet", check=False).returncode == 0:
-        return None
-    _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory", "commit", "-q", "-m", message)
-    return _git("rev-parse", "--short", "HEAD").stdout.strip()
+    groups: dict[Path, list[str]] = {}
+    for p in paths:
+        if not Path(p).exists():
+            continue
+        root = _owning_checkout(p)
+        groups.setdefault(root, []).append(str(Path(p).resolve().relative_to(root)))
+    shas: list[str] = []
+    for root, rels in sorted(groups.items(), key=lambda kv: len(kv[0].parts), reverse=True):
+        sha = _commit_in(root, rels, message)
+        if not sha:
+            continue
+        shas.append(sha if root == CFG.root else f"{root.name}@{sha}")
+        if root != CFG.root and CFG.root in root.parents:      # submodule of this repo
+            ptr = _commit_in(CFG.root, [str(root.relative_to(CFG.root))], message)
+            if ptr:
+                shas.append(ptr)
+    return " · ".join(shas) or None
 
 
 def _version(mod: str, v: int | None) -> int:
@@ -205,7 +252,7 @@ def run_stage(stage_id: str, mod: str, version: int | None, complete: bool, no_c
         return BLOCKED
     res = dp.dispatch(stage, mod, version)
     if res.awaiting:
-        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
+        _say(f"AWAITING OPERATOR: brief written → {rel(res.brief)}")
         _say(f"  lane `{res.lane}` implementers {CFG.lane(res.lane).get('implementers')} — execute the brief (delegate), write the files it lists, then:")
         _say(f"  gov.py run-stage {stage.id} -m {mod} -v {version} --complete")
         return AWAITING
@@ -244,7 +291,7 @@ def run_scoped_modules(stage_id: str, mods: list[str], version: int | None, comp
         return BLOCKED
     res = dp.dispatch_scoped(stage, mods, versions, "modules")
     if res.awaiting:
-        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
+        _say(f"AWAITING OPERATOR: brief written → {rel(res.brief)}")
         _say(f"  lane `{stage.lane}` implementers {CFG.lane(stage.lane).get('implementers')} — execute the brief (delegate), write the files it lists, then:")
         _say(f"  gov.py run-standalone {stage.id} --modules {','.join(mods)} --complete")
         return AWAITING
@@ -259,7 +306,7 @@ def run_scoped_modules(stage_id: str, mods: list[str], version: int | None, comp
 def _complete_test_gen_project(stage, mods: list[str], versions: dict[str, int], no_commit: bool) -> int:
     sti_path = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
     if not sti_path.exists() or not sti_path.read_text(encoding="utf-8").strip():
-        _say(f"BLOCKED: {stage.id} (project scope) did not produce {sti_path.relative_to(CFG.root)}")
+        _say(f"BLOCKED: {stage.id} (project scope) did not produce {rel(sti_path)}")
         return BLOCKED
     qlines = idmodel.questions(sti_path.read_text(encoding="utf-8"))
     if qlines:
@@ -284,8 +331,8 @@ def run_scoped_project(stage_id: str, version: int | None, complete: bool, no_co
     res = dp.dispatch_scoped(stage, mods, versions, "project")
     sti_path = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
     if res.awaiting:
-        _say(f"AWAITING OPERATOR: brief written → {res.brief.relative_to(CFG.root)}")
-        _say(f"  lane `{stage.lane}` implementers {CFG.lane(stage.lane).get('implementers')} — execute the brief, write {sti_path.relative_to(CFG.root)}, then:")
+        _say(f"AWAITING OPERATOR: brief written → {rel(res.brief)}")
+        _say(f"  lane `{stage.lane}` implementers {CFG.lane(stage.lane).get('implementers')} — execute the brief, write {rel(sti_path)}, then:")
         _say(f"  gov.py run-standalone {stage.id} --scope project --complete")
         return AWAITING
     _say(f"dispatched {stage.id} (project, {len(mods)} module(s)): wrote {len(res.written)} file(s)")
@@ -337,7 +384,7 @@ def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: b
             parts += ["", "=" * 78, b.read_text(encoding="utf-8")]
         bundle = CFG.state_dir(mod, version) / "briefs" / f"pass-{pass_no}.md"
         bundle.write_text("\n".join(parts) + "\n", encoding="utf-8")
-        _say(f"AWAITING OPERATOR: bundled brief → {bundle.relative_to(CFG.root)}")
+        _say(f"AWAITING OPERATOR: bundled brief → {rel(bundle)}")
         _say(f"  execute stage by stage (stop at a human-approval gate), then: gov.py run-pass {pass_no} -m {mod} -v {version} --complete")
         return AWAITING
     for sid in p["stages"]:
@@ -408,7 +455,7 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
     if not complete:
         brief = _gate_brief(g, pass_no, mod, version, rep)
-        _say(f"AWAITING REVIEW: gate brief → {brief.relative_to(CFG.root)} (lanes {', '.join(f'`{l}`' for l in g['lanes'])}, read-only reviewers)")
+        _say(f"AWAITING REVIEW: gate brief → {rel(brief)} (lanes {', '.join(f'`{l}`' for l in g['lanes'])}, read-only reviewers)")
         _say(f"  when the review JSON exists: gov.py gate {pass_no} -m {mod} -v {version} --complete --result <file.json>")
         return AWAITING
     if not result or not Path(result).exists():
@@ -447,7 +494,7 @@ def _gate_brief(g: dict, pass_no: str, mod: str, version: int, rep: an.AnalyzeRe
     ctx = dict(profile=CFG.profile.data, factory=CFG.data, stage=stage.raw | {"pass": stage.pass_}, mod=mod.upper(), version=version,
                gate=g, contracts=an.select_contracts(f"gate:{g['id']}"),
                analyze_report=(CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["analyze_report"], stage=f"gate-{g['id']}")).read_text(encoding="utf-8"),
-               artifacts=[str(p.relative_to(CFG.root)) for p in sorted(CFG.state_dir(mod, version).glob("current-*"))],
+               artifacts=[rel(p) for p in sorted(CFG.state_dir(mod, version).glob("current-*"))],
                previous_version=version - 1 if version > 1 else None)
     text = env.from_string(tpl.read_text(encoding="utf-8")).render(**ctx)
     parts = [text, "", "---", "# ARTIFACTS UNDER REVIEW (generated current state)"]
@@ -479,7 +526,7 @@ def approve(gate_id: str, mod: str, version: int | None, by: str, no_commit: boo
     if absent:
         _say(f"BLOCKED: `{gate_id}` has nothing to approve — {g['after']} declares "
              f"{', '.join(absent)} and no such file exists for {mod.upper()} v{version}:\n  "
-             + "\n  ".join(str(CFG.artifact_path(mod, g["after"], a, version).relative_to(CFG.root))
+             + "\n  ".join(rel(CFG.artifact_path(mod, g["after"], a, version))
                             for a in absent))
         return BLOCKED
     p = an.approval_path(mod, version, gate_id)
@@ -517,7 +564,7 @@ def cmd_version(mod: str, new: bool, quiet: bool = False) -> int:
                           "Change type  : ADDITIVE\nSummary      : \n\n## Per artifact\n", encoding="utf-8")
     _commit([CFG.version_root(mod, v)], CFG.commit_msg("version", mod=mod, version=v))
     if not quiet:
-        _say(f"created {CFG.version_root(mod, v).relative_to(CFG.root)} (v{v})")
+        _say(f"created {rel(CFG.version_root(mod, v))} (v{v})")
     return v
 
 
@@ -588,14 +635,14 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
                 continue
             text = _merge_published(src, spec, mod)
             if dst.exists() and dst.read_text(encoding="utf-8") == text:
-                _say(f"unchanged {name} → {dst.relative_to(CFG.root)}")
+                _say(f"unchanged {name} → {rel(dst)}")
                 continue
             dst.write_text(text, encoding="utf-8")
             n = len(sorted(src.glob(spec["merge"].get("include") or "**/*.md")))
-            _say(f"fetched {name} ({n} files folded) → {dst.relative_to(CFG.root)}")
+            _say(f"fetched {name} ({n} files folded) → {rel(dst)}")
         else:
             shutil.copy2(src, dst)
-            _say(f"fetched {name} → {dst.relative_to(CFG.root)}")
+            _say(f"fetched {name} → {rel(dst)}")
         companion = (spec.get("merge") or {}).get("keep_alongside")
         if companion:
             c = dst.parent / CFG.fmt(companion, mod=mod)
@@ -1337,7 +1384,7 @@ def cmd_new_domain(pid: str, *, yes: bool = False, module: str | None = None) ->
     _reset_factory_yaml_instance_values(pid)
     dst = _scaffold_profile(pid)
     CFG.reload()
-    _say(f"scaffolded {dst.relative_to(CFG.root)} · factory.yaml active_profile → {pid}")
+    _say(f"scaffolded {rel(dst)} · factory.yaml active_profile → {pid}")
     rendered = rd.render_all()   # README.md, engines/*/SKILL.md, standalone/*/SKILL.md, shared/START-HERE.md
     _say(f"re-rendered {len(rendered)} profile-derived doc(s) — no stale reference to the prior domain")
     mod = module or _sanitize_mod(pid)
@@ -1497,7 +1544,7 @@ def main(argv: list[str] | None = None) -> int:
         return rc
     if a.cmd == "render":
         for pth in rd.render_all():
-            _say("rendered", pth.relative_to(CFG.root))
+            _say("rendered", rel(pth))
         return OK
     if a.cmd == "lint":
         import lint

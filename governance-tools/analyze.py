@@ -38,7 +38,7 @@ from toolkit import markers as mk
 # (0 = most severe). Aliased because every clause function below takes the
 # severity it is charged with in a parameter named `sev`.
 from toolkit.common import (blocking_severities, blocks, counts_line, known_severity,
-                            now_iso, read_json, sev as sev_at_rank, severities, severity_rank)
+                            now_iso, read_json, rel, sev as sev_at_rank, severities, severity_rank)
 
 
 class ClauseSkipped(Exception):
@@ -927,7 +927,7 @@ def _c_refs_exist(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
             f = directory / CFG.fmt(pattern, mod=mod, seq=seq)
             if not f.exists():
                 out.append(Finding(sev, "", "refs-exist",
-                                   f"`{rid}` is cited in `{name}` but {f.relative_to(CFG.root)} does not exist", name))
+                                   f"`{rid}` is cited in `{name}` but {rel(f)} does not exist", name))
     return sorted({(f.message, f.artifact): f for f in out}.values(), key=lambda f: f.message)
 
 
@@ -948,7 +948,7 @@ def _c_paths_resolve(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
         for key, value in _walk_paths(data):
             if not (base / value).exists():
                 out.append(Finding(sev, "", "paths-resolve",
-                                   f"{path.name} → `{key}` = `{value}` resolves to nothing under {base.relative_to(CFG.root)}", fname))
+                                   f"{path.name} → `{key}` = `{value}` resolves to nothing under {rel(base)}", fname))
     return out
 
 

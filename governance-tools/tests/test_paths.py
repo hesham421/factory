@@ -1,9 +1,15 @@
 """Project-specific generated content (`domain-profile.md`, `project-registry.md`,
-`modules/`, `decisions/`) consolidates under ONE top-level folder named after the
-active profile's own identity (`profile.identity.id`) — never a fixed literal like
+`modules/`, `decisions/`) consolidates under ONE folder named after the active
+profile's own identity (`profile.identity.id`) — never a fixed literal like
 `project/`. `factory.yaml -> paths.*` carries this as a `{profile_id}` token,
 resolved at runtime by `FactoryConfig.paths` (config.py); nothing here pins a name
 to either profile — both are read back from `CFG.profile.id`.
+
+That folder lives in the SHARED repo, not this one: governance is read by every
+repo that builds from it, so it is written where all of them can read it instead
+of copied to each. Which path keys move is declared in `paths.external` and
+resolved by `config.dir()` — so these tests assert against the root that owns
+the key, never against `CFG.root` directly.
 """
 from __future__ import annotations
 
@@ -16,7 +22,9 @@ from test_agnostic import TOY
 
 def test_project_paths_nest_under_the_active_profile_id(factory_root, mod):
     root = CFG.dir("domain")
-    assert root == CFG.root / CFG.profile.id
+    assert root == CFG.repo_checkout(CFG.external["repo"]) / CFG.profile.id
+    assert root.name == CFG.profile.id          # the folder is named by the profile
+    assert CFG.root not in (root, *root.parents) or root.is_relative_to(CFG.root)
     # platform shares the same root as domain (both are the entry-gate + bootstrap
     # artifacts of ONE project instance)
     assert CFG.dir("platform") == root
@@ -63,6 +71,9 @@ def test_generated_content_actually_lands_under_the_named_root(factory_root, mod
     assert not (CFG.root / "project").exists()
     assert not (CFG.root / "modules").exists()
     assert not (CFG.root / "decisions").exists()
+    # nor back into this repo under the profile's own name: the factory writes
+    # governance, it does not keep a copy of it
+    assert not (CFG.root / CFG.profile.id).exists()
 
 
 # ── which repository owns a path (paths.external) ────────────────────────────

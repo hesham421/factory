@@ -43,7 +43,7 @@ paths:
   # `keys: []` means "the switch exists, nothing has moved yet".
   external:
     repo: shared                 # repos.<this> supplies the checkout
-    keys: []
+    keys: [domain, platform, modules, decisions]
   module:
     state_dir: _state            # generated current-state files (read by engines)
     inputs_dir: _inputs          # inputs fetched back from consumer repos

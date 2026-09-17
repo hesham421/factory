@@ -23,17 +23,21 @@ from config import CFG
 
 @pytest.fixture
 def linked(factory_root, mod, monkeypatch):
-    """A factory with one module on disk and every consumer repo checked out."""
+    """A factory with one module on disk and every consumer repo checked out.
+
+    The checkouts are pointed at BEFORE the module is created: modules live in
+    the shared repo now (`paths.external`), so `CFG.module_root()` has no
+    answer until that checkout is settled."""
     import gov
 
-    stage = next(iter(CFG.all_stages())).folder
-    (CFG.module_root(mod) / stage).mkdir(parents=True)          # v1 by the filesystem authority
     checkouts = {}
     for repo in CFG.repos:
         c = factory_root.parent / repo
         c.mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv(CFG.repos[repo]["checkout_env"], str(c))
         checkouts[repo] = c
+    stage = next(iter(CFG.all_stages())).folder
+    (CFG.module_root(mod) / stage).mkdir(parents=True)          # v1 by the filesystem authority
     return gov, mod, checkouts
 
 

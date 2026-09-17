@@ -42,6 +42,7 @@ import jinja2
 from config import CFG, Stage
 import idmodel
 import contracts as contracts_mod
+from toolkit.common import rel
 import state as st_mod
 
 CONVERGED = "<!-- CONVERGED -->"
@@ -132,7 +133,7 @@ def build_brief(stage: Stage, mod: str, version: int, *, round_no: int = 1, impl
     outputs = []
     for a in stage.produces:
         p = CFG.artifact_path(mod, stage.id, a.artifact, version)
-        outputs.append(f"- `{p.relative_to(CFG.root)}`{' (registry)' if a.registry else ''}{' (optional)' if a.optional else ''}")
+        outputs.append(f"- `{rel(p)}`{' (registry)' if a.registry else ''}{' (optional)' if a.optional else ''}")
     head = [
         f"# BRIEF — stage `{stage.id}` ({stage.title}) · module {mod.upper()} · v{version} · profile `{CFG.profile_id}`",
         "",
@@ -161,7 +162,7 @@ def build_brief(stage: Stage, mod: str, version: int, *, round_no: int = 1, impl
             f"`{CONVERGED}` at the end of the response when nothing material remains open. The last response is final.",
         ]
         if previous is not None:
-            head += ["", f"## Previous round", f"(see `{previous.relative_to(CFG.root)}` — appended below)"]
+            head += ["", f"## Previous round", f"(see `{rel(previous)}` — appended below)"]
     contracts = _contracts_for(stage)
     if contracts:
         head += ["", "## Contracts checked by `gov.py analyze` after this stage"]
@@ -200,10 +201,10 @@ def build_brief_scoped(stage: Stage, mods: list[str], versions: dict[str, int], 
             if a.artifact == "system-test-index":
                 continue
             p = CFG.artifact_path(m, stage.id, a.artifact, versions[m])
-            outputs.append(f"- `{p.relative_to(CFG.root)}`{' (optional)' if a.optional else ''}")
+            outputs.append(f"- `{rel(p)}`{' (optional)' if a.optional else ''}")
     if scope == "project":
         p = CFG.artifact_path(mods[0], stage.id, "system-test-index", versions[mods[0]])
-        outputs.append(f"- `{p.relative_to(CFG.root)}` (platform-level, optional)")
+        outputs.append(f"- `{rel(p)}` (platform-level, optional)")
     head = [
         f"# BRIEF — stage `{stage.id}` ({stage.title}) · scope `{scope}` · modules {', '.join(mods)} · profile `{CFG.profile_id}`",
         "",
@@ -383,7 +384,7 @@ def refused_questions(stage: Stage, mod: str, version: int) -> list[tuple[str, i
         p = CFG.artifact_path(mod, stage.id, a.artifact, version)
         if p.exists():
             for ln in idmodel.questions(p.read_text(encoding="utf-8")):
-                out.append((str(p.relative_to(CFG.root)), ln))
+                out.append((rel(p), ln))
     return out
 
 
