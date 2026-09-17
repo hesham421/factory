@@ -418,3 +418,60 @@ Fix     : OPEN. The clean repair is for `gated_by_phases` to be derived rather
           data it destroys. Recorded together; F-6 is the one to settle first.
 Status  : OPEN
 
+## F-15 — a second api-docs copy lived in the factory, and it had drifted
+Where   : factory/erp/modules/{SEC,FIN,MDL}/api-docs/ (25 files, git-tracked)
+Expected: invariant 1 — api-docs exist in exactly one place. The ownership
+          table (§3) gives `backend/modules/*/api-docs/` one writer (the
+          backend) and one location (the shared repo). §2 states the point
+          outright: one source, not two, so drift is structurally impossible
+          rather than merely visible.
+Actual   : three full `api-docs/` trees — an `index.md` plus an `endpoints/`
+          folder each — were committed inside the factory's own module
+          folders, left over from before the shared repo existed.
+          They had already drifted, which is the argument for one copy made
+          concrete rather than hypothetically:
+            diff erp/modules/SEC/api-docs governance-shared/backend/modules/SEC/api-docs
+          reports all eight endpoint files and the index differing. The
+          factory-side copy is the OLDER one — it lacks the
+          `Contract ID: API-SEC-###` lines the published copy carries
+          (index 9811 bytes vs 10785), so a contract id resolved against it
+          would have resolved to nothing. FIN and MDL were still
+          byte-identical: the drift was silent and partial, which is the state
+          a second copy decays into rather than an accident.
+          Nothing read them — `fetch-inputs` resolves
+          `repos.backend.publishes.api-docs` against `reads_from: shared`,
+          which is `factory/governance-shared/backend/modules/{MOD}/api-docs`,
+          confirmed by resolving the path through `CFG` directly. So this was
+          a dead second copy, which is the kind that drifts unnoticed longest.
+Fix     : removed (`git rm -r`). Verified after: no `api-docs` directory
+          remains anywhere in the factory outside the shared submodule, and
+          `fetch-inputs -m SEC` reports `unchanged` twice in a row.
+Status  : FIXED
+
+## F-16 — a fourth, unpinned clone of the shared repo sits beside the three
+Where   : <workspace>/governance-shared/ (workspace root)
+Expected: §4 — the shared repo reaches each of the three repositories as a
+          PINNED submodule, and the pin is what makes a delivered version
+          provable: "any release knows what it was built on". Three consumers,
+          three pointers, one commit.
+Actual   : there are four checkouts, not three. The factory, backend and
+          frontend each mount it correctly as a submodule, all three pinned to
+          `7df6f10`. Beside them sits a plain clone at the workspace root that
+          is a submodule of nothing and is pinned by nothing.
+          It is at `7df6f10` too, so nothing is wrong today, and that is
+          precisely the problem: it is the one copy no `git submodule status`
+          will ever report as `+` (differs from its pinned commit) — the check
+          §8 names as the mitigation for the biggest risk, and the one
+          `cmd_sync` collects into `stale`. A commit made there is invisible to
+          every freshness signal the design has.
+          Its working tree is already dirty (five untracked `.DS_Store` files),
+          which is evidence it is a place someone works, not a build artifact.
+Fix     : WONTFIX — not mine to delete. It lies outside all three repositories,
+          so removing it is a workspace decision, and it may be the clone used
+          to push (the submodules are `shallow = true`, which makes pushing
+          from them awkward — a plausible reason it exists). Recorded so the
+          decision is made rather than inherited. If it IS the push clone, the
+          honest fix is to say so in `GOVERNANCE-SHARED-DESIGN.md` §4, which
+          today describes three checkouts and knows nothing of a fourth.
+Status  : WONTFIX
+
