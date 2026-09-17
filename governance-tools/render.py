@@ -23,6 +23,10 @@ from config import CFG, FactoryConfig, Stage
 # re-exported: every existing caller (and every test) keeps reaching these
 # through `render`, so the split costs no edit at any call site.
 from contracts import contracts_from_doc, contracts_path
+from findings import Finding
+# charge by RANK, never by a severity name spelled here (C2) — the
+# vocabulary and its order live in factory.yaml → analyze.severities
+from toolkit.common import sev
 
 _TEMPLATES = ("SKILL.md.j2", "command.md.j2", "README.md.j2", "START-HERE.md.j2")
 _RENDER_RX = re.compile(r"(<!-- RENDER:([A-Za-z0-9_:-]+) -->)(.*?)(<!-- /RENDER:\2 -->)", re.S)
@@ -250,12 +254,17 @@ def render_all(cfg: FactoryConfig | None = None, write: bool = True) -> list[Pat
     return changed
 
 
+# The rank `C1-stale-render` is charged at, and the rank lint charges when this
+# check cannot run at all. Blocking, because a generated file that silently drifts
+# from its source is the exact failure C1 exists to prevent.
+STALE_RENDER_RANK = 1
+
+
 def check_fresh(cfg: FactoryConfig):
-    from lint import Finding  # local import: lint imports render lazily too
     findings = []
     for path in render_all(cfg, write=False):
         rel = str(path.relative_to(cfg.root)) if path.is_relative_to(cfg.root) else str(path)
-        findings.append(Finding("MAJOR", "C1-stale-render", rel, 0, "differs from `gov.py render` output (or missing)"))
+        findings.append(Finding(sev(STALE_RENDER_RANK), "C1-stale-render", rel, 0, "differs from `gov.py render` output (or missing)"))
     return findings
 
 

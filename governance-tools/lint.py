@@ -13,27 +13,21 @@ profile — it has no vocabulary of its own.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
 from config import CFG, FactoryConfig, Profile
+# Finding lives in its own module because `render` reports one rule too and
+# must not import a checker to say so; re-exported here, where callers expect it.
+from findings import Finding
 # sev(rank): the severity at that rank of factory.yaml → analyze.severities
 # (0 = most severe). lint charges by rank, never by a name spelled here.
 from toolkit.common import blocks, counts_line, sev, severities, severity_rank
 
-
-@dataclass
-class Finding:
-    severity: str          # one of factory.yaml → analyze.severities
-    rule: str
-    path: str
-    line: int
-    message: str
-
-    def __str__(self) -> str:
-        loc = f"{self.path}:{self.line}" if self.line else self.path
-        return f"[{self.severity}] {self.rule} {loc} — {self.message}"
+# An unrunnable freshness check is charged at the same rank the check itself
+# charges, so it blocks exactly where a stale render would (render.STALE_RENDER_RANK;
+# restated as a rank, not imported, so lint never needs the render engine to lint).
+RENDER_UNAVAILABLE_RANK = 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -343,11 +337,19 @@ def run(cfg: FactoryConfig | None = None, profile_id: str | None = None, render_
     findings += scan_code_literals(cfg, active)
     findings += scan_structure(cfg)
     if render_check:
+        # A check that cannot see the answer SAYS so. This used to `except
+        # ImportError: pass`, so a lint run whose render engine would not import
+        # reported "0 major" over a README that had genuinely drifted — a clean
+        # verdict produced by a check that examined nothing.
         try:
             import render  # local module
+        except ImportError as exc:
+            findings.append(Finding(
+                sev(RENDER_UNAVAILABLE_RANK), "C1-render-unavailable", str(cfg.root), 0,
+                f"render freshness was NOT checked — the render engine did not import ({exc}); "
+                "this verdict says nothing about whether generated files are fresh"))
+        else:
             findings += render.check_fresh(cfg)
-        except ImportError:
-            pass
     findings.sort(key=lambda f: (severity_rank(f.severity), f.path, f.line))
     return findings
 

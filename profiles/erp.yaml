@@ -29,6 +29,7 @@ vocabulary:
     INV: Inventory
     SLS: Sales
     CTR: Contracts
+    NOTE: Notes
   keyword_map:                      # optional detection aid for P0, not a closed rule — a
                                      # module with no entry here is still matched via
                                      # domain-profile components + layer heuristics (engines/P0)

@@ -231,3 +231,29 @@ def test_an_unknown_phase_is_still_refused_after_the_vocabulary_grows(factory_ro
     _put_plan(mod, track, plan, body)
     rep = split(mod, track, plan, 1)
     assert rep.ok is False
+
+
+# ── the same defect class, in the linter's own verdict ──────────────────────
+
+def test_lint_says_so_when_it_cannot_run_the_freshness_check(factory_root, monkeypatch):
+    """`except ImportError: pass` reported a clean verdict over a check that
+    examined nothing — the linter's own instance of silent success."""
+    import builtins
+
+    import lint
+
+    real = builtins.__import__
+
+    def no_render(name, *a, **k):
+        if name == "render":
+            raise ImportError("simulated: the render engine did not import")
+        return real(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", no_render)
+    findings = lint.run(CFG)
+    unavailable = [f for f in findings if f.rule == "C1-render-unavailable"]
+    assert unavailable, "a freshness check that could not run must be reported, never skipped"
+    assert lint.counts(findings)[unavailable[0].severity] >= 1
+    # and it must BLOCK, exactly where a stale render would
+    from toolkit.common import blocking_severities
+    assert unavailable[0].severity in blocking_severities()
