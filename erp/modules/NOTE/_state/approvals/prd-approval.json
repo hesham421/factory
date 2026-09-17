@@ -1,0 +1,9 @@
+{
+  "gate": "prd-approval",
+  "module": "NOTE",
+  "version": 1,
+  "by": "smoke-run",
+  "at": "2026-09-17T12:04:44+00:00",
+  "after": "P0.5",
+  "artifact_sha": {}
+}
