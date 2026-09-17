@@ -188,5 +188,18 @@ def test_fmt_resolves_the_profile_token_wherever_it_appears(factory_root):
     for repo, spec in CFG.repos.items():
         for name, template in (spec.get("publishes") or {}).items():
             assert "{profile_id}" not in CFG.fmt(template, mod="SEC"), f"{repo}.publishes.{name}"
-        for part in (spec.get("partitions") or {}).values():
-            assert "{profile_id}" not in CFG.fmt(part, mod="SEC")
+    for part in CFG.partitions().values():
+        assert "{profile_id}" not in CFG.fmt(part, mod="SEC")
+
+
+def test_a_partition_declares_who_writes_it(factory_root):
+    """The ownership table is read, not merely documented: `writer` is what stops
+    a factory regeneration from clearing a path a track wrote."""
+    for part in CFG.partitions():
+        w = CFG.partition_writer(part)
+        assert w == CFG.FACTORY_WRITER or w in CFG.tracks, \
+            f"{part} names writer '{w}', which is neither this factory nor a track"
+    foreign = {d.name for d in CFG.foreign_partitions("SEC")}
+    assert foreign, "no partition is protected from the factory — the table says nothing"
+    assert all(CFG.partition_writer(p) != CFG.FACTORY_WRITER
+               for p in CFG.partitions() if CFG.partition_dir(p, "SEC").name in foreign)

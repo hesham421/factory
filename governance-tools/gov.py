@@ -255,9 +255,103 @@ def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
     return OK
 
 
-def run_stage(stage_id: str, mod: str, version: int | None, complete: bool, no_commit: bool) -> int:
+# ── regeneration ────────────────────────────────────────────────────────────
+# Re-running a stage over its own leftovers is not a clean run: a plan half
+# rewritten reads as a whole one, and the analyze report beside it still
+# describes the version that is gone. Deleting by hand works and has already
+# gone wrong — 621 files in one commit whose message named one module. So the
+# set is DERIVED from what the stage declares it produces, never typed, and
+# every path is checked to be inside the factory's own partition before it goes.
+
+
+def _factory_owned(p: Path, mod: str, version: int) -> bool:
+    """A path this factory may delete: inside the module's version root, and not
+    inside a partition another repo writes.
+
+    The second half is the one that matters. `api-docs/`, `backend/` and
+    `frontend/` sit inside the same module directory and belong to the tracks;
+    a regeneration that swept them would destroy work no factory stage can
+    reproduce."""
+    root = CFG.version_root(mod, version).resolve()
+    p = p.resolve()
+    if root not in p.parents and p != root:
+        return False
+    for owned in (d.resolve() for d in CFG.foreign_partitions(mod)):
+        if owned == p or owned in p.parents:
+            return False
+    return True
+
+
+def _stage_outputs(stage: Stage, mod: str, version: int) -> list[Path]:
+    """Everything one stage owns — its artifacts, its folder, its analyze report,
+    its briefs. Read off `stage.produces` and `paths.module.*`, so a stage that
+    gains an artifact is covered without anyone remembering to add it here."""
+    out: list[Path] = []
+    for a in stage.produces:
+        out.append(CFG.artifact_path(mod, stage.id, a.artifact, version))
+    out.append(CFG.stage_dir(mod, stage.id, version))
+    sd = CFG.state_dir(mod, version)
+    rep = CFG.fmt(CFG.paths["module"]["analyze_report"], stage=stage.id).split("/")[-1]
+    out += [sd / rep, (sd / rep).with_suffix(".json")]
+    out += sorted((sd / "briefs").glob(f"{stage.id}*"))
+    return out
+
+
+def _pass_outputs(pass_no: str, mod: str, version: int) -> list[Path]:
+    """A pass owns its stages' outputs, plus the gate record it earned and the
+    packages split from its track. NOT the approvals: a human approval is not
+    this factory's to delete, and a regeneration that wiped one would erase the
+    record of a decision nobody re-made."""
+    out: list[Path] = []
+    spec = CFG.passes[str(pass_no)]
+    for sid in spec["stages"]:
+        out += _stage_outputs(CFG.stage(sid), mod, version)
+    sd = CFG.state_dir(mod, version)
+    rec = CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no}).split("/")[-1]
+    out += [sd / rec, (sd / rec).with_suffix(".json")]
+    out += sorted((sd / "briefs").glob(f"pass-{pass_no}*"))
+    grep = CFG.fmt(CFG.paths["module"]["analyze_report"], stage=f"pass-{pass_no}").split("/")[-1]
+    out += [sd / grep, (sd / grep).with_suffix(".json")]
+    track = spec.get("track")
+    if track:
+        for plan in CFG.profile.plans(track):
+            out.append(CFG.packages_dir(mod, track, plan, version))
+    return out
+
+
+def _regenerate(paths: list[Path], mod: str, version: int, what: str) -> int:
+    """Delete, after proving every path is the factory's to delete."""
+    import shutil
+    present = [p for p in dict.fromkeys(paths) if p.exists()]
+    foreign = [p for p in present if not _factory_owned(p, mod, version)]
+    if foreign:
+        _say(f"BLOCKED: {len(foreign)} path(s) are not this factory's to delete:")
+        for p in foreign:
+            _say(f"  {rel(p)}")
+        return BLOCKED
+    if not present:
+        _say(f"regenerate {what}: nothing on disk to clear")
+        return OK
+    files = sum(1 for p in present if p.is_file()) + sum(
+        len([x for x in p.rglob('*') if x.is_file()]) for p in present if p.is_dir())
+    _say(f"regenerate {what}: clearing {len(present)} path(s), {files} file(s)")
+    for p in present:
+        _say(f"  - {rel(p)}")
+        shutil.rmtree(p) if p.is_dir() else p.unlink()
+    return OK
+
+
+def run_stage(stage_id: str, mod: str, version: int | None, complete: bool, no_commit: bool,
+              regenerate: bool = False) -> int:
     stage = CFG.stage(stage_id)
     version = _version(mod, version)
+    if regenerate:
+        if complete:
+            _say("BLOCKED: --regenerate clears this stage's output; it cannot be combined with --complete")
+            return BLOCKED
+        rc = _regenerate(_stage_outputs(stage, mod, version), mod, version, f"stage {stage.id}")
+        if rc != OK:
+            return rc
     _prepare(mod, version)
     if complete:
         return _complete_stage(stage, mod, version, no_commit)
@@ -380,11 +474,22 @@ def run_standalone(stage_id: str, module: str | None, modules_csv: str | None, s
     return run_scoped_modules(stage_id, mods, version, complete, no_commit)
 
 
-def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool, redo: bool = False) -> int:
+def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool,
+             redo: bool = False, regenerate: bool = False) -> int:
     p = CFG.passes[str(pass_no)]
     if new:
         version = cmd_version(mod, True, quiet=True)
     version = _version(mod, version)
+    if regenerate:
+        if complete:
+            _say("BLOCKED: --regenerate clears this pass's output; it cannot be combined with --complete")
+            return BLOCKED
+        if new:
+            _say("BLOCKED: --new already starts an empty version; --regenerate would clear it")
+            return BLOCKED
+        rc = _regenerate(_pass_outputs(pass_no, mod, version), mod, version, f"pass {pass_no}")
+        if rc != OK:
+            return rc
     for inp in p.get("required_inputs", []):
         spec = CFG.inputs[inp]
         if not (CFG.inputs_dir(mod, version) / CFG.fmt(spec["file"], mod=mod)).exists():
@@ -1308,12 +1413,12 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("-v", "--version", type=int)
         return p
 
-    p = mv(sub.add_parser("run-stage")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("run-stage")); p.add_argument("stage"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true"); p.add_argument("--regenerate", action="store_true", help="clear this stage's own output first, then run it fresh")
     p = sub.add_parser("run-standalone")   # -m/--modules/--scope: see run_standalone() — richer than mv() for test-gen's scopes
     p.add_argument("stage"); p.add_argument("-m", "--module"); p.add_argument("--modules")
     p.add_argument("--scope", choices=["module", "project"], default="module")
     p.add_argument("-v", "--version", type=int); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
-    p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true"); p.add_argument("--redo", action="store_true", help="re-run stages that are already complete")
+    p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true"); p.add_argument("--redo", action="store_true", help="re-run stages that are already complete"); p.add_argument("--regenerate", action="store_true", help="clear this pass's own output first, then run it fresh")
     p = mv(sub.add_parser("gate")); p.add_argument("pass_no"); p.add_argument("--complete", action="store_true"); p.add_argument("--result"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("approve")); p.add_argument("gate"); p.add_argument("--by", default=os.environ.get("USER", "human")); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("analyze"), module=False); p.add_argument("--scope", default="all")
@@ -1340,11 +1445,11 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
 
     if a.cmd == "run-stage":
-        return run_stage(a.stage, a.module, a.version, a.complete, a.no_commit)
+        return run_stage(a.stage, a.module, a.version, a.complete, a.no_commit, a.regenerate)
     if a.cmd == "run-standalone":
         return run_standalone(a.stage, a.module, a.modules, a.scope, a.version, a.complete, a.no_commit)
     if a.cmd == "run-pass":
-        return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit, a.redo)
+        return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit, a.redo, a.regenerate)
     if a.cmd == "gate":
         return gate(a.pass_no, a.module, a.version, a.complete, Path(a.result) if a.result else None, a.no_commit)
     if a.cmd == "approve":

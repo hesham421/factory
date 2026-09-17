@@ -360,12 +360,15 @@ repos:
     # the form the tools address. An entry carrying `{MOD}` is per-module; one
     # without it is not, and that is how the tools tell them apart rather than
     # by recognising a name.
+    # `writer` is the ownership column of that table, and it is read, not just
+    # documented: it is what stops a factory regeneration from clearing a path
+    # a track wrote. `factory` names this repo; anything else names a track.
     partitions:
-      platform: "platform"
-      factory:  "{profile_id}/modules/{MOD}"
-      api-docs: "{profile_id}/modules/{MOD}/api-docs"
-      backend:  "{profile_id}/modules/{MOD}/backend"
-      frontend: "{profile_id}/modules/{MOD}/frontend"
+      platform: {path: "platform",                            writer: factory}
+      factory:  {path: "{profile_id}/modules/{MOD}",          writer: factory}
+      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend}
+      backend:  {path: "{profile_id}/modules/{MOD}/backend",  writer: backend}
+      frontend: {path: "{profile_id}/modules/{MOD}/frontend", writer: frontend}
     publishes: {}
     receives:
       modules-registry: "platform/modules-registry.json"

@@ -487,10 +487,26 @@ class FactoryConfig:
         name is never typed in code."""
         return self.external["repo"]
 
-    def partitions(self) -> dict:
-        """One entry per WRITER: GOVERNANCE-SHARED-DESIGN.md §3's ownership table
-        in the form the tools address."""
+    FACTORY_WRITER = "factory"      # the one writer name that means "this repo"
+
+    def _partition_specs(self) -> dict:
         return self.repos[self.shared_repo()].get("partitions", {})
+
+    def partitions(self) -> dict:
+        """Partition name → path template. GOVERNANCE-SHARED-DESIGN.md §3's
+        ownership table in the form the tools address."""
+        return {k: v["path"] for k, v in self._partition_specs().items()}
+
+    def partition_writer(self, part: str) -> str:
+        """Who may write it. Read, not merely documented: it is what stops a
+        factory regeneration from clearing a path a track wrote."""
+        return self._partition_specs()[part]["writer"]
+
+    def foreign_partitions(self, mod: str) -> list[Path]:
+        """Every per-module partition this factory must not write or delete."""
+        return [self.partition_dir(p, mod) for p in self._partition_specs()
+                if self.partition_writer(p) != self.FACTORY_WRITER
+                and self.partition_is_per_module(p)]
 
     def partition_is_per_module(self, part: str) -> bool:
         """Read off the template — an entry carrying `{MOD}` is per-module.
