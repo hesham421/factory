@@ -768,3 +768,44 @@ Fix     : both, and the separator is declared where `plan_vocabulary`'s own
           byte-identical to baseline; lint `0 · 0 · 0`; 242 passed, 1 skipped.
 Status  : FIXED
 
+## F-20 — a schema category was added and NO gate in the factory could open again
+Where   : shared/REGISTRY-SCHEMA.md:38 (added by commit 31d82fa) vs
+          erp/project-registry.md — surfaced as C2.2 `registry-agree`
+Expected: `C2.2` requires the project registry to map every category
+          `REGISTRY-SCHEMA.md` declares. A gate opens only when analyze is
+          `clean` (`gates.*.requires_analyze`), so this clause is load-bearing
+          for every gate in the factory.
+Actual   : gate 1 for NOTE closed with
+            [MAJOR] C2.2 (registry-agree) project-registry —
+                    registry does not map categories ['CAT-10']
+            GATE CLOSED: analyze is not clean
+          `CAT-10 platform findings` was added to `REGISTRY-SCHEMA.md` by
+          commit `31d82fa` ("fix(registry): a channel for findings that belong
+          to no module"). `erp/project-registry.md` was never given the
+          matching section, and its category map still ended at CAT-9 under a
+          line reading `Uncovered: none` — a claim that had become false.
+          This is NOT caused by adding NOTE, and it is not NOTE's to fix: the
+          registry is a platform artifact. Confirmed platform-wide by running
+          the same scope against the shipped modules — SEC and MDL both report
+          the identical C2.2 finding at `gate:pass-1`. So since `31d82fa`, NO
+          module's gate in this factory could open. SEC, MDL and FIN each
+          recorded `GATE pass-1: APPROVE` on 2026-09-10, before that commit, so
+          nothing had re-run a gate since and nothing noticed.
+          The shape is worth naming: a change to a SHARED schema silently
+          invalidated a derived platform artifact, and the only thing that
+          could see it was a clause that fires at a gate nobody had re-run.
+          The check behaved perfectly — it is the reason this is a finding at
+          all rather than a mystery.
+Fix     : added the `## PLATFORM FINDINGS` section to `erp/project-registry.md`
+          with the CAT-10 row shape REGISTRY-SCHEMA §4 specifies (finding ·
+          evidence · found by · belongs to · status), an empty table, `Open
+          platform findings: 0`, and the category-map row that makes
+          `Uncovered: none` true again. This is what P-1 would have produced;
+          it was written by hand rather than by re-running P-1, because
+          re-dispatching the registry builder would regenerate a platform
+          artifact three shipped modules depend on in order to add one section.
+          Verified: NOTE's `gate:pass-1` scope goes to
+          `0 critical · 0 major · 0 minor · CLEAN`, and C2.2 no longer fires
+          for SEC or MDL either. lint `0 · 0 · 0`; 242 passed, 1 skipped.
+Status  : FIXED
+

@@ -20,6 +20,7 @@ Modules registered : 9   Entity candidates : 29 (13 SEC + 2 MDL + 14 FIN)   Open
 | DECISION INDEX | CAT-7 decision index |
 | PIPELINE / PROGRESS STATUS | CAT-8 pipeline status |
 | CHANGE / EVENT HISTORY | CAT-9 event history |
+| PLATFORM FINDINGS | CAT-10 platform findings |
 Uncovered: none
 
 ## IDENTITY & VERSIONING
@@ -192,6 +193,18 @@ none — `domain-profile.md` §10 records no open item.
 | INV | — | NOT STARTED | — | — | — |
 | SLS | — | NOT STARTED | — | — | — |
 | CTR | — | NOT STARTED | — | — | — |
+
+## PLATFORM FINDINGS
+CAT-10 (REGISTRY-SCHEMA.md §4) — every finding a module-scoped stage recorded
+that is NOT that module's to settle. A module-scoped stage RECORDS a platform
+finding and never fixes one; the row is closed by whoever owns the fix, never by
+the module that found it. Every gate reads the OPEN rows of this table.
+
+| Finding | Evidence | Found by | Belongs to | Status |
+|---|---|---|---|---|
+| — | — | — | — | — |
+
+Open platform findings: 0
 
 ## CHANGE / EVENT HISTORY
 | Date | Stage/tool | Module | Version | Event |
