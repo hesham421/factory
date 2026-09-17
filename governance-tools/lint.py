@@ -325,6 +325,41 @@ def scan_structure(cfg: FactoryConfig) -> list[Finding]:
     return out
 
 
+def scan_config(cfg: FactoryConfig) -> list[Finding]:
+    """factory.yaml's own cross-table invariants.
+
+    C5 validates profiles against `_schema.yaml`; factory.yaml was validated by
+    nothing, so two tables could quietly disagree and the first symptom was a
+    KeyError from whichever call site indexed one with the other's key (F-12).
+    Only invariants BETWEEN tables belong here — a value's own shape is the
+    reader's business."""
+    out: list[Finding] = []
+    repos = cfg.repos
+
+    for track, spec in cfg.tracks.items():
+        repo = cfg.track_repo(track)
+        if repo not in repos:
+            out.append(Finding(sev(0), "C2-config", f"tracks.{track}.repo", 0,
+                               f"names repo '{repo}', which repos does not declare "
+                               f"(declared: {', '.join(sorted(repos))})"))
+
+    ext = cfg.external
+    if ext:
+        repo = ext.get("repo")
+        if repo not in repos:
+            out.append(Finding(sev(0), "C2-config", "paths.external.repo", 0,
+                               f"names repo '{repo}', which repos does not declare"))
+        raw = cfg.data["paths"]
+        for key in (ext.get("keys") or ()):
+            if key not in raw:
+                out.append(Finding(sev(0), "C2-config", f"paths.external.keys[{key}]", 0,
+                                   "not a declared path key"))
+            elif not isinstance(raw[key], str):
+                out.append(Finding(sev(0), "C2-config", f"paths.external.keys[{key}]", 0,
+                                   f"paths.{key} is not a path (it is {type(raw[key]).__name__})"))
+    return out
+
+
 def run(cfg: FactoryConfig | None = None, profile_id: str | None = None, render_check: bool = True) -> list[Finding]:
     cfg = cfg or CFG.reload()
     findings: list[Finding] = []
@@ -336,6 +371,7 @@ def run(cfg: FactoryConfig | None = None, profile_id: str | None = None, render_
     findings += scan_literals(cfg, active)
     findings += scan_code_literals(cfg, active)
     findings += scan_structure(cfg)
+    findings += scan_config(cfg)
     if render_check:
         # A check that cannot see the answer SAYS so. This used to `except
         # ImportError: pass`, so a lint run whose render engine would not import

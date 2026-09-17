@@ -35,6 +35,15 @@ paths:
   commands: .claude/commands
   tools: governance-tools
   templates: governance-tools/templates
+  # Which of the keys above live in ANOTHER repository. Governance output is read
+  # by every repo that builds from it, so it belongs in the one repo all three
+  # mount; the factory's own machinery (engines, profiles, tools, templates,
+  # reviewers, its own `shared/` docs) stays here. This block is the ONLY
+  # statement of that boundary — `config.dir()` reads it and nothing else does.
+  # `keys: []` means "the switch exists, nothing has moved yet".
+  external:
+    repo: shared                 # repos.<this> supplies the checkout
+    keys: []
   module:
     state_dir: _state            # generated current-state files (read by engines)
     inputs_dir: _inputs          # inputs fetched back from consumer repos
@@ -293,12 +302,19 @@ markers:
     qualify_bare_sub: true
 
 # ── Tracks ──────────────────────────────────────────────────────────────────
+# `repo:` names this track's consumer repository. It used to be assumed equal to
+# the track's own key, by nothing but coincidence — until `repos.shared` arrived
+# and proved `repos` is not the same table as `tracks` (it is a superset). Stated
+# here, checked by lint, so a track whose repo is named differently is a config
+# edit and not a KeyError.
 tracks:
   backend:
+    repo: backend
     pass: "1"
     exec_stage: P3.1
     packages: {exec: backend-execution, test: backend-test}
   frontend:
+    repo: frontend
     pass: "2"
     exec_stage: P3.2
     packages: {exec: frontend-execution, test: frontend-test}

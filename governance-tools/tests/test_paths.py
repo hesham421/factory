@@ -63,3 +63,73 @@ def test_generated_content_actually_lands_under_the_named_root(factory_root, mod
     assert not (CFG.root / "project").exists()
     assert not (CFG.root / "modules").exists()
     assert not (CFG.root / "decisions").exists()
+
+
+# ── which repository owns a path (paths.external) ────────────────────────────
+
+def test_dir_routes_an_external_key_to_the_owning_repo(factory_root):
+    """`paths.external` is the ONE statement of the factory/shared boundary:
+    a key listed there resolves against the shared checkout, every other key
+    against this repo. Neither root is decided in code."""
+    import yaml
+    fac = factory_root / "factory.yaml"
+    data = yaml.safe_load(fac.read_text(encoding="utf-8"))
+    data["paths"]["external"] = {"repo": "shared", "keys": ["modules"]}
+    fac.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    cfg = CFG.reload()
+
+    shared = cfg.repo_checkout("shared")
+    assert cfg.dir("modules") == shared / cfg.paths["modules"]
+    assert cfg.dir("engines") == cfg.root / cfg.paths["engines"]
+    # everything built on modules_root follows, with no further wiring
+    assert cfg.modules_root() == shared / cfg.paths["modules"]
+    assert cfg.module_root("ORG").parent == shared / cfg.paths["modules"]
+    CFG.reload()
+
+
+def test_an_empty_external_list_leaves_every_path_here(factory_root):
+    import yaml
+    fac = factory_root / "factory.yaml"
+    data = yaml.safe_load(fac.read_text(encoding="utf-8"))
+    data["paths"]["external"] = {"repo": "shared", "keys": []}
+    fac.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    cfg = CFG.reload()
+    for key, rel in cfg.paths.items():
+        if isinstance(rel, str):
+            assert cfg.dir(key) == cfg.root / rel
+    CFG.reload()
+
+
+# ── factory.yaml's own cross-table invariants (F-12) ─────────────────────────
+
+def test_a_track_naming_an_undeclared_repo_is_a_finding(factory_root):
+    """`tracks` and `repos` are different tables — `repos.shared` is in one and
+    not the other. A track's repo is therefore named, and the name is checked,
+    instead of the two keys being assumed identical and failing as a KeyError."""
+    import lint
+    cfg = CFG.reload()
+    assert lint.scan_config(cfg) == []
+
+    cfg.data["tracks"][next(iter(cfg.tracks))]["repo"] = "no-such-repo"
+    found = lint.scan_config(cfg)
+    assert len(found) == 1
+    assert "no-such-repo" in found[0].message
+    assert all(r in found[0].message for r in cfg.repos)   # names both tables
+    CFG.reload()
+
+
+def test_an_external_key_that_is_not_a_path_is_a_finding(factory_root):
+    import lint
+    cfg = CFG.reload()
+    cfg.data["paths"]["external"] = {"repo": "shared", "keys": ["module"]}
+    found = lint.scan_config(cfg)
+    assert len(found) == 1 and "not a path" in found[0].message
+
+    cfg.data["paths"]["external"]["keys"] = ["not-a-key-at-all"]
+    found = lint.scan_config(cfg)
+    assert len(found) == 1 and "not a declared path key" in found[0].message
+
+    cfg.data["paths"]["external"] = {"repo": "not-a-repo", "keys": []}
+    found = lint.scan_config(cfg)
+    assert len(found) == 1 and "not-a-repo" in found[0].message
+    CFG.reload()

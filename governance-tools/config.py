@@ -365,8 +365,28 @@ class FactoryConfig:
         return self.ids["pattern"].replace("{prefix}", prefix).replace("{MOD}", mod.upper()).replace("{seq}", f"{seq:0{w}d}")
 
     # paths ---------------------------------------------------------------------
+    @property
+    def external(self) -> dict:
+        """Which `paths` keys resolve against another repository's checkout.
+
+        Read from the RAW paths block, not `self.paths`: resolving `{profile_id}`
+        loads the profile, and the profile is loaded through `profiles_dir()`,
+        which is itself a path. Reading raw here breaks that cycle explicitly."""
+        return self.data["paths"].get("external") or {}
+
     def dir(self, key: str) -> Path:
-        return self.root / self.paths[key]
+        """Path for a declared key, against whichever repo owns it.
+
+        Governance output lives in the shared repo so every consumer reads the
+        artifact where it was written instead of a copy; the factory's own
+        machinery stays here. Which is which is declared in `paths.external`,
+        never decided in this function."""
+        ext = self.external
+        base = self.repo_checkout(ext["repo"]) if key in (ext.get("keys") or ()) else self.root
+        rel = self.paths[key]
+        if not isinstance(rel, str):
+            raise KeyError(f"paths.{key} is not a path")
+        return base / rel
 
     def modules_root(self) -> Path:
         return self.dir("modules")
@@ -451,6 +471,13 @@ class FactoryConfig:
         checkout, always. None when this repo does not receive that publication."""
         rel = self.repos[repo].get("receives", {}).get(publication)
         return (self.repo_checkout(repo) / rel) if rel else None
+
+    def track_repo(self, track: str) -> str:
+        """The consumer repo key for a track (`tracks.<t>.repo`, default `<t>`).
+
+        `tracks` and `repos` are different tables — `repos.shared` is in one and
+        not the other — so a track's repo is named, not inferred (F-12)."""
+        return self.tracks[track].get("repo", track)
 
     def repo_checkout(self, repo: str) -> Path:
         r = self.repos[repo]
