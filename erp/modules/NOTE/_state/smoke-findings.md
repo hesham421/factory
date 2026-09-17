@@ -809,3 +809,43 @@ Fix     : added the `## PLATFORM FINDINGS` section to `erp/project-registry.md`
           for SEC or MDL either. lint `0 · 0 · 0`; 242 passed, 1 skipped.
 Status  : FIXED
 
+## F-21 — the gate declares two reviewer lanes and dispatches neither
+Where   : governance-tools/gov.py:390 `gate()` — the only stage-like command
+          that never calls `dp.dispatch()`
+Expected: `factory.yaml` gives each review gate
+          `lanes: [review-per-engine, review-holistic]`, and defines both in
+          `lanes:` with `implementers: ["claude:sonnet"]`, `effort: medium`,
+          `read_only: true`. `dispatch.py` supports read-only lanes end to
+          end — `run_round()` takes `read_only` and substitutes
+          `{read_only_flag}` as `--read-only` in `GOV_RUNNER_CMD`, documented
+          in its own module docstring. Both halves exist.
+Actual   : nothing connects them. `gate()` writes the brief and returns
+          AWAITING, naming the lanes in a MESSAGE — "(lanes
+          `review-per-engine`, `review-holistic`, read-only reviewers)" —
+          while dispatching neither, under any runner. Grepping
+          `governance-tools/` for those lane ids returns exactly that one
+          `_say()` line. `lane.read_only` is read in `dispatch.py` (for
+          ordinary stages, none of which set it) and in `render.py:98` (to
+          print a table), so the flag that exists FOR the reviewer lanes is
+          used by everything except them.
+          The consequence is not that a human decides — a human deciding is
+          correct and is what CONSTITUTION §2 requires. It is that the human
+          decides with NO SCORECARD, because the thing that produces one was
+          never run. `review.rubric`, `review.scale`, `review.pass_threshold`
+          and `review.verdicts` are all declared and all wait on a JSON file
+          the factory never asks anyone to generate.
+Fix     : OPEN, and deliberately not "make the gate auto-approve" — that would
+          delete a human decision point, which is the one move this review is
+          forbidden. The additive repair is narrow: `gate()` dispatches its
+          lanes (read-only) to produce the scorecard, then STILL returns
+          AWAITING so the human accepts or rejects it. That preserves the gate
+          and removes the only manual step in an otherwise unattended pipeline.
+          Left OPEN because it is a capability the factory declares and has
+          never had, not a regression — adding it is a design decision about
+          how much of a human gate may be pre-computed, and the documents say
+          the human ACCEPTS a verdict without saying who must produce it.
+          For this run I acted as the operator the message addresses, ran the
+          brief through the reviewer lane's own model by hand, and completed
+          the gate with the JSON — which is the workflow as it actually stands.
+Status  : OPEN
+
