@@ -363,6 +363,7 @@ repos:
     publishes: {}
     receives:
       modules-registry: "platform/modules-registry.json"
+      profile-summary: "platform/profile-summary.json"
 
 # ── Cross-repo publications — written BY the factory INTO each consumer repo ─
 # A consumer repo must be self-sufficient: everything it reads lives inside its
@@ -372,9 +373,20 @@ repos:
 # another repo's tree to read it.
 publications:
   modules-registry:
+    builder: modules_registry      # gov.py::_PUBLICATION_BUILDERS — lint checks the name resolves
     derived_from: filesystem       # same authority as versioning.authority
     preserve: [description, registered_at]   # fields the factory does not own: carried over, never regenerated
     additive: true                 # a module present in a consumer's copy but unknown here is KEPT, never dropped
+
+  # Every FACTORY fact a consumer needs in order to set a module up: the active
+  # profile's id, where its governance sits, and each track's ordered phase list.
+  # Without this a consumer generator has to restate them — and both of them did,
+  # which is F-14: a phase added to the profile was scanned into `phases` and
+  # silently absent from `gated_by_phases`, so the test phase ran without it.
+  # Derived wholly from the profile; nothing here is a consumer's to keep.
+  profile-summary:
+    builder: profile_summary
+    derived_from: profile
 
 # ── Delegate lanes — model/effort per reasoning step (implementers = list) ──
 lanes:

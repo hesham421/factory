@@ -75,6 +75,17 @@ def _owning_checkout(path: Path) -> Path:
     return max(inside, key=lambda r: len(r.parts)) if inside else CFG.root
 
 
+def _detached(root: Path) -> bool:
+    """Whether a checkout is on a commit rather than a branch.
+
+    `git submodule update` leaves the submodule on a detached HEAD. A commit
+    made there is referenced by nothing, and the next `submodule update` walks
+    away from it — the commit survives only in the reflog, and the push that
+    was supposed to publish it is a silent no-op because HEAD has moved. It
+    happened during this repo's own migration and cost a commit (F-28)."""
+    return _git("symbolic-ref", "-q", "HEAD", cwd=root, check=False).returncode != 0
+
+
 def _commit_in(root: Path, rels: list[str], message: str) -> str | None:
     """Commit exactly `rels` in `root` — nothing else the index happens to hold.
 
@@ -83,6 +94,13 @@ def _commit_in(root: Path, rels: list[str], message: str) -> str | None:
     message: a probe of this function swept 36 pending deletions into a commit
     that claimed to add one file. A stage commit must contain the stage's own
     output and nothing it did not write."""
+    if root != CFG.root and _detached(root):
+        raise SystemExit(
+            f"BLOCKED: {root.name} is on a detached HEAD, so a commit here would be\n"
+            f"  referenced by nothing and lost at the next `git submodule update`.\n"
+            f"  Fix: git -C {root} checkout <branch>   (then re-run)\n"
+            f"  This is not a warning: the failure is silent, and the push that should\n"
+            f"  publish the commit succeeds while publishing nothing.")
     _git("add", "-A", "--", *rels, cwd=root)
     if _git("diff", "--cached", "--quiet", "--", *rels, check=False, cwd=root).returncode == 0:
         return None
@@ -654,7 +672,53 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
     return OK
 
 
-def _publication_payload(name: str, existing: list[dict]) -> dict:
+def _pub_profile_summary(spec: dict, existing: list[dict]) -> dict:
+    """Every FACTORY fact a consumer needs to set a module up, derived wholly from
+    the active profile.
+
+    A consumer that cannot read the profile has to restate it, and both consumer
+    generators did: the ordered phase list appeared twice in each, once as prose
+    and once as `gated_by_phases`, which decides what must be COMPLETE before a
+    test phase runs. A phase added to the profile was scanned into `phases` and
+    absent from `gated_by_phases`, so the test phase ran without it (F-14). The
+    profile id was typed too, in 29 places, which is why a second profile could
+    not be started without editing them.
+
+    Nothing here is a consumer's to keep, so there is no `preserve`: it is
+    regenerated whole every time."""
+    prof = CFG.profile
+    tracks = {}
+    for track in CFG.tracks:
+        plans = {}
+        for plan in prof.plans(track):
+            plans[plan] = {
+                "package": CFG.tracks[track]["packages"][plan],
+                "phases": [{"key": ph.key, "display": ph.display, "folder": ph.folder,
+                            "never_split": ph.never_split, "sub_bearing": ph.sub_bearing,
+                            "integration": ph.integration, "binds_api": ph.binds_api,
+                            **({"sub_labels": list(ph.sub_labels)} if ph.sub_labels else {}),
+                            **({"split_threshold": ph.split_threshold} if ph.split_threshold else {})}
+                           for ph in prof.phases(track, plan)],
+            }
+        tracks[track] = {
+            "repo": CFG.track_repo(track),
+            "exec_stage": CFG.tracks[track]["exec_stage"],
+            "partition": CFG.fmt(_partitions()[track]) if track in _partitions() else None,
+            "plans": plans,
+        }
+    return {
+        "profile": prof.id,
+        "paths": {k: CFG.paths[k] for k in (CFG.external.get("keys") or ()) if isinstance(CFG.paths[k], str)},
+        "module_dirs": dict(CFG.paths["module"]),
+        "tracks": tracks,
+        "languages": prof.languages,
+    }
+    # No timestamp: the same profile must produce the same bytes, or every
+    # publish reports a change and "unchanged" stops meaning anything. The
+    # profile is the whole input; when it moves, this moves.
+
+
+def _pub_modules_registry(spec: dict, existing: list[dict]) -> dict:
     """The published module registry, derived from the ONE authority this factory
     recognises for the module set and its versions: the filesystem (versioning.authority).
 
@@ -667,7 +731,6 @@ def _publication_payload(name: str, existing: list[dict]) -> dict:
         (registered by an earlier toolchain, or built before this factory existed) is KEPT
         exactly as it stands. Deriving is not a licence to forget.
     """
-    spec = CFG.publications[name]
     preserve = spec.get("preserve", [])
     key = "modules"
     merged: dict = {}
@@ -686,6 +749,20 @@ def _publication_payload(name: str, existing: list[dict]) -> dict:
                     "versions": versions, "current_version": (max(versions) if versions else None)})
         row.update(keep)
     return {key: {c: merged[c] for c in sorted(merged, key=lambda c: merged[c].get("registered_at") or "")}}
+
+
+# A publication names its builder in factory.yaml; lint refuses a name that does
+# not resolve here. Adding a publication with a NEW derivation is new code, and
+# says so, instead of failing as a KeyError at the moment someone publishes.
+_PUBLICATION_BUILDERS = {
+    "modules_registry": _pub_modules_registry,
+    "profile_summary": _pub_profile_summary,
+}
+
+
+def _publication_payload(name: str, existing: list[dict]) -> dict:
+    spec = CFG.publications[name]
+    return _PUBLICATION_BUILDERS[spec["builder"]](spec, existing)
 
 
 def _module_manifest(mod: str) -> dict:

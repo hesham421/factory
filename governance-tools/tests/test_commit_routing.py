@@ -96,3 +96,36 @@ def test_owning_checkout_prefers_the_innermost_repo(two_repos, mod):
     assert gov._owning_checkout(CFG.module_root(mod)) == shared
     assert gov._owning_checkout(CFG.dir("engines")) == factory
     assert gov._owning_checkout(factory / "factory.yaml") == factory
+
+
+def test_a_detached_submodule_refuses_the_write(two_repos, mod):
+    """`git submodule update` leaves the submodule on a commit, not a branch. A
+    commit made there is referenced by nothing and the next update walks away
+    from it, while the push that should publish it succeeds publishing nothing.
+    The failure is entirely silent, so this refuses rather than warns (F-28)."""
+    gov, factory, shared = two_repos
+    art = CFG.state_dir(mod)
+    art.mkdir(parents=True, exist_ok=True)
+    (art / "note.md").write_text("content\n", encoding="utf-8")
+
+    head = _git("rev-parse", "HEAD", cwd=shared).stdout.strip()
+    _git("checkout", "-q", "--detach", head, cwd=shared)
+    with pytest.raises(SystemExit) as e:
+        gov._commit([art / "note.md"], "artifact")
+    assert "detached HEAD" in str(e.value) and "checkout" in str(e.value)
+
+    # on a branch it goes through — the guard is about HEAD, not about writing
+    _git("checkout", "-q", "-B", "main", cwd=shared)
+    assert gov._commit([art / "note.md"], "artifact")
+
+
+def test_the_factory_itself_is_never_blocked_by_it(two_repos):
+    """The guard is for submodules. This repo's own HEAD is the operator's
+    business, and refusing there would block a legitimate detached workflow."""
+    gov, factory, shared = two_repos
+    p = CFG.dir("engines") / "x.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("engine\n", encoding="utf-8")
+    head = _git("rev-parse", "HEAD", cwd=factory).stdout.strip()
+    _git("checkout", "-q", "--detach", head, cwd=factory)
+    assert gov._commit([p], "engine")

@@ -109,3 +109,51 @@ def test_dry_run_writes_nothing(linked):
     gov.cmd_publish("modules-registry", dry_run=True)
     for target in _receivers("modules-registry").values():
         assert not target.exists()
+
+
+# ── profile-summary: the factory facts a consumer must not retype ────────────
+
+def test_the_summary_carries_what_a_consumer_would_otherwise_type(linked):
+    """Both consumer generators restated the profile id and each track's ordered
+    phase list — the id in 29 places, the phase list twice per generator, one of
+    them `gated_by_phases`, which decides what must be COMPLETE before a test
+    phase runs (F-14). Everything they restated has to be in here, or they go
+    back to typing it."""
+    gov, mod, checkouts = linked
+    assert gov.cmd_publish("profile-summary") == 0
+    summary = _read(next(iter(_receivers("profile-summary").values())))
+
+    assert summary["profile"] == CFG.profile.id
+    for key in CFG.external["keys"]:
+        assert summary["paths"][key] == CFG.paths[key]
+    for track in CFG.tracks:
+        row = summary["tracks"][track]
+        assert row["repo"] == CFG.track_repo(track)
+        for plan in CFG.profile.plans(track):
+            keys = [ph["key"] for ph in row["plans"][plan]["phases"]]
+            assert keys == CFG.profile.phase_keys(track, plan), "order is the point"
+            assert row["plans"][plan]["package"] == CFG.tracks[track]["packages"][plan]
+    # attributes that drive behaviour travel with the key, not as prose
+    fe = summary["tracks"]["frontend"]["plans"]["exec"]["phases"]
+    assert any(ph["binds_api"] for ph in fe), "no phase declares it binds the API surface"
+
+
+def test_the_summary_is_deterministic(linked):
+    """Same profile, same bytes. A derived file that changes on every publish
+    makes `unchanged` meaningless and every diff noise."""
+    gov, _, checkouts = linked
+    target = next(iter(_receivers("profile-summary").values()))
+    assert gov.cmd_publish("profile-summary") == 0
+    first = target.read_text(encoding="utf-8")
+    assert gov.cmd_publish("profile-summary") == 0
+    assert target.read_text(encoding="utf-8") == first
+
+
+def test_a_publication_whose_builder_is_not_registered_is_a_lint_finding(factory_root):
+    import lint
+    cfg = CFG.reload()
+    assert lint.scan_config(cfg) == []
+    cfg.data["publications"]["modules-registry"]["builder"] = "nonesuch"
+    found = lint.scan_config(cfg)
+    assert len(found) == 1 and "not registered" in found[0].message
+    CFG.reload()

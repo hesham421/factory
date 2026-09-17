@@ -112,6 +112,7 @@ class Phase:
     sub_labels: tuple[str, ...] = ()
     sub_bearing: bool = False
     integration: bool = False
+    binds_api: bool = False
 
 
 class Profile:
@@ -190,6 +191,7 @@ class Profile:
                 sub_labels=tuple(r.get("sub_labels", ()) or ()),
                 sub_bearing=bool(r.get("sub_bearing", False)),
                 integration=bool(r.get("integration", False)),
+                binds_api=bool(r.get("binds_api", False)),
             ))
         return out
 

@@ -55,6 +55,9 @@ $types:
     sub_bearing?: "bool"                    # frontend: per-screen SUB blocks expected
     integration?: "bool"                    # test plans: populated only when the run's scope spans
                                              # more than one module (a cross-module TC phase)
+    binds_api?: "bool"                      # this phase binds to the published API surface, so its
+                                             # work resolves against api-docs and a missing endpoint
+                                             # is a recorded gap rather than a look into backend code
 
 stack:                                      # REQUIRED — every technology fact lives here
 # ── Stated choices (F5a) ───────────────────────────────────────────────────

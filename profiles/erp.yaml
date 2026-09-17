@@ -88,9 +88,9 @@ tracks:
           # address is what the split exists to give — an implementer takes one screen's F2
           # block, not "the F2 phase of a small module" — and that is worth exactly as much at
           # two screens as at twelve.
-          - {key: F1,       display: "F1 — Models & Types",   sub_bearing: true}
-          - {key: F2,       display: "F2 — Data Hooks",       sub_bearing: true}
-          - {key: F3,       display: "F3 — Forms & Validators", sub_bearing: true}
+          - {key: F1, binds_api: true,       display: "F1 — Models & Types",   sub_bearing: true}
+          - {key: F2, binds_api: true,       display: "F2 — Data Hooks",       sub_bearing: true}
+          - {key: F3, binds_api: true,       display: "F3 — Forms & Validators", sub_bearing: true}
           - {key: F4,       display: "F4 — Screens & Routes", sub_bearing: true}
           - {key: SEC-FE,   never_split: true}
           - {key: ALIGN-FE, never_split: true}
