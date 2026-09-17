@@ -663,3 +663,49 @@ No other edge has that shape. The ones worth naming as examined and LEFT:
   `gov -> everything`      gov is the orchestrator; breadth is its job, and
       every edge is a handful of named symbols, not a god-object reach.
 
+## WHAT HELD — the things a review should say plainly when they work
+
+Recorded because "no finding" is only credible if the check that would have
+produced one is named and was actually run.
+
+**Invariant 2 — determinism. HELD, both halves.**
+`fetch-inputs -m SEC -v 1` reports `unchanged` on the FIRST run as well as the
+second, which is the stronger result: the committed `_inputs/api-docs-sec.md`
+is byte-identical to a fresh fold of the published folder, so no hand-edit has
+crept in. `gov.py state -m SEC -v 1` twice leaves `git status` empty.
+
+**Known condition 1 — RESOLVED, and not the way the brief allowed for.**
+The brief said a brand-new module SHOULD carry an `Entity` line on every `API-*`
+block, and that its absence would be a finding about the engine. NOTE carries it:
+12 `Entity : ENT-NOTE-001` lines against 10 `API` blocks. The P3.1 engine does
+instruct it (`ENGINE.md:376`, with the reason at :403). So the engine is right
+and the gap is confined to the older modules, exactly as the brief's own
+disclaimer described — no finding. SEC's `C7.23` still reports "20 of 27 `API`
+blocks name no `ENT` … the demand each `SCR-REQ` declares stays unchecked",
+which is the check SAYING IT CANNOT SEE THE ANSWER rather than guessing.
+Invariant 3, working.
+
+**Empty-but-present phases — CORRECT, and legible as such.**
+NOTE declares no `XM`, and all eight backend phases are present in the plan.
+`INT-C` opens with "**Empty by construction, present by requirement**", an empty
+table with an em-dash row, and a paragraph per SEC entity explaining why each is
+not an `XM`. A phase that ran and found nothing is unmistakable from one that
+was skipped — which was the thing the brief asked me to be unable to tell apart.
+
+**The contract set itself — CLEAN.** 12 contracts, 94 clauses, audited
+programmatically: zero clauses naming a check `analyze` does not implement, zero
+implemented checks no clause uses, zero clauses charged at a severity
+`analyze.severities` does not declare. And an unknown check is a FINDING, not a
+skip (`analyze.py:1867`) — the vacuous-clause reporter names every clause that
+examined nothing and explains how to read it.
+
+**The ambiguity rule — WORKING.** Six ADRs under `erp/decisions/NOTE/`, all
+`ACCEPTED — non-breaking; the pass continued`, none BLOCKED. No stage wrote
+"STOP and ask the user", and no `[QUESTION]` survived a questions-forbidden
+stage.
+
+**Scope discipline — HELD.** The brief fixed the module at one entity, four
+operations, one screen, zero cross-module dependencies, and said growth beyond
+that was itself a finding. Measured: 1 `ENT`, 1 `SCR-REQ`, 18 `REQ`, 9 `DBF`,
+0 `XM`. Nothing inflated it.
+
