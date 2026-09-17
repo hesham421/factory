@@ -482,9 +482,15 @@ class FactoryConfig:
         return Path(os.environ.get(r["checkout_env"]) or (self.root / r["checkout_default"])).resolve()
 
     # naming ---------------------------------------------------------------------
-    @staticmethod
-    def fmt(template: str, **kw: Any) -> str:
+    def fmt(self, template: str, **kw: Any) -> str:
+        """Fill a declared template. `{profile_id}` resolves from the active
+        profile unless the caller overrides it — the same token `paths` carries,
+        resolved in one place so any config value may use it. A config value
+        that reached a filesystem path with `{profile_id}` still in it is how
+        `fetch-inputs` reported a closed gate over a directory that was there."""
         out = template
+        if "{profile_id}" in out and "profile_id" not in kw:
+            kw = {**kw, "profile_id": self.profile.id}
         if "mod" in kw or "MOD" in kw:
             mod = str(kw.get("mod") or kw.get("MOD"))
             out = out.replace("{MOD}", mod.upper()).replace("{mod}", mod.lower())

@@ -174,3 +174,19 @@ def test_the_shared_repo_is_never_named_in_code(factory_root):
     assert gov._shared_repo() == CFG.external["repo"]
     src = pathlib.Path(gov.__file__).read_text(encoding="utf-8")
     assert f'"{CFG.external["repo"]}"' not in src, "the repo key is typed in gov.py"
+
+
+def test_fmt_resolves_the_profile_token_wherever_it_appears(factory_root):
+    """`{profile_id}` is resolved in one place, so any declared value may carry
+    it. A value that reached the filesystem with the token still in it is how
+    `fetch-inputs` reported a closed gate over a directory that was there."""
+    assert CFG.fmt("{profile_id}/modules/{MOD}/api-docs", mod="sec") == \
+        f"{CFG.profile.id}/modules/SEC/api-docs"
+    # an explicit value still wins — the resolver fills in, it does not override
+    assert CFG.fmt("{profile_id}/x", profile_id="other") == "other/x"
+    # and no declared repo path escapes with the token intact
+    for repo, spec in CFG.repos.items():
+        for name, template in (spec.get("publishes") or {}).items():
+            assert "{profile_id}" not in CFG.fmt(template, mod="SEC"), f"{repo}.publishes.{name}"
+        for part in (spec.get("partitions") or {}).values():
+            assert "{profile_id}" not in CFG.fmt(part, mod="SEC")

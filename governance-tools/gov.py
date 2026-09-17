@@ -714,7 +714,7 @@ def _per_module(part: str) -> bool:
 
 def _shared_dir(part: str, mod: str | None = None) -> Path:
     """A partition of the shared repo, addressed by name so no path is spelled twice."""
-    rel = CFG.fmt(_partitions()[part], profile_id=CFG.profile.id, **({"mod": mod} if mod else {}))
+    rel = CFG.fmt(_partitions()[part], **({"mod": mod} if mod else {}))
     return CFG.repo_checkout(_shared_repo()) / rel
 
 
