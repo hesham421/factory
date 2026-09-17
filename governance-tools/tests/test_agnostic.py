@@ -202,7 +202,11 @@ def test_toy_unknown_clause_severity_is_itself_a_finding(toy_policy, monkeypatch
     import render
     toy_policy(["HALT", "WARN"])
     ensure_structure("PAT", 1)
-    monkeypatch.setattr(render, "contracts_from_doc", lambda cfg: [
+    # patched where the function LIVES, not where it used to be re-exported from:
+    # analyze reads the contract document through `contracts`, so patching
+    # `render` would leave the real document in play and the test vacuous.
+    import contracts as contracts_mod
+    monkeypatch.setattr(contracts_mod, "contracts_from_doc", lambda cfg: [
         {"id": "T1", "title": "toy", "owner": "P0", "consumer": "P0.5", "artifacts": [], "clauses": [
             {"id": "T1.1", "check": "exists", "args": {"artifact": "prd"}, "severity": "SEVERE"},
         ]},

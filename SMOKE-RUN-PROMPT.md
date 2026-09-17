@@ -1,15 +1,42 @@
-# Prompt — full-auto smoke run of the whole pipeline (module `NOTE`)
+# Prompt — full review of the pipeline, driven by one live run
 
 انسخ كل ما تحت الخط إلى جلسة delegate جديدة.
 
 ---
 
-You are running a **full-auto end-to-end smoke test** of this governance
-pipeline, from the factory through the shared repo into both consumer repos.
+You are **reviewing this governance pipeline and fixing what is wrong with it**.
+Running one module end to end — factory → shared repo → backend → frontend — is
+how you get evidence, not the goal. A run that completes and teaches nothing is
+a failed review; a run that stops at step three and explains precisely why is a
+good one.
 
 **Do not come back to ask anything. Decide, act, record, continue.** The only
-thing you report is the final findings file. If something is genuinely
-undecidable, write it down as a finding and keep going with the rest.
+thing you report is the findings file. If something is genuinely undecidable,
+write it down as a finding and keep going with the rest.
+
+## The standard you are reviewing against
+
+"Wrong" is not your opinion — these documents say what this system is supposed
+to be, and a deviation from them is a finding. Read them before the first
+command:
+
+| Document | What it fixes as the standard |
+|---|---|
+| `factory/GOVERNANCE-SHARED-DESIGN.md` | one writer per path · api-docs exist once · pinned pointers · why `sync` must hide the ceremony |
+| `factory/SHARED-GOVERNANCE-PLAN.md` | why a shared folder was refused, what the measured sync rate was, what Phase A fixed |
+| `factory/shared/CONSTITUTION.md` + `ARTIFACT-CONTRACTS.md` | C1 (no literal in code) · the contract set `analyze` enforces |
+
+Three invariants from those documents are worth stating outright, because a run
+can violate any of them without a single command failing:
+
+1. **api-docs exist in exactly one place.** A second copy appearing anywhere —
+   in either consumer, in `_inputs/` as a hand-edit, in a package — is a finding
+   even if everything still works.
+2. **A derivation is deterministic.** Same source, same bytes. `fetch-inputs`
+   twice must say `unchanged` the second time; so must `build_state`.
+3. **A check that cannot see the answer says so.** It does not guess, and it is
+   never weakened to let a step pass. If a check fires wrongly, the check is the
+   defect.
 
 ## The subject: one deliberately tiny module
 
@@ -229,6 +256,49 @@ Two known conditions, so you do not re-report them as new:
 2. `test_markers.py::test_threshold_of_non_marker_kind_is_not_counted` skips by
    design: this profile declares no such threshold.
 
+## The second review: can this be maintained and extended?
+
+The run tells you whether the pipeline works **today**. This pass asks whether
+the next change will break it. Do this after the run, with what you learned.
+
+**Coupling.** Every module should depend only on what it actually needs.
+
+```bash
+cd factory/governance-tools
+for f in *.py; do
+  printf "%-14s → " "${f%.py}"
+  grep -oE "^(import|from) [a-z_]+" "$f" | awk '{print $2}' | sort -u | tr '\n' ' '
+  echo
+done
+```
+
+The graph must stay a DAG — a cycle means neither module can be changed alone.
+Then ask of each edge: *is the whole module needed, or two functions from it?*
+One such edge was already cut this way: `analyze` (1962 lines) imported `render`
+solely to read the contract document, dragging the templating engine into the
+checker. `contracts.py` (39 lines, one dependency) now holds that, and the edge
+is gone. **If you find another edge of that shape, cut it the same way** — a
+thin module plus a re-export from the old home, so no call site changes.
+
+**Extension points.** For each, answer by trying it in your head against the
+code, not by trusting a comment:
+
+| To add … | How many files must change? | Where is the literal? |
+|---|---|---|
+| a module (`NOTE` was one) | | |
+| a phase to a track | | |
+| a contract clause | | |
+| a third consumer repo | | |
+| a second profile | | |
+
+Anything above "config only, plus the thing itself" deserves a finding. The C1
+rule exists precisely so these answers stay small — a value that has no home in
+`factory.yaml` or the profile is the finding, not the file that hardcodes it.
+
+**What a new module touched.** After the run, list every file you edited that
+was *not* `NOTE`'s own artifact. Each one is a place the system made you pay to
+extend it. That list is the most useful thing this whole exercise produces.
+
 ## Recording findings — keep this cheap
 
 One file, appended as you go. No database, no tooling, no ceremony:
@@ -259,7 +329,7 @@ Rules that keep it honest:
   check is the defect — fix the check and say so. A row with nothing behind it
   is deleted, never softened.
 - Re-run `lint` and the test suite after every factory-side fix. Baseline:
-  `0 critical · 0 major · 0 minor` and `237 passed, 1 skipped`. Any new failure
+  `0 critical · 0 major · 0 minor` and `237 passed, 1 skipped` (re-measure it yourself first — do not trust this number if the repo moved). Any new failure
   is yours.
 - Commit per logical change, in the repo that owns it. Never force-push. If a
   push is rejected, fetch and rebase — check for overlap first.
@@ -270,10 +340,13 @@ Append to the same file:
 
 ```
 ## SUMMARY
-Pipeline : <the furthest step that completed>
-Findings : <n> total — <n> FIXED · <n> OPEN · <n> WONTFIX
-Baseline : lint <c/m/m> · tests <passed/skipped/failed>
-Verdict  : the pipeline runs end to end / it stops at <step> because <reason>
+Pipeline  : <the furthest step that completed>
+Findings  : <n> total — <n> FIXED · <n> OPEN · <n> WONTFIX
+Baseline  : lint <c/m/m> · tests <passed/skipped/failed>
+Invariants: one-copy <held/violated> · determinism <held/violated> · no-weakened-check <held/violated>
+Coupling  : <edges cut, or "graph unchanged"> · cycles <n>
+Extension : adding a module touched <n> files outside its own artifacts — <list>
+Verdict   : the pipeline runs end to end / it stops at <step> because <reason>
 ```
 
 Then commit it. **That file is the entire deliverable** — the `NOTE` module is

@@ -41,7 +41,7 @@ import jinja2
 
 from config import CFG, Stage
 import idmodel
-import render
+import contracts as contracts_mod
 import state as st_mod
 
 CONVERGED = "<!-- CONVERGED -->"
@@ -121,7 +121,7 @@ def _knowledge(stage: Stage) -> list[tuple[str, str]]:
 
 
 def _contracts_for(stage: Stage) -> list[dict]:
-    cs = render.contracts_from_doc(CFG)
+    cs = contracts_mod.contracts_from_doc(CFG)
     return [c for c in cs if stage.id in (c["owner"] if isinstance(c["owner"], list) else [c["owner"]]) or c["consumer"] == stage.id]
 
 

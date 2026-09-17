@@ -31,7 +31,7 @@ from pathlib import Path
 
 from config import CFG, Artifact, Stage
 import idmodel
-import render
+import contracts as contracts_mod
 import state as st_mod
 from toolkit import markers as mk
 # `sev_at_rank(n)` — the severity at rank n of factory.yaml → analyze.severities
@@ -1700,7 +1700,7 @@ def rules_digest() -> dict:
     the contract set, the checker that implements it, and the blocking policy.
     Change any one and every stored verdict is about a rule set that is gone."""
     return {
-        "contracts": _file_sha(render.contracts_path(CFG)),
+        "contracts": _file_sha(contracts_mod.contracts_path(CFG)),
         "checker": _file_sha(Path(__file__).resolve()),
         "policy": _sha(json.dumps(CFG.analyze, sort_keys=True)),
     }
@@ -1780,7 +1780,7 @@ def _owners(c: dict) -> list[str]:
 
 def select_contracts(scope: str, ctx: "Ctx | None" = None) -> list[dict]:
     """scope: 'all' | 'stage:<id>' | 'pass:<n>' | 'gate:<id>'"""
-    contracts = render.contracts_from_doc(CFG)
+    contracts = contracts_mod.contracts_from_doc(CFG)
     standalone_ids = {s.id for s in CFG.standalone}
     if scope == "all":
         # the whole governed line; a standalone consumer's contract only once that stage has actually run

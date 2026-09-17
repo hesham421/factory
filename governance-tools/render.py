@@ -20,6 +20,9 @@ import jinja2
 import yaml
 
 from config import CFG, FactoryConfig, Stage
+# re-exported: every existing caller (and every test) keeps reaching these
+# through `render`, so the split costs no edit at any call site.
+from contracts import contracts_from_doc, contracts_path
 
 _TEMPLATES = ("SKILL.md.j2", "command.md.j2", "README.md.j2", "START-HERE.md.j2")
 _RENDER_RX = re.compile(r"(<!-- RENDER:([A-Za-z0-9_:-]+) -->)(.*?)(<!-- /RENDER:\2 -->)", re.S)
@@ -157,23 +160,6 @@ def block_profile_summary(cfg):
         *[[f"{t.capitalize()} plans", ", ".join(p.plans(t)) or "—"] for t in cfg.tracks if t in p.tracks],
         ["Knowledge", ", ".join(f"`{f}`" for f in p.knowledge_files) or "—"],
     ], ["Fact", "Value"])
-
-
-_CONTRACTS_FILE = "ARTIFACT-CONTRACTS.md"       # the one filename this module must know
-
-
-def contracts_path(cfg: FactoryConfig) -> Path:
-    """The contract document itself — addressed here so no second reader (analyze's
-    provenance digest) has to spell the filename a second time."""
-    return cfg.dir("shared") / _CONTRACTS_FILE
-
-
-def contracts_from_doc(cfg: FactoryConfig) -> list[dict]:
-    path = contracts_path(cfg)
-    if not path.exists():
-        return []
-    m = _FRONTMATTER_RX.match(path.read_text(encoding="utf-8"))
-    return (yaml.safe_load(m.group(1)) or {}).get("contracts", []) if m else []
 
 
 def block_contracts_index(cfg):
