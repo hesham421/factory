@@ -191,11 +191,25 @@ def dir(self, key: str) -> Path:  return self.root / self.paths[key]
 
 ### نقطة الوصل في كل مستودع
 
-| المستودع | المسار | ما يراه |
+| المستودع | المسار | ما يكتب |
 |---|---|---|
-| `factory/` | `shared/` | **كل شيء** (يكتب ويقرأ الطرفين) |
-| `backend/` | `governance/shared/` | `platform/` + `backend/` + api-docs |
-| `frontend/` | `governance/shared/` | `platform/` + `frontend/` + api-docs (قراءة) |
+| `factory/` | `governance-shared/` | كل شيء عدا الأقسام الثلاثة أدناه |
+| `backend/` | `governance/shared/` | `modules/*/api-docs/` · `modules/*/backend/` |
+| `frontend/` | `governance/shared/` | `modules/*/frontend/` |
+
+**ثلاث نسخ فقط، لا رابعة.** كانت هناك نسخة مجاورة رابعة لا يثبّتها أحد، وقد
+أُزيلت — بعد أن أثبتت خطرها مرّتين في جلسة واحدة: كتابة ذهبت إليها بدل الـ
+submodule فبدت كأنها لم تحدث، ثم `reset` عليها ظنّاً أنها الـ submodule.
+لا `git submodule status` يبلّغ عن نسخة ليست submodule أصلاً.
+
+> **الثلاثة غير ضحلة (`shallow` مُزال).** كان الوصف `shallow = true` صحيحاً
+> حين كان الطرفان يقرآن فقط؛ صار خطأً حين صارا يكتبان. من يكتب يدفع، ومن يدفع
+> يحتاج تاريخاً.
+
+> **فخّ الـ submodule: HEAD منفصل.** `git submodule update` يترك الـ checkout
+> على commit لا على فرع. التزامٌ هناك ثم `submodule update` أخرى = commit
+> مهجور لا يشير إليه شيء. القاعدة: `git checkout main` داخل الـ submodule قبل
+> أي كتابة. حدث هذا فعلاً أثناء هذه الهجرة واسْتُرِدّ من الـ reflog.
 
 > **«كلٌّ يرى ما يخصّه» لا يُفرَض في git** — الـ submodule يعطي الجميع كل شيء.
 > التقسيم + `CODEOWNERS` يفرضان **الكتابة** لا الرؤية. هذه حدود الأداة،
