@@ -94,8 +94,8 @@ ask, rather than deciding unilaterally in this session.
 - Model/effort is chosen **per lane** (`factory.yaml → lanes`), not
   hardcoded in prompts. Explicit `--model`/`--effort` flags on a command
   override the lane for a single run only — they never edit `factory.yaml`.
-- Review gates run on the **read-only** lanes `review-per-engine` and
-  `review-holistic`: the reviewers propose findings, merged by the
+- Review gates run on the **read-only** lane `review-pass`: two reviewers
+  argue one brief and converge on a merged scorecard; findings are applied by the
   `merge-review-notes` lane; **the orchestrator lands the commit**. Never
   let a review edit or commit.
 - Default is Claude-only across every lane (`delegate-skills/README.md`).

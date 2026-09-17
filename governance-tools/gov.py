@@ -632,7 +632,7 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
     if not complete:
         brief = _gate_brief(g, pass_no, mod, version, rep)
-        _say(f"AWAITING REVIEW: gate brief → {rel(brief)} (lanes {', '.join(f'`{l}`' for l in g['lanes'])}, read-only reviewers)")
+        _say(f"AWAITING REVIEW: gate brief → {rel(brief)} (lane `{g['lane']}`, read-only reviewers)")
         _say(f"  when the review JSON exists: gov.py gate {pass_no} -m {mod} -v {version} --complete --result <file.json>")
         return AWAITING
     if not result or not Path(result).exists():

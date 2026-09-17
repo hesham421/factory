@@ -30,10 +30,10 @@ history/                     pre-v6 artefacts, loaded by nothing
 <!-- RENDER:stages -->
 | Stage | Title | Pass | Questions | Lane | Inputs | Produces | Owns IDs | Then |
 |---|---|---|---|---|---|---|---|---|
-| `domain-profile` | Domain Profile | pre | allowed (dialogue) | `analysis` | `raw-idea`, `platform-brief?` | `domain-profile.md` | — | P-1 |
+| `domain-profile` | Domain Profile | pre | allowed (dialogue) | `analysis-dialogue` | `raw-idea`, `platform-brief?` | `domain-profile.md` | — | P-1 |
 | `P-1` | Registry & Steering Builder | bootstrap | forbidden | `analysis` | `domain-profile` | `project-registry.md` | — | P0 |
-| `P0` | Platform Inception | 1 | allowed (dialogue) | `analysis` | `domain-profile`, `project-registry` | `platform-summary.md`, `module-registry-{mod}.md`, `business-policies-{mod}.md` | `POL` | P0.5 |
-| `P0.5` | PRD | 1 | allowed (dialogue) | `analysis` | `platform-summary`, `module-registry`, `business-policies` | `prd-{mod}.md` | `US` | gate `prd-approval` |
+| `P0` | Platform Inception | 1 | allowed (dialogue) | `analysis-dialogue` | `domain-profile`, `project-registry` | `platform-summary.md`, `module-registry-{mod}.md`, `business-policies-{mod}.md` | `POL` | P0.5 |
+| `P0.5` | PRD | 1 | allowed (dialogue) | `analysis-dialogue` | `platform-summary`, `module-registry`, `business-policies` | `prd-{mod}.md` | `US` | gate `prd-approval` |
 | `P1` | SRS | 1 | forbidden | `analysis` | `prd`, `domain-profile`, `project-registry` | `srs-{mod}.md`, `registry-srs-{mod}.md` | `REQ`, `AC`, `ENT`, `RULE`, `SCR-REQ` | P2 |
 | `P2` | Database | 1 | forbidden | `analysis` | `srs`, `registry-srs` | `db-script-{mod}.md`, `registry-db-{mod}.md` | `DBF`, `XM` | P3.1 |
 | `P3.1` | Backend Execution Plan | 1 | forbidden | `analysis` | `srs`, `db-script`, `registry-srs`, `registry-db` | `backend-execution-plan-{mod}.md`, `registry-exec-be-{mod}.md` | `API`, `QR` | gate `pass-1` |
@@ -55,17 +55,17 @@ All stages of a pass run in one delegate session with one commit per stage.
 | Gate | When | Type | Lanes | Requires analyze | On REVISE |
 |---|---|---|---|---|---|
 | `prd-approval` | after `P0.5` | human-approval | — | — | `—` |
-| `pass-1` | after `P3.1` | review | `review-per-engine`, `review-holistic` | clean | `merge-review-notes` |
-| `pass-2` | after `P3.2` | review | `review-per-engine`, `review-holistic` | clean | `merge-review-notes` |
+| `pass-1` | after `P3.1` | review | `review-pass` | clean | `merge-review-notes` |
+| `pass-2` | after `P3.2` | review | `review-pass` | clean | `merge-review-notes` |
 <!-- /RENDER:gates -->
 
 ### Lanes (model/effort per reasoning step)
 <!-- RENDER:lanes -->
 | Lane | Implementers | Effort | Mode | Dialogue |
 |---|---|---|---|---|
-| `analysis` | `claude:opus` | high | — | max 4 rounds, converge on *mutually-acceptable* |
-| `review-per-engine` | `claude:sonnet` | medium | read-only | — |
-| `review-holistic` | `claude:sonnet` | medium | read-only | — |
+| `analysis` | `claude:opus` | high | — | — |
+| `analysis-dialogue` | `claude:opus`, `claude:sonnet` | high | — | max 4 rounds, converge on *mutually-acceptable* |
+| `review-pass` | `claude:sonnet`, `claude:opus` | medium | read-only | max 2 rounds, converge on *merged-scorecard* |
 | `merge-review-notes` | `claude:sonnet` | low | — | — |
 | `test-gen` | `claude:opus` | high | — | — |
 <!-- /RENDER:lanes -->

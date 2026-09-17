@@ -16,7 +16,7 @@
 ```
 Doc            : reviewers/pass-review.md (rendered)
 Role           : self-contained brief for the READ-ONLY reviewer of one pass
-Loaded by      : the {{ gate.lanes | join(' + ') }} lanes, dispatched by gov.py gate
+Loaded by      : the `{{ gate.lane }}` lane ({{ factory.lanes[gate.lane].implementers | join(' ↔ ') }}{% if factory.lanes[gate.lane].dialogue %}, converging on {{ factory.lanes[gate.lane].dialogue.converge_on }} in ≤ {{ factory.lanes[gate.lane].dialogue.max_rounds }} rounds{% endif %}), dispatched by gov.py gate
 Generated parts: everything below the metadata block is rendered per gate
 Links          : shared/QUALITY-RUBRIC.md · shared/ARTIFACT-CONTRACTS.md · shared/GOVERNANCE-CORE.md · shared/XM-PROTOCOL.md · shared/VERSIONING.md
 ```
@@ -63,6 +63,40 @@ say so with a reason), and add what the machine cannot see.
 ```
 {{ analyze_report }}
 ```
+
+## 3.5 Adversarial reading — what the machine cannot see
+
+`gov.py analyze` checks what is written. Your value is what is **missing**:
+a path nobody specified, a boundary nobody bounded, an assumption nobody
+declared. Work the four probes below over the artifacts of §2, then score.
+
+**P1 — Invert every check.** For each acceptance criterion, construct the
+counter-case: the input, state or sequence that violates it. Skip
+counter-cases the analyze report (§3) already flagged — your value starts
+where it stopped. The grammar (`factory.ids.ears.patterns`) has an
+unwanted-behaviour pattern — if the counter-case has no statement anywhere
+in the pass, that is a silent path: MAJOR, with the statement you would add
+as the fix.
+
+**P2 — Closure questions per record.** For every record defined in this
+pass ask: who may create it, who may not, what happens when it is absent,
+duplicated or withdrawn, what happens at the edges (empty, maximum,
+concurrent), and what happens when something it depends on fails. An
+unanswered question is a finding, not a question to the user (C6).
+
+**P3 — Read the seams.** Take each pair of adjacent artifacts in
+{{ factory.passes[stage.pass].stages | join(' → ') }}. A fact stated in one
+and only *implied* by the other is an undeclared assumption: the fix names
+the upstream owner that must state it.
+
+**P4 — Error vs pattern.** The same defect in three or more places is one
+finding at the level of the rule that allowed it, not three findings. Say
+which rule, and where it should live.
+
+Budget: sample, do not rewrite the pass. Every discovery leaves §3.5 as a
+row in `findings` (§8) with a concrete `fix`; where the fix needs a choice,
+propose the best-practice one and set `adr: true`. Nothing here changes the
+output format.
 
 ## 4. Scorecard — fill every row
 

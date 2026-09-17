@@ -78,8 +78,8 @@ gates:
     blocks: [P1]
   - id: pass-1
     after: P3.1
-    type: review                   # one human review per pass (scorecard + analyze report)
-    lanes: [review-per-engine, review-holistic]   # both review the same brief; merged below
+    type: review                   # one review per pass (scorecard + analyze report)
+    lane: review-pass              # two read-only reviewers argue the same brief and converge on one scorecard
     requires_analyze: clean        # no finding at a severity in `analyze.blocking`
     requires_feedback: answered    # no consumer gap the factory has not answered
                                    # (feedback.status → open/human/unrecognised).
@@ -88,7 +88,7 @@ gates:
   - id: pass-2
     after: P3.2
     type: review
-    lanes: [review-per-engine, review-holistic]
+    lane: review-pass
     requires_analyze: clean
     requires_feedback: answered    # no consumer gap the factory has not answered
                                    # (feedback.status → open/human/unrecognised).
@@ -97,10 +97,9 @@ gates:
 
 # ── Stages — the governed pipeline (order = run order) ─────────────────────
 # questions: allowed | forbidden   (C6 — enforced by the orchestrator)
-# dialogue : true → the lane's implementer list runs a converging dialogue.
-#            Dialogue stages reuse the plain `analysis` lane (see lanes.analysis.dialogue
-#            below) instead of a separate "analysis-dialogue" lane id — the real delegate
-#            setup this factory dispatches to has no such lane, only `analysis`.
+# dialogue : true → the lane's implementer list runs a converging dialogue. Such a
+#            stage names `analysis-dialogue`: two implementers alternate, so a
+#            PROPOSAL is answered by a different model than the one that made it.
 stages:
   - id: domain-profile
     title: Domain Profile
@@ -108,7 +107,7 @@ stages:
     once_per: platform
     questions: allowed
     dialogue: true
-    lane: analysis
+    lane: analysis-dialogue
     research: web                  # absorbs the former idea-draft step
     inputs: [raw-idea, "platform-brief?"]
     produces:
@@ -131,7 +130,7 @@ stages:
     pass: 1
     questions: allowed
     dialogue: true
-    lane: analysis
+    lane: analysis-dialogue
     inputs: [domain-profile, project-registry]
     produces:
       - {artifact: platform-summary, file: "platform-summary.md"}
@@ -144,7 +143,7 @@ stages:
     pass: 1
     questions: allowed             # LAST stage where questions are allowed
     dialogue: true
-    lane: analysis
+    lane: analysis-dialogue
     inputs: [platform-summary, module-registry, business-policies]
     produces:
       - {artifact: prd, file: "prd-{mod}.md"}
@@ -428,25 +427,31 @@ feedback:
     human:  [HUMAN, ADR]                     # needs a decision, not a plan edit
 
 # ── Delegate lanes — model/effort per reasoning step (implementers = list) ──
+# Every lane id here is also a lane the delegate setup must know by the SAME
+# name (`$delegate-setup` — see the README's operator steps): the runner passes
+# {lane} through, and the delegate's own dials (effort, timeout, read-only)
+# key on it. {model} is passed explicitly per round, because a dialogue lane
+# alternates implementers and a lane-name-only mapping would collapse the
+# debate to one model.
 lanes:
   analysis:
     implementers: ["claude:opus"]
     effort: high
-    dialogue:                          # dialogue stages (domain-profile, P0, P0.5) dispatch
-      max_rounds: 4                    # this same lane for every round instead of a distinct
-      converge_on: mutually-acceptable # "analysis-dialogue" lane id — no such lane exists in
-      output: resolved-decisions       # the real delegate setup, only `analysis`; rounds are
-                                        # framed (draft → self-review) by build_brief(), not by
-                                        # switching implementers. Not perfection — the bar the
-                                        # user set. Closed in-dialogue; no open-questions file.
-  review-per-engine:
-    implementers: ["claude:sonnet"]
+  analysis-dialogue:                   # the `questions: allowed` stages (domain-profile, P0, P0.5):
+    implementers: ["claude:opus", "claude:sonnet"]   # two models alternate — a PROPOSAL is answered
+    effort: high                                     # by a different model than the one that made it
+    dialogue:
+      max_rounds: 4
+      converge_on: mutually-acceptable # not perfection — the bar the user set. Closed in-dialogue;
+      output: resolved-decisions       # every DECISION: block becomes an ADR (dispatch.persist_decisions)
+  review-pass:                         # the gate: two READ-ONLY reviewers argue one brief
+    implementers: ["claude:sonnet", "claude:opus"]
     effort: medium
     read_only: true                    # reviewer never edits or commits
-  review-holistic:
-    implementers: ["claude:sonnet"]
-    effort: medium
-    read_only: true                    # reviewer never edits or commits
+    dialogue:
+      max_rounds: 2                    # round 1 scores; round 2 answers it and returns the merged card
+      converge_on: merged-scorecard
+      output: merged-scorecard
   merge-review-notes:
     implementers: ["claude:sonnet"]
     effort: low
