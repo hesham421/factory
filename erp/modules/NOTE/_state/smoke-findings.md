@@ -684,6 +684,12 @@ disclaimer described — no finding. SEC's `C7.23` still reports "20 of 27 `API`
 blocks name no `ENT` … the demand each `SCR-REQ` declares stays unchecked",
 which is the check SAYING IT CANNOT SEE THE ANSWER rather than guessing.
 Invariant 3, working.
+CORRECTION to the above, recorded rather than quietly edited: the `Entity` line
+was the only half of this that held. Carrying it did NOT make `C7.23` able to
+judge NOTE — the clause still examined 0 subjects, for an unrelated reason that
+took instrumenting it to find, and that is F-19. The engine's half of known
+condition 1 is sound; the checker's half was not, and is now. After F-19,
+`C7.23` examines 6 subjects for NOTE and returns a real verdict.
 
 **Empty-but-present phases — CORRECT, and legible as such.**
 NOTE declares no `XM`, and all eight backend phases are present in the plan.
