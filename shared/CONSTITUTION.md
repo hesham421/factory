@@ -13,9 +13,10 @@ Links          : GOVERNANCE-CORE.md · ARTIFACT-CONTRACTS.md · QUALITY-RUBRIC.m
 The factory is a git-native, domain-agnostic **analysis factory**
 (`factory.boundary`). Input: a raw product idea plus a domain profile.
 Output: reviewed, versioned, traceable analysis artifacts and per-track
-execution plans, split into packages and delivered to consumer repos
-(`factory.repos`). The line runs domain-profile → … → delivery and **stops at
-delivery**. It never implements, never audits an implementation, never runs
+execution plans, split into packages and written into the shared governance
+repo (`factory.repos.shared`) that every consumer mounts. The line runs
+domain-profile → … → packages and **stops there**. Nothing is copied between
+repos. It never implements, never audits an implementation, never runs
 tests inside the line. A domain is a data file under `paths.profiles`, never
 engine text.
 

@@ -16,7 +16,7 @@ and the active profile (`config.CFG`).
   analyze -m MOD [-v N] [--scope all|stage:ID|pass:N|gate:ID]
   state -m MOD [-v N]
   version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
-  deliver --track T -m MOD -v N [--push] · status -m MOD
+  status -m MOD
   publish [name] [--dry-run]                                           # factory publications → into each consumer repo
   structure/archive/split (toolkit) · render · lint [--profile ID]
   new-domain ID [--yes|--force] [--module CODE]   # resets stale project content, then starts ID
@@ -573,7 +573,7 @@ def cmd_tag(mod: str, version: int) -> int:
     if _git("tag", "-l", name).stdout.strip():
         _say(f"tag {name} already exists")
         return OK
-    _git("tag", "-a", name, "-m", f"{mod.upper()} v{version} delivered")
+    _git("tag", "-a", name, "-m", f"{mod.upper()} v{version}")
     _say(f"tagged {name}")
     return OK
 
@@ -694,10 +694,28 @@ def _module_manifest(mod: str) -> dict:
     return read_json(CFG.module_root(mod) / CFG.paths["module"]["manifest_file"], {}) or {}
 
 
+def _shared_repo() -> str:
+    """The repo key governance is written to — declared in `paths.external`, so
+    the name `shared` is never typed here."""
+    return CFG.external["repo"]
+
+
+def _partitions() -> dict[str, str]:
+    return CFG.repos[_shared_repo()].get("partitions", {})
+
+
+def _per_module(part: str) -> bool:
+    """Whether a partition has one directory per module. Read off the template:
+    an entry carrying `{MOD}` is per-module, one without it is not. Recognising
+    a partition by its NAME would put the ownership table's vocabulary back into
+    the code it is supposed to stay out of."""
+    return "{MOD}" in _partitions()[part]
+
+
 def _shared_dir(part: str, mod: str | None = None) -> Path:
     """A partition of the shared repo, addressed by name so no path is spelled twice."""
-    rel = CFG.repos["shared"]["partitions"][part]
-    return CFG.repo_checkout("shared") / (CFG.fmt(rel, mod=mod) if mod else rel)
+    rel = CFG.fmt(_partitions()[part], profile_id=CFG.profile.id, **({"mod": mod} if mod else {}))
+    return CFG.repo_checkout(_shared_repo()) / rel
 
 
 def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
@@ -713,27 +731,35 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
     It never rewrites what it does not own: the partitions are single-writer by
     design and this reports each one's state rather than reconciling them.
     """
-    shared = CFG.repo_checkout("shared")
+    host = _shared_repo()
+    shared = CFG.repo_checkout(host)
     if not (shared / ".git").exists():
         _say(f"BLOCKED: shared checkout not found at {shared}\n"
-             f"  clone it, or set {CFG.repos['shared']['checkout_env']} — and if this is a\n"
+             f"  clone it, or set {CFG.repos[host]['checkout_env']} — and if this is a\n"
              f"  fresh clone of a consumer, it is a submodule: `git submodule update --init`")
         return BLOCKED
 
+    # Which submodule is the shared one is decided by its URL, not by a folder
+    # name: each repo mounts it at a path of its own choosing, and matching on a
+    # name would silently match nothing in the repo that chose a different one.
+    url = (CFG.repos[host].get("url") or "").strip()
     stale = []
-    for name, repo in CFG.repos.items():
-        if name == "shared":
+    for name in CFG.repos:
+        if name == host:
             continue
         try:
             co = CFG.repo_checkout(name)
         except Exception:
             continue
-        mods = (co / ".gitmodules")
-        if co.is_dir() and mods.exists() and "governance-shared" in mods.read_text(encoding="utf-8"):
-            r = _git("submodule", "status", cwd=co, check=False).stdout
-            for line in r.splitlines():
-                if line.startswith(("-", "+")):
-                    stale.append((name, line.strip()))
+        mods = co / ".gitmodules"
+        if not (co.is_dir() and mods.exists()):
+            continue
+        if url and url.removesuffix(".git") not in mods.read_text(encoding="utf-8").replace(".git", ""):
+            stale.append((name, "MOUNTS NOTHING — .gitmodules does not name the shared repo"))
+            continue
+        for line in _git("submodule", "status", cwd=co, check=False).stdout.splitlines():
+            if line.startswith(("-", "+")):
+                stale.append((name, line.strip()))
 
     _git("fetch", "--quiet", "origin", cwd=shared, check=False)
     head = _git("rev-parse", "--short", "HEAD", cwd=shared).stdout.strip()
@@ -746,10 +772,19 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
     dirty = [l for l in _git("status", "--porcelain", cwd=shared).stdout.splitlines() if l.strip()]
 
     _say(f"shared @ {head}" + (f" · upstream {upstream} (behind {behind}, ahead {ahead})" if upstream else " · no upstream"))
-    for part in CFG.repos["shared"]["partitions"]:
-        mods = CFG.modules() if part != "platform" else [None]
-        present = [m for m in mods if _shared_dir(part, m).exists()]
-        _say(f"  {part:<9} {len(present)} present" + (f" ({', '.join(x for x in present if x)})" if present and present[0] else ""))
+    known = CFG.modules()
+    for part in _partitions():
+        if not _per_module(part):
+            _say(f"  {part:<9} {'present' if _shared_dir(part).exists() else 'ABSENT'}")
+            continue
+        present = [m for m in known if _shared_dir(part, m).exists()]
+        missing = [m for m in known if m not in present]
+        line = f"  {part:<9} {len(present)}/{len(known)}"
+        if present:
+            line += f"  {', '.join(present)}"
+        if missing:
+            line += f"   · no {part}: {', '.join(missing)}"
+        _say(line)
     if dirty:
         _say(f"  uncommitted in shared: {len(dirty)} path(s)")
         for l in dirty[:8]:
@@ -811,180 +846,6 @@ def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
     return rc
 
 
-def cmd_deliver(track: str, mod: str, version: int, push: bool) -> int:
-    repo = CFG.repos[track]
-    checkout = CFG.repo_checkout(track)
-    if not (checkout / ".git").exists():
-        _say(f"BLOCKED: consumer checkout not found for `{track}`: {checkout} (link it in factory.yaml → repos)")
-        return BLOCKED
-    branch = CFG.delivery_branch(mod, version, track)
-    dest = checkout / CFG.fmt(repo["deliver_to"], mod=mod)
-    if version > 1:
-        dest = dest / CFG.fmt(CFG.naming["version_folder"], version=version)
-    _git("checkout", "-B", branch, cwd=checkout)
-    prior = _delivered_toolchain(dest)
-    if dest.exists() and prior != toolchain_id():
-        # merging current output into a tree an older toolchain laid down leaves that
-        # toolchain's files in place — its index keys, its path shapes, its omissions.
-        # A delivery from a different toolchain replaces the module, it does not patch it.
-        _say(f"re-delivering {mod.upper()} wholesale: the destination was written by "
-             f"{(prior or {}).get('revision') or 'an unidentified toolchain'}")
-        shutil.rmtree(dest)
-    delivered = []
-    for plan, pkg in CFG.tracks[track]["packages"].items():
-        src = CFG.packages_dir(mod, track, plan, version)
-        if src.exists() and any(f.is_file() and f.name != ".gitkeep" for f in src.rglob("*")):
-            tgt = dest / CFG.paths["module"]["packages_dir"] / pkg
-            if tgt.exists():
-                shutil.rmtree(tgt)
-            shutil.copytree(src, tgt)
-            delivered.append(pkg)
-    index = _delivered_index(track, mod, version, dest, checkout)
-    write_json(dest / CFG.paths["module"]["manifest_file"], index)
-    state_file = dest / CFG.delivery["execution_state"]["file"]
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    write_json(state_file, _execution_state(track, mod, version, delivered, index))
-    _git("add", "-A", "--", str(dest.relative_to(checkout)), cwd=checkout)
-    if _git("diff", "--cached", "--quiet", cwd=checkout, check=False).returncode != 0:
-        _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory", "commit", "-q", "-m",
-             f"governance: {mod.upper()} v{version} {track} packages from the analysis factory", cwd=checkout)
-    if push:
-        _git("push", "-u", "origin", branch, cwd=checkout)
-    _say(f"delivered {delivered} + {state_file.name} to {checkout.name}:{branch}")
-    # A delivery that adds or re-versions a module makes every consumer's copy of the
-    # published registry stale the moment it lands. Refreshing it here is what keeps
-    # "written by hand, keep the two byte-identical" from being a standing instruction
-    # to a human who will eventually forget.
-    cmd_publish()
-    dangling = _dangling(index, dest, checkout)
-    if dangling:
-        _say("WARNING: the delivered index names paths that do not exist in the consumer repo:")
-        for k, v in dangling:
-            _say(f"  {k} = {v}")
-        return BLOCKED
-    return OK
-
-
-def toolchain_id() -> dict:
-    """Who produced a delivery. Two halves, because neither alone is enough:
-    `revision` is what a human reads (a git describe of the factory), `rules` is
-    what a machine compares (F2's content digests of the contract set, the checker
-    and the blocking policy) and needs no git at all. Artifacts delivered by an
-    older toolchain used to be indistinguishable from current ones — which is why
-    a delivered index still names factory-rooted paths that dangle for its reader."""
-    rev = _git("describe", "--always", "--dirty", "--tags", check=False)
-    return {"revision": rev.stdout.strip() if rev.returncode == 0 else "", "rules": an.rules_digest()}
-
-
-def _delivered_toolchain(dest: Path) -> dict | None:
-    from toolkit.common import read_json
-    index = read_json(dest / CFG.paths["module"]["manifest_file"])
-    return (index or {}).get("toolchain")
-
-
-def _deliver_decisions(mod: str, dest: Path) -> str | None:
-    """Copy the module's decision records INTO the delivered tree.
-
-    The plans cite them by path; a decisions folder that lives only in the factory
-    makes every one of those citations dangle for the implementer who reads the
-    delivered tree — the one reader they were written for.
-    """
-    src = CFG.decisions_dir(mod)
-    files = sorted(p for p in src.glob("*.md")) if src.exists() else []
-    if not files:
-        return None
-    name = Path(CFG.paths["decisions"]).name
-    tgt = dest / name
-    if tgt.exists():
-        shutil.rmtree(tgt)
-    tgt.mkdir(parents=True, exist_ok=True)
-    for f in files:
-        shutil.copy2(f, tgt / f.name)
-    return name
-
-
-def _delivered_index(track: str, mod: str, version: int, dest: Path, checkout: Path) -> dict:
-    """The delivered tree's own index — every path relative to `dest`, so it resolves
-    in the consumer repo. `execution-state.json` takes its path fields from THIS dict
-    rather than computing its own: two generated files cannot disagree about where a
-    plan lives when only one of them decides.
-    """
-    pkg_root = CFG.paths["module"]["packages_dir"]
-    packages, plans = {}, {}
-    for plan, pkg in CFG.tracks[track]["packages"].items():
-        tgt = dest / pkg_root / pkg
-        if tgt.exists() and any(f.is_file() and f.name != ".gitkeep" for f in tgt.rglob("*")):
-            key = f"{track}/{plan}"
-            packages[key] = f"{pkg_root}/{pkg}"
-            plans[key] = f"{pkg_root}/{pkg}"          # a delivered plan IS its split package
-    index = {
-        "module": mod.upper(), "version": version, "track": track, "profile": CFG.profile_id,
-        "markers_schema_version": CFG.markers["schema_version"],
-        "paths_relative_to": "the directory holding this file",
-        "root": ".", "packages": packages, "plans": plans,
-        "toolchain": toolchain_id(),
-        "generated_at": now_iso(),
-    }
-    decisions = _deliver_decisions(mod, dest)
-    if decisions:
-        index["decisions_dir"] = decisions
-    for name, spec in CFG.repos[track].get("publishes", {}).items():
-        target = checkout / CFG.fmt(spec, mod=mod)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        gk = target.parent / ".gitkeep"
-        if not any(target.parent.iterdir()):
-            gk.touch()
-        index.setdefault("publishes", {})[name] = str(Path(CFG.fmt(spec, mod=mod)).parent).replace("\\", "/")
-    return index
-
-
-def _dangling(index: dict, dest: Path, checkout: Path) -> list[tuple[str, str]]:
-    """Every path the delivered index emits must exist. `publishes` paths are
-    relative to the consumer repo root (that is where the consumer writes them);
-    everything else is relative to the delivered tree."""
-    out = []
-    for key, value in an._walk_paths(index):
-        base = checkout if key.startswith("publishes") else dest
-        if not (base / value).exists():
-            out.append((key, value))
-    return out
-
-
-def _execution_state(track: str, mod: str, version: int, delivered: list[str], index: dict) -> dict:
-    from toolkit import markers as mk
-    phases = []
-    covered: set[str] = set()
-    for plan in CFG.tracks[track]["packages"]:
-        p = CFG.plan_path(mod, track, plan, version) if plan in CFG.profile.plans(track) else None
-        if p and p.exists():
-            res = mk.parse_structure(p.read_text(encoding="utf-8"), track, plan)
-            for ph in res.phases():
-                phases.append({"key": ph.id, "plan": plan, "package": index["packages"].get(f"{track}/{plan}"),
-                               "atoms": [b.id for b in ph.walk() if res.grammar.is_atom(b.kind)],
-                               "traces": ph.all_traces()})
-                covered |= set(ph.all_traces())
-    # the verdict that travels into the consumer is re-derived, never read off disk:
-    # a stored one produced under a contract set or a blocking policy that has since
-    # changed says nothing about the module being delivered (F2).
-    rep, stale = an.verdict(mod, version, f"gate:{_gate_for_pass(CFG.tracks[track]['pass'])['id']}")
-    if stale:
-        _say(f"re-analyzed before delivery — the stored verdict could not be trusted: {stale}")
-    gate_json = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": CFG.tracks[track]["pass"]})
-    gate_json = gate_json.with_suffix(".json")
-    return {
-        "module": mod.upper(), "version": version, "track": track, "profile": CFG.profile_id,
-        "markers_schema_version": CFG.markers["schema_version"], "packages": delivered,
-        # paths come from the delivered index, never computed a second time here
-        "paths": {k: index[k] for k in ("paths_relative_to", "root", "packages", "plans") if k in index}
-                 | {k: index[k] for k in ("decisions_dir", "publishes") if k in index},
-        "phases": phases,
-        "traceability": {"covered_ids": sorted(covered), "orphan_ids": []},
-        "analyze": rep.counts() | {"clean": rep.clean},
-        "gate": json.loads(gate_json.read_text()) if gate_json.exists() else None,
-        "generated_at": now_iso(),
-    }
-
-
 def cmd_verify_split(track: str, mod: str, version: int, plan: str | None) -> int:
     """Re-run the split verification, independently of a split.
 
@@ -1020,98 +881,6 @@ def cmd_verify_split(track: str, mod: str, version: int, plan: str | None) -> in
         _say(f"BLOCKED: nothing verified for [{mod.upper()}] — no split output exists to compare against.")
         rc = BLOCKED
     return rc
-
-
-def cmd_verify_delivery(track: str, mod: str, version: int) -> int:
-    """Re-run the resolution checks AGAINST THE DELIVERED TREE, in the consumer repo.
-
-    This is the decisive one. `paths-resolve` and `refs-exist` both pass in the
-    factory, where every path and every cited file is at hand, and both fail in the
-    consumer, which is the only place they matter: a delivered index naming
-    factory-rooted paths dangles for the one reader it was written for, and cited
-    decision records an older delivery never copied are simply not there.
-
-    Which references to resolve is read from the contract set's own `refs-exist`
-    clauses, so this stays in step with the contracts instead of restating them.
-    """
-    from toolkit.common import read_json
-    checkout = CFG.repo_checkout(track)
-    if not (checkout / ".git").exists():
-        _say(f"BLOCKED: consumer checkout not found for `{track}`: {checkout} (link it in factory.yaml → repos)")
-        return BLOCKED
-    dest = checkout / CFG.fmt(CFG.repos[track]["deliver_to"], mod=mod)
-    if version > 1:
-        dest = dest / CFG.fmt(CFG.naming["version_folder"], version=version)
-    index = read_json(dest / CFG.paths["module"]["manifest_file"])
-    if index is None:
-        _say(f"BLOCKED: nothing delivered at {dest} — no {CFG.paths['module']['manifest_file']}")
-        return BLOCKED
-
-    findings: list[str] = []
-    here, current = index.get("toolchain"), toolchain_id()
-    if here != current:
-        findings.append(f"delivered by a different toolchain ({(here or {}).get('revision') or 'unidentified'} "
-                        f"≠ {current['revision'] or 'current'}) — re-deliver before trusting anything below")
-    # paths-resolve, against the consumer
-    for key, value in _dangling(index, dest, checkout):
-        findings.append(f"{CFG.paths['module']['manifest_file']} → `{key}` = `{value}` resolves to nothing in {checkout.name}")
-    state = read_json(dest / CFG.delivery["execution_state"]["file"])
-    for key, value in _dangling((state or {}).get("paths") or {}, dest, checkout):
-        findings.append(f"{CFG.delivery['execution_state']['file']} → `{key}` = `{value}` resolves to nothing in {checkout.name}")
-    # refs-exist, against the consumer: every clause of that check, with its own args
-    text = "\n".join(f.read_text(encoding="utf-8", errors="ignore") for f in sorted(dest.rglob("*.md")))
-    for c in rd.contracts_from_doc(CFG):
-        for cl in c.get("clauses", []):
-            if cl["check"] != "refs-exist":
-                continue
-            a = cl.get("args") or {}
-            folder = index.get(f"{a['dir']}_dir") or Path(CFG.paths[a["dir"]]).name
-            pattern = CFG.naming[a["file_pattern"]]
-            for rid in sorted({x for x in idmodel.find_ids(text)
-                               if idmodel.split_id(x) and idmodel.split_id(x)[0] == a["kind"]}):
-                _, rmod, seq = idmodel.split_id(rid)
-                if rmod != mod.upper():
-                    continue
-                if not (dest / folder / CFG.fmt(pattern, mod=rmod, seq=seq)).exists():
-                    findings.append(f"{cl['id']} ({cl['check']}): `{rid}` is cited in the delivered tree but "
-                                    f"{folder}/{CFG.fmt(pattern, mod=rmod, seq=seq)} is not there")
-    # xref-surface, against the consumer: a plan that consumes another module's
-    # surface needs that module delivered beside it, or the reference resolves
-    # nowhere for the implementer who reads this tree (F6b paired with F4).
-    for c in rd.contracts_from_doc(CFG):
-        for cl in c.get("clauses", []):
-            if cl["check"] != "xref-surface":
-                continue
-            template = CFG.profile.get((cl.get("args") or {})["locator"])
-            if not template:
-                continue
-            rx = an._locator_rx(template, set(CFG.profile.vocabulary["module_prefixes"]))
-            for m in rx.finditer(text):
-                fmod = (m.groupdict().get("module") or "").upper()
-                if not fmod or fmod == mod.upper():
-                    continue
-                sibling = checkout / CFG.fmt(CFG.repos[track]["deliver_to"], mod=fmod)
-                if not (sibling / CFG.paths["module"]["manifest_file"]).exists():
-                    findings.append(f"{cl['id']} ({cl['check']}): the delivered tree consumes `{m.group(0)}` "
-                                    f"but `{fmod}` is not delivered in {checkout.name} — the reference "
-                                    f"resolves in the factory and nowhere the implementer can read it")
-    # the split comparison, re-run here: what a consumer reconciles against is the
-    # package tree, and the digest compare that proves it still matches the plan
-    # ran once, at split time. A hand edit since then drifts silently (G9).
-    for pl in (pl for pl in CFG.tracks[track]["packages"] if pl in CFG.profile.plans(track)):
-        v = tk_split.verify(mod, track, pl, version)
-        if v.get("missing") == ["source plan or package container not found"]:
-            continue
-        for m in v.get("mismatched", []):
-            findings.append(f"split/{pl}: `{m}` no longer matches the plan it was split from — "
-                            f"the packages delivered here and the plan the gate approved have diverged")
-        for m in v.get("missing", []):
-            findings.append(f"split/{pl}: {m}")
-    for f in sorted(set(findings)):
-        _say("  ", f)
-    _say(f"verify-delivery {track}/{mod.upper()} v{version} @ {checkout.name}: "
-         f"{len(set(findings))} finding(s) — {'OK' if not findings else 'BLOCKED'}")
-    return BLOCKED if findings else OK
 
 
 def cmd_analyze_all(scope: str) -> int:
@@ -1419,12 +1188,10 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("version"), version=False); p.add_argument("--new", action="store_true")
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
-    p = mv(sub.add_parser("deliver")); p.add_argument("--track", required=True); p.add_argument("--push", action="store_true")
     p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
-    p = mv(sub.add_parser("verify-delivery")); p.add_argument("--track", required=True)
     mv(sub.add_parser("status"), version=False)
     p = mv(sub.add_parser("structure")); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("archive")); p.add_argument("--source", required=True); p.add_argument("--force", action="store_true"); p.add_argument("--dry-run", action="store_true")
@@ -1477,16 +1244,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_tag(a.module, _version(a.module, a.version))
     if a.cmd == "fetch-inputs":
         return cmd_fetch_inputs(a.module, _version(a.module, a.version), a.pull)
-    if a.cmd == "deliver":
-        return cmd_deliver(a.track, a.module, _version(a.module, a.version), a.push)
     if a.cmd == "sync":
         return cmd_sync(push=a.push, dry_run=a.dry_run)
     if a.cmd == "publish":
         return cmd_publish(a.name, a.dry_run)
     if a.cmd == "verify-split":
         return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
-    if a.cmd == "verify-delivery":
-        return cmd_verify_delivery(a.track, a.module, _version(a.module, a.version))
     if a.cmd == "status":
         return cmd_status(a.module)
     if a.cmd == "structure":

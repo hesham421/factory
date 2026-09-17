@@ -88,7 +88,7 @@ contracts:
       - {id: C6.8, check: ids-continue,   args: {stage: P2},                                                       severity: CRITICAL}
       - {id: C6.9, check: data-source,    args: {kind: RULE, label: "Data source", resolves_to: [ENT], deferral: DEFERRED, bound_in: db-script}, severity: CRITICAL}
   - id: C7
-    title: backend execution plan → split / deliver
+    title: backend execution plan → split
     owner: P3.1
     consumer: split
     artifacts: [backend-execution-plan, registry-exec-be, srs]
@@ -143,7 +143,7 @@ contracts:
       - {id: C8.3, check: registry-agree, args: {artifact: api-docs, registry: registry-exec-be, kinds: [API], direction: registry→artifact}, severity: MAJOR}
       - {id: C8.4, check: endpoint-agrees, args: {artifact: backend-execution-plan, source: api-docs, kind: API},          severity: MAJOR}
   - id: C9
-    title: frontend design + execution plan → split / deliver
+    title: frontend design + execution plan → split
     owner: P3.2
     consumer: split
     artifacts: [flow-diagram, ui-ux-spec, frontend-execution-plan, registry-exec-fe]
@@ -213,9 +213,9 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
 | `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
-| `C7` | backend execution plan → split / deliver | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
+| `C7` | backend execution plan → split | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
-| `C9` | frontend design + execution plan → split / deliver | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 14 |
+| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 14 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
@@ -305,12 +305,12 @@ unenforceable rule is not.
 | Clauses | C6.1 exists · C6.2 `DBF` → `REQ`/`ENT` · C6.3 `XM` → `REQ` · C6.4 only `stages[P2].owns_ids` defined · C6.5 db-script ↔ registry-db agree · C6.6 every `ENT` has ≥1 `DBF` · C6.7 no questions · C6.8 sequences continue · C6.9 every `RULE`'s `Data source` field is bound to a column by the db-script (or is `DEFERRED`) |
 | Violation | C6.1/C6.4/C6.7/C6.8/C6.9 CRITICAL; the rest MAJOR |
 
-## C7 — backend execution plan → split / deliver
+## C7 — backend execution plan → split
 
 | | |
 |---|---|
 | Owner | `P3.1` (`track: backend`, `plan: exec`) |
-| Consumer | `gov.py split` / `deliver` (tools lane); the pass-1 gate reads it first |
+| Consumer | `gov.py split` (tools lane); the pass-1 gate reads it first |
 | What crosses | `backend-execution-plan` wrapped in markers per [MARKER-PROTOCOL.md](MARKER-PROTOCOL.md) — every `PHASE`/`SUB`/`API`/`XM` block carries `traces=`; `API` → `REQ` + `DBF`; `XM` blocks mirror `registry-db` entries with execution state; `registry-exec-be` with `API`/`QR` |
 | What does not cross | DDL or column definitions (bound by `DBF`), test cases (standalone `test-gen`), any content for the frontend track |
 | Clauses | C7.1 markers valid for `track: backend`, `plan: exec` (parser clean, phase keys canonical, split rules honoured) · C7.2 every block carries `traces` · C7.3 `API` → `REQ`+`DBF` · C7.4 plan ↔ registry-exec-be agree · C7.5 every `XM` the register declares is placed in the plan · C7.5b every `XM` the plan carries is registered in `registry-db` (back-registration) · C7.6 every `REQ` is covered by ≥1 `API` or `DBF` · C7.7 only `stages[P3.1].owns_ids` defined · C7.8 no questions · C7.9 sequences continue · C7.10 every `DBF` names the same physical column here as in the db-script · C7.11 every emitted error code is an instance of the declared format, carries a status the platform can emit, and no other format is declared · C7.12 every id of another module resolves in that module's own registry · C7.13 every cited `ADR` file exists · C7.14 every path the manifest emits resolves · C7.18 every total the plan hand-counts equals the rows it heads · C7.19 every required column has an endpoint that writes it, or a stated reason why not · C7.20 every declared operation resolves to an endpoint, and every permission-matrix cell to an endpoint and a permission · C7.21 every lookup key and permission the plan declares has a named seed source / grant target in the bootstrap section · C7.22 every catalogued query is reached by ≥1 `API` |
@@ -352,12 +352,12 @@ these are mechanical clauses here and not a checklist line there.
 | Clauses | C8.1 the input exists · C8.2 every `API` in api-docs is registered in `registry-exec-be` · C8.3 every `API` in `registry-exec-be` appears in api-docs (a missing one is listed for an ADR) · C8.4 every `(verb, path)` the backend execution plan states for an `API` is one the api-docs really publish |
 | Violation | C8.1 CRITICAL — gate closed; C8.2/C8.3/C8.4 MAJOR |
 
-## C9 — frontend design + execution plan → split / deliver
+## C9 — frontend design + execution plan → split
 
 | | |
 |---|---|
 | Owner | `P3.2` (`track: frontend`, `plan: exec`) |
-| Consumer | `gov.py split` / `deliver`; the pass-2 gate reads it first |
+| Consumer | `gov.py split`; the pass-2 gate reads it first |
 | What crosses | `flow-diagram`, `ui-ux-spec` with `UXD` → `REQ`/`AC` and `SCR` → `REQ`/`UXD`; `frontend-execution-plan` whose phase blocks carry `traces` and cite only `API` IDs present in api-docs; `registry-exec-fe`. When `profile.conventions.composite_screen` is true a screen group is one `SCR` (scored via `profile.review.extra_checks`) |
 | What does not cross | fields, rules or permissions not in the SRS; endpoints not in api-docs; backend content; a UI implementation of any kind (a mockup is a design artifact, never a build) |
 | Clauses | C9.1 markers valid for `track: frontend`, `plan: exec` · C9.2 every `PHASE`/`SUB` block carries `traces` · C9.3 `UXD` → `REQ`/`AC` · C9.4 `SCR` → `REQ`/`UXD` · C9.5 every `API` cited by the plan is defined in api-docs · C9.6 every `UXD` is referenced by a plan block (this is where a UX decision closes) · C9.7 every `SCR` is referenced by a plan block · C9.8 plan ↔ registry-exec-fe agree · C9.9 only `stages[P3.2].owns_ids` defined · C9.10 no questions · C9.11 sequences continue · C9.14 languages |

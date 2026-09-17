@@ -685,8 +685,9 @@ Every "STOP and ask" of earlier engine generations is replaced by this rule.
 | {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; DB Alignment Manifest; Error Catalog; QRC; {{ sc.block }} rows; ADRs it raises | {% for a, spec in atoms.items() if spec.owner not in [stage.id, 'any', 'versioning'] and a not in ['UXD','SCR','TC'] %}`{{ a }}-*` ({{ spec.owner }}){% if not loop.last %}, {% endif %}{% endfor %} | frontend/UX atoms (`UXD`, `SCR` — {{ atoms.UXD.owner }}), `TC-*` ({{ atoms.TC.owner }}), any code, framework annotations, executable queries, test artifacts |
 
 Hand-off (the orchestrator prints it): the plan + registry are split by the toolkit into
-`{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/` and delivered on
-`{{ factory.naming.delivery_branch }}` after the `{{ st.next }}` verdict. The implementer reads
+`{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/` inside the
+shared repo after the `{{ st.next }}` verdict — nothing is copied anywhere; the implementer reads
+it where it was written, at the commit its own repo pins. The implementer reads
 the plan in order (index → manifest → ADRs → phases in profile order → QRC → catalog), rewrites
 every QR, implements security per R7, and publishes the api-docs file the frontend stage
 requires (`factory.passes.2.required_inputs`).

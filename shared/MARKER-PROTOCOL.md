@@ -162,8 +162,8 @@ touches content, only marker lines.
 
 ## 9. Schema version and compatibility
 
-`markers.schema_version` is recorded in every split manifest and in the
-delivery state (`factory.delivery.execution_state.schema`). A plan split under
+`markers.schema_version` is recorded in every split manifest
+(`paths.module.manifest_file`). A plan split under
 an older schema stays splittable: the toolkit selects the grammar by the
 recorded version; a plan with no recorded version is treated as the current
 one and reported.
@@ -172,4 +172,4 @@ one and reported.
 
 After a split, `rules.verify` (content hash) is computed for every atom in the
 source and in the packages; any mismatch fails the split. The manifest carries
-the hashes; `gov.py deliver` refuses a package whose manifest does not verify.
+the hashes; `gov.py verify-split` refuses a package whose manifest does not verify.

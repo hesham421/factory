@@ -242,8 +242,6 @@ class FactoryConfig:
     @property
     def repos(self) -> dict:        return self.data["repos"]
     @property
-    def delivery(self) -> dict:     return self.data["delivery"]
-    @property
     def lanes(self) -> dict:        return self.data["lanes"]
     @property
     def review(self) -> dict:       return self.data["review"]
@@ -500,9 +498,6 @@ class FactoryConfig:
 
     def tag_name(self, mod: str, version: int) -> str:
         return self.fmt(self.naming["tag"], mod=mod, version=version)
-
-    def delivery_branch(self, mod: str, version: int, track: str) -> str:
-        return self.fmt(self.naming["delivery_branch"], mod=mod, version=version, track=track)
 
     def commit_msg(self, kind: str, **kw: Any) -> str:
         return self.fmt(self.naming["commit"][kind], **kw)

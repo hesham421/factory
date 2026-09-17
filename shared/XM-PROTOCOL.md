@@ -81,7 +81,7 @@ DECLARED ──► READY ──────────────────�
 | DECLARED | exists in the consuming module's `db-script` | DB stage |
 | READY | the target entity exists in a committed `db-script` of the target module in this factory | DB stage or a resolution event |
 | DEFERRED | the target is not yet available; the plan block carries a workaround and an unblock condition | backend exec stage |
-| DELIVERED | the package containing the block was delivered (`gov.py deliver`, branch per `naming.delivery_branch`) — the **last state the factory sets** | tools lane |
+| DELIVERED | the package containing the block is committed in the shared repo (`gov.py split`) and reachable at a pinned commit — the **last state the factory sets** | tools lane |
 | CLOSED | the dependency is physically applied in the implementation. Belongs to the **consumer repo**; the factory never sets it, never waits for it, never gates on it | consumer repo |
 | WAIVED | a human decision (ADR) retired the dependency | ADR at a human decision point |
 

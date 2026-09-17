@@ -16,7 +16,7 @@ artifact it reads:
 
 ```
 domain-profile  →  project-registry  →  prd  →  srs (+registry-srs)  →  db-script (+registry-db)
-                →  execution plans per track (+registry-exec-*)  →  packages (split)  →  delivery
+                →  execution plans per track (+registry-exec-*)  →  packages (split)
 ```
 
 **Conflict rule.** When two artifacts disagree, the **upstream** artifact
@@ -211,7 +211,7 @@ restates them:
 ## 7. Lanes and delegation
 
 Every reasoning step is a self-contained brief dispatched on a lane; every
-mechanical step (split, deliver, state, analyze, tag) is a direct `gov.py`
+mechanical step (split, state, analyze, tag, sync) is a direct `gov.py`
 operation — deterministic, no brief, no lane, no model:
 
 <!-- RENDER:lanes -->

@@ -56,7 +56,7 @@ Scale 0–3; every attribute must score ≥ 2 to APPROVE; verdicts `APPROVE`, `R
 
 | Verdict (`factory.review.verdicts`) | Condition | Orchestrator effect |
 |---|---|---|
-| APPROVE | every attribute ≥ `review.pass_threshold`, no CRITICAL finding, every extra check PASS or MINOR | gate commit (`naming.commit.gate`), then `passes.<n>.then` continues (split, deliver, tag) |
+| APPROVE | every attribute ≥ `review.pass_threshold`, no CRITICAL finding, every extra check PASS or MINOR | gate commit (`naming.commit.gate`), then `passes.<n>.then` continues (split, tag) |
 | REVISE | any attribute < threshold or any MAJOR finding, and this is the first REVISE for the finding set | findings go to the `gates[*].on_revise` lane, which edits the owning stage's artifacts; `analyze` reruns; the gate reruns once (`review.revise_max`) |
 | ESCALATE | a CRITICAL finding, a BLOCKED ADR, or a REVISE already spent on the same finding | the pass stops; the human resolves at the gate |
 
@@ -89,6 +89,6 @@ ADRs read    : <ADR ids of this version, with status>
 Human        : accepted | overridden (<reason>)
 ```
 
-The scores are also written into the delivery state
-(`factory.delivery.execution_state.schema.gate`) so the consumer repo sees
-what the analysis was cleared with.
+The scores live in the gate record (`paths.module.gate_record`), which is
+tracked in the shared repo beside the plan they cleared — so a consumer reading
+the plan reads what it was cleared with, at the same pinned commit.

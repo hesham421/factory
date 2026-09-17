@@ -9,8 +9,10 @@ both are asserted here against an isolated factory root and fake checkouts:
   * preserve — fields the factory does not own (description, registered_at)
     are carried over rather than regenerated
 
-Plus the property the whole move exists for: every copy lands INSIDE its own
-repo, at the path that repo declares under `receives`.
+Plus the property the whole move exists for: a copy lands INSIDE the repo that
+declares it under `receives`, and NOWHERE else. A repo that declares no
+`receives` gets nothing — it mounts the shared repo and reads the one copy
+there, which is why a publication has one receiver now and not three.
 """
 from __future__ import annotations
 
@@ -45,25 +47,36 @@ def _read(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_publishes_into_every_repo_at_its_declared_path(linked):
+def _receivers(pub):
+    """The repos that declare a home for this publication. Derived, never listed:
+    which repos receive is a config decision, and this suite must follow it."""
+    return {r: CFG.repo_receives(r, pub) for r in CFG.repos if CFG.repo_receives(r, pub)}
+
+
+def test_publishes_into_the_repos_that_declare_a_home_and_no_others(linked):
     gov, mod, checkouts = linked
     for pub in CFG.publications:
+        targets = _receivers(pub)
+        assert targets, f"nothing receives {pub} — the publication has no reader"
         assert gov.cmd_publish(pub) == 0
-        for repo, checkout in checkouts.items():
-            target = CFG.repo_receives(repo, pub)
-            assert target is not None
+        for repo, target in targets.items():
             assert target.exists(), f"{repo} never received {pub}"
             # the whole point of the move: no path above the repo root
-            assert checkout in target.parents
-        bodies = {CFG.repo_receives(r, pub).read_text(encoding="utf-8") for r in checkouts}
+            assert checkouts[repo] in target.parents
+        bodies = {t.read_text(encoding="utf-8") for t in targets.values()}
         assert len(bodies) == 1, "consumer copies diverged"
-    assert mod in _read(CFG.repo_receives(next(iter(checkouts)), "modules-registry"))["modules"]
+        # a repo that declares no home gets no copy: it reads the shared one
+        for repo, checkout in checkouts.items():
+            if repo in targets:
+                continue
+            assert not list(checkout.rglob(next(iter(targets.values())).name)), \
+                f"{repo} declares no `receives` for {pub} yet a copy appeared in it"
+    assert mod in _read(next(iter(_receivers("modules-registry").values())))["modules"]
 
 
 def test_keeps_a_module_the_factory_does_not_know(linked):
     gov, mod, checkouts = linked
-    repo = next(iter(checkouts))
-    target = CFG.repo_receives(repo, "modules-registry")
+    target = next(iter(_receivers("modules-registry").values()))
     target.parent.mkdir(parents=True, exist_ok=True)
     stranger = {"code": "ZZZ", "description": "built by an older toolchain",
                 "registered_at": "2020-01-01T00:00:00", "versions": [2], "current_version": 2}
@@ -77,7 +90,7 @@ def test_keeps_a_module_the_factory_does_not_know(linked):
 
 def test_preserves_the_fields_the_factory_does_not_own(linked):
     gov, mod, checkouts = linked
-    target = CFG.repo_receives(next(iter(checkouts)), "modules-registry")
+    target = next(iter(_receivers("modules-registry").values()))
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps({"modules": {mod: {
         "code": mod, "description": "written by a human", "registered_at": "2020-01-01T00:00:00",
@@ -94,5 +107,5 @@ def test_preserves_the_fields_the_factory_does_not_own(linked):
 def test_dry_run_writes_nothing(linked):
     gov, _, checkouts = linked
     gov.cmd_publish("modules-registry", dry_run=True)
-    for repo in checkouts:
-        assert not CFG.repo_receives(repo, "modules-registry").exists()
+    for target in _receivers("modules-registry").values():
+        assert not target.exists()

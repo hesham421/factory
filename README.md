@@ -3,7 +3,8 @@
 
 A git-native, **domain-agnostic analysis factory**. Input: a raw product idea + a domain profile.
 Output: reviewed, versioned, traceable analysis artifacts and **backend + frontend execution
-plans**, delivered as packages to consumer repos. Boundary: **analysis-only** — it
+plans**, written into the shared governance repo every consumer reads. Boundary:
+**analysis-only** — it
 never implements, never audits implementations inside the line, never runs tests inside the line.
 
 Everything below is generated from `factory.yaml` + `profiles/erp.yaml` by `gov.py render`.
@@ -39,7 +40,7 @@ history/                     pre-v6 artefacts, loaded by nothing
 | `P3.2` | Frontend — UX Design + Execution Plan | 2 | forbidden | `analysis` | `srs`, `prd`, `api-docs`, `registry-srs`, `registry-exec-be` | `flow-diagram-{mod}.md`, `ui-ux-spec-{mod}.md`, `frontend-execution-plan-{mod}.md`, `registry-exec-fe-{mod}.md` | `UXD`, `SCR` | gate `pass-2` |
 <!-- /RENDER:stages -->
 
-Passes: **pass 1** = P0 → P0.5 → P1 → P2 → P3.1 → gate:pass-1 → split → deliver (track `backend`); **pass 2** = P3.2 → gate:pass-2 → split → deliver → tag (track `frontend`, requires api-docs fetched back).
+Passes: **pass 1** = P0 → P0.5 → P1 → P2 → P3.1 → gate:pass-1 → split (track `backend`); **pass 2** = P3.2 → gate:pass-2 → split → tag (track `frontend`, requires api-docs fetched back).
 All stages of a pass run in one delegate session with one commit per stage.
 ### Standalone stages (outside the line)
 <!-- RENDER:standalone -->
@@ -95,7 +96,6 @@ Add a domain: `gov.py new-domain <id>` scaffolds `profiles/<id>.yaml` from `_sch
 | `/gate <1|2> MOD --version N [--model …] [--effort …]` | `gov.py gate` |
 | `/micro-feature MOD "<free text>"` | `gov.py version --new + run-pass 1 + run-pass 2 (delta)` |
 | `/verify-split MOD --track T [--plan P] [--version N]` | `gov.py verify-split` |
-| `/verify-delivery MOD --track T [--version N]` | `gov.py verify-delivery` |
 | `/link-repos ` | `gov.py edit factory.yaml repos` |
 | `/new-domain ID` | `gov.py new-domain` |
 | `/render ` | `gov.py render` |
@@ -113,9 +113,9 @@ gov.py run-stage <id> -m MOD -v N --complete # after each stage's files exist: a
 gov.py approve prd-approval -m MOD -v N      # the human decision after P0.5 — nothing asks a question after this
 gov.py gate 1 -m MOD -v N                    # analyze must be CLEAN → reviewer brief; then --complete --result review.json
 gov.py split --track backend -m MOD -v N     # marker protocol → packages (+ SHA verification)
-gov.py deliver --track backend -m MOD -v N   # branch + execution-state.json in the consumer repo
-gov.py fetch-inputs -m MOD -v N              # pass-2 hard gate: api-docs back from the backend repo
-gov.py run-pass 2 … · gate 2 … · split/deliver --track frontend … · gov.py tag -m MOD -v N
+gov.py sync                                  # where the shared repo stands, and who is behind it
+gov.py fetch-inputs -m MOD -v N              # pass-2 hard gate: api-docs, written by the backend
+gov.py run-pass 2 … · gate 2 … · split --track frontend … · gov.py tag -m MOD -v N
 gov.py run-standalone api-verify -m MOD -v N             # outside the line, on demand
 gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) -v N   # test-gen's own scopes
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
@@ -128,7 +128,7 @@ Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/r
 - `python3 -m pytest governance-tools/tests -q` — the toolkit and orchestrator tests (the checked-in `erp` profile + a synthetic toy profile, proving domain-agnosticism).
 
 ## Linking consumer repos
-Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `backend/modules/{MOD}/api-docs`; the factory delivers to `governance/modules/{MOD}` on branch `gov/{mod}-v{version}-{track}` and tags `{mod}-v{version}`.
+Edit `factory.yaml → repos` (url, checkout, publishes). Nothing is copied between repos: governance is written once into `https://github.com/hesham421/governance-shared.git`, which all three mount. `paths.external` names the keys that resolve there — `domain, platform, modules, decisions` — so every consumer reads the artifact where it was written. The backend writes api-docs to `{profile_id}/modules/{MOD}/api-docs` inside it; releases are tagged `{mod}-v{version}`.
 
 Each `repos.<name>` resolves through `CFG.repo_checkout()`: the env var named by `checkout_env`, falling back to `checkout_default` (a path relative to this factory's own root). That one mechanism supports two deployments with **zero code difference**, only config values:
 - **Standalone** — this factory is its own repo; `checkout_default` points at a sibling checkout (e.g. `../backend`).

@@ -1,6 +1,6 @@
 """
 End-to-end dry run of the orchestrator (blueprint §12 step 6): a sample module
-moves through every stage, both gates, split, delivery to a consumer repo,
+moves through every stage, both gates, split into the shared repo,
 tag, then a delta version — under the active (ERP) profile. Everything is
 generated from CFG, so the same run proves the pipeline for any profile.
 """
@@ -143,19 +143,20 @@ def _run_pass1(orch_root, mod, tmp_path, monkeypatch):
     assert rec.exists() and "APPROVE" in rec.read_text()
 
 
-def test_full_dry_run_both_passes_split_deliver_tag(orch_root, mod, tmp_path, monkeypatch):
+def test_full_dry_run_both_passes_split_tag(orch_root, mod, tmp_path, monkeypatch):
     backend = _consumer(tmp_path, monkeypatch, "backend")
     frontend = _consumer(tmp_path, monkeypatch, "frontend")
     _run_pass1(orch_root, mod, tmp_path, monkeypatch)
-    # split + deliver backend
+    # split backend — the package IS the delivery now; nothing is copied anywhere
     assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == OK
     pkg = CFG.packages_dir(mod, "backend", "exec", 1)
     assert (pkg / "index.md").exists() and any(pkg.rglob("*.md"))
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == OK
-    dest = backend / CFG.fmt(CFG.repos["backend"]["deliver_to"], mod=mod)
-    es = json.loads((dest / CFG.delivery["execution_state"]["file"]).read_text())
-    assert es["module"] == mod and es["track"] == "backend" and es["gate"]["verdict"] == "APPROVE" and es["phases"]
-    assert _git("branch", "--show-current", cwd=backend).stdout.strip() == CFG.delivery_branch(mod, 1, "backend")
+    assert pkg.is_relative_to(CFG.repo_checkout(CFG.external["repo"])), "packages must land in the shared repo"
+    # the gate verdict lives in its own tracked record, which nothing overwrites
+    gate = CFG.state_dir(mod, 1) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": "1"}).split("/")[-1]
+    assert gate.exists() and "APPROVE" in gate.read_text(encoding="utf-8")
+    # and no copy of any of it appeared in the consumer
+    assert not list(backend.rglob("backend-execution*")), "something was copied into the consumer repo"
     # pass 2 needs the api-docs input back from the backend repo
     assert gov.run_pass("2", mod, 1, new=False, complete=False, no_commit=False) == BLOCKED
     pub = _publish_root() / CFG.fmt(CFG.repos["backend"]["publishes"]["api-docs"], mod=mod)
@@ -166,7 +167,8 @@ def test_full_dry_run_both_passes_split_deliver_tag(orch_root, mod, tmp_path, mo
     assert gov.run_stage("P3.2", mod, 1, complete=True, no_commit=False) == OK
     assert gov.gate("2", mod, 1, complete=True, result=_approve_result(tmp_path), no_commit=False) == OK
     assert gov.main(["split", "--track", "frontend", "-m", mod, "-v", "1"]) == OK
-    assert gov.cmd_deliver("frontend", mod, 1, push=False) == OK
+    assert CFG.packages_dir(mod, "frontend", "exec", 1).is_relative_to(CFG.repo_checkout(CFG.external["repo"]))
+    assert not list(frontend.rglob("frontend-execution*")), "something was copied into the consumer repo"
     assert gov.cmd_tag(mod, 1) == OK
     assert CFG.tag_name(mod, 1) in _git("tag", "-l", cwd=orch_root).stdout
     # whole-module analyze is clean
@@ -321,7 +323,7 @@ def test_render_and_lint_are_clean_in_the_real_repo():
 
 def test_toy_profile_runs_the_whole_line(orch_root, tmp_path, monkeypatch):
     """Clinic profile (different prefixes, phases, one language, other stack): the orchestrator, analyze,
-    split and delivery all follow the profile — no ERP assumption survives."""
+    split and packaging all follow the profile — no ERP assumption survives."""
     import yaml
     from test_agnostic import TOY
     (orch_root / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
@@ -334,9 +336,9 @@ def test_toy_profile_runs_the_whole_line(orch_root, tmp_path, monkeypatch):
     assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == OK
     folders = {p.name for p in CFG.packages_dir(mod, "backend", "exec", 1).iterdir() if p.is_dir()}
     assert {ph.folder for ph in CFG.profile.phases("backend", "exec")} <= folders     # toy phase folders, e.g. "records"
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == OK
-    es = json.loads((backend / CFG.fmt(CFG.repos["backend"]["deliver_to"], mod=mod) / CFG.delivery["execution_state"]["file"]).read_text())
-    assert es["profile"] == "toy" and {p["key"] for p in es["phases"]} == set(CFG.profile.phase_keys("backend", "exec"))
+    manifest = json.loads((CFG.module_root(mod) / CFG.paths["module"]["manifest_file"]).read_text(encoding="utf-8"))
+    assert manifest["profile"] == "toy"
+    assert not list(backend.rglob("*-execution*")), "a non-ERP profile still copied into the consumer repo"
     # rendered docs follow the profile too
     import render
     txt = render.block_phases(CFG.reload(profile_id="toy"), "backend", "exec")

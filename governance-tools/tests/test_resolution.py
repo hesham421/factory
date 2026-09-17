@@ -342,106 +342,54 @@ def test_every_check_the_contracts_name_is_implemented(orch_root):
 
 # ── delivery: the tree must index itself in the repo it lands in ────────────
 
-def test_the_delivered_tree_resolves_in_the_consumer_repo(orch_root, mod, tmp_path, monkeypatch):
-    """Packages, the manifest, the execution state and the cited decision records
-    all land together, and every path either file emits resolves from where it sits."""
-    from test_orchestrator import _consumer, _run_pass1
-    backend = _consumer(tmp_path, monkeypatch, "backend")
+def _emitted_paths(manifest: dict):
+    """Every path the manifest states, flattened. Values are relative to the
+    module root (`paths_relative_to`), which is the only reason they resolve for
+    a reader who mounted the tree somewhere else."""
+    for key, value in manifest.items():
+        if isinstance(value, str) and ("/" in value or key.endswith("_dir")):
+            yield key, value
+        elif isinstance(value, dict):
+            for k2, v2 in value.items():
+                if isinstance(v2, str) and "/" in v2:
+                    yield f"{key}.{k2}", v2
+
+
+def test_a_module_resolves_from_wherever_the_shared_repo_is_mounted(orch_root, mod, tmp_path, monkeypatch):
+    """One tree, read in place — so every path a module states must resolve from
+    the module root, not from the root that happened to write it.
+
+    The factory mounts the shared repo at `governance-shared/`, the backend at
+    `governance/shared/`, the frontend elsewhere again. A path that is correct
+    only where it was written is the defect this pins: it passes every check the
+    factory can run and dangles for every reader. Simulated by resolving the
+    manifest from a COPY of the tree at a different absolute path.
+    """
+    from test_orchestrator import _run_pass1
     _run_pass1(orch_root, mod, tmp_path, monkeypatch)
     d = CFG.decisions_dir(mod)
     d.mkdir(parents=True, exist_ok=True)
-    (d / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)).write_text("# a decision the plan cites\n", encoding="utf-8")
-
+    (d / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)).write_text("# a cited decision\n", encoding="utf-8")
     assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == gov.OK
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
 
-    dest = backend / CFG.fmt(CFG.repos["backend"]["deliver_to"], mod=mod)
-    index = json.loads((dest / CFG.paths["module"]["manifest_file"]).read_text())
-    state = json.loads((dest / CFG.delivery["execution_state"]["file"]).read_text())
+    mf = CFG.module_root(mod) / CFG.paths["module"]["manifest_file"]
+    manifest = json.loads(mf.read_text(encoding="utf-8"))
+    emitted = dict(_emitted_paths(manifest))
+    assert emitted, "the manifest states no paths at all — nothing is being checked"
 
-    # no path in either file dangles — checked against the consumer repo, not the factory
-    assert gov._dangling(index, dest, backend) == []
-    assert gov._dangling(state["paths"], dest, backend) == []
-    # and the two files cannot disagree: the state takes its paths from the index
-    assert state["paths"]["plans"] == index["plans"]
-    assert state["paths"]["packages"] == index["packages"]
-    for ph in state["phases"]:
-        assert (dest / ph["package"]).is_dir()
-    # the decision records the plans cite travelled with them
-    assert (dest / index["decisions_dir"] / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)).exists()
-    # The publish location used to be asserted here, back when it sat inside this
-    # consumer's own tree. It lives in the shared repo now, which this delivery
-    # test never initialises and never publishes into — so the row had nothing
-    # behind it. The assertion is not softened, it is removed: the full dry-run
-    # (test_orchestrator) publishes api-docs at the resolved location and fetches
-    # them back, which is the check that actually exercises the path.
+    # a second mount, at a different absolute path
+    elsewhere = tmp_path / "another-consumer" / "governance" / "shared"
+    shutil.copytree(CFG.repo_checkout("shared"), elsewhere)
+    there = elsewhere / CFG.module_root(mod).relative_to(CFG.repo_checkout("shared"))
 
+    dangling = [f"{k} = {v}" for k, v in emitted.items() if not (there / v).exists()]
+    assert dangling == [], f"paths that resolve only where they were written: {dangling}"
+    # the decision records the plan cites came with the tree, not with a delivery
+    assert (there / manifest["decisions_dir"]).is_dir()
 
-# ── F4 — delivery provenance, and resolution IN the consumer ────────────────
-
-def test_delivery_is_stamped_and_verified_in_the_consumer(orch_root, mod, tmp_path, monkeypatch):
-    """The decisive case: `paths-resolve` and `refs-exist` both pass in the factory
-    and fail in the consumer, which is the only place they matter. A delivered tree
-    is also stamped with the toolchain that produced it, and one from a different
-    toolchain is replaced wholesale rather than merged into."""
-    from test_orchestrator import _consumer, _run_pass1
-    backend = _consumer(tmp_path, monkeypatch, "backend")
-    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
-    d = CFG.decisions_dir(mod)
-    d.mkdir(parents=True, exist_ok=True)
-    adr = CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)
-    (d / adr).write_text("# a decision the plan cites\n", encoding="utf-8")
-    # the plan cites it — in the factory the citation resolves, on disk, right here
-    plan = CFG.plan_path(mod, "backend", "exec", 1)
-    plan.write_text(plan.read_text(encoding="utf-8") + f"\nSee {an.CFG.make_id('ADR', mod, 1)}.\n", encoding="utf-8")
-    assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == gov.OK
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
-
-    dest = backend / CFG.fmt(CFG.repos["backend"]["deliver_to"], mod=mod)
-    index = json.loads((dest / CFG.paths["module"]["manifest_file"]).read_text())
-    assert index["toolchain"]["rules"] == an.rules_digest(), "the delivery says what produced it"
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
-
-    # 1. a cited decision record that never reached the consumer: passes in the
-    #    factory (the file is there), fails where it is read (it is not).
-    shutil.rmtree(dest / index["decisions_dir"])
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
-
-    # 2. an index carrying a factory-rooted path — exactly the shipped defect
-    gov.cmd_deliver("backend", mod, 1, push=False)
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
-    mf = dest / CFG.paths["module"]["manifest_file"]
-    bad = json.loads(mf.read_text())
-    bad["root"] = str(Path(CFG.paths["modules"]) / mod)        # resolves in the factory, nowhere else
-    mf.write_text(json.dumps(bad, indent=2))
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
-
-    # 3. a destination from a different toolchain is replaced, not merged into
-    stale = json.loads(mf.read_text())
-    stale["toolchain"] = {"revision": "v0-ancient", "rules": {}}
-    mf.write_text(json.dumps(stale, indent=2))
-    (dest / "left-behind-by-the-old-toolchain.md").write_text("stale\n", encoding="utf-8")
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
-    assert not (dest / "left-behind-by-the-old-toolchain.md").exists()
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.OK
-
-
-def test_a_surface_reference_must_resolve_in_the_consumer_too(orch_root, mod, tmp_path, monkeypatch):
-    """F6b paired with F4: a plan consuming another module's surface needs that
-    module delivered beside it, or the reference resolves in the factory and
-    nowhere the implementer can read it."""
-    from test_orchestrator import _consumer, _run_pass1
-    backend = _consumer(tmp_path, monkeypatch, "backend")
-    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
-    other = next(m for m in CFG.profile.vocabulary["module_prefixes"] if m != mod)
-    template = CFG.profile.get("stack.backend.api.base_path")
-    locator = template.replace("{module}", other.lower()).replace("{resource}", "things")
-    plan = CFG.plan_path(mod, "backend", "exec", 1)
-    plan.write_text(plan.read_text(encoding="utf-8") + f"\nReads through {locator}.\n", encoding="utf-8")
-    assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == gov.OK
-    assert gov.cmd_deliver("backend", mod, 1, push=False) == gov.OK
-    # the other module is not delivered, so the reference dangles for its reader
-    assert gov.cmd_verify_delivery("backend", mod, 1) == gov.BLOCKED
+    # and the check bites: a factory-rooted value is exactly the shipped defect
+    manifest["root"] = str(Path(CFG.paths["modules"]) / mod)
+    assert not (there / manifest["root"]).exists()
 
 
 def test_a_registry_may_record_what_the_module_consumes(module):

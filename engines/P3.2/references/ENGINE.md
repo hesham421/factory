@@ -326,8 +326,8 @@ for the best-practice choice. No question is raised at this stage.
 | {% for x in st.owns_ids %}`{{ x }}-*`{% if not loop.last %}, {% endif %}{% endfor %}; flow diagram; ui-ux-spec; F-blocks; {{ sc.block }}; ADRs it raises | `REQ/AC/ENT/RULE` ({{ atoms.REQ.owner }}), `API` ({{ atoms.API.owner }} — shape from the api-docs), catalog codes, permission names, `US` ({{ atoms.US.owner }}) | `DBF/XM` ({{ atoms.DBF.owner }} — backend-only), `QR`, `TC` ({{ atoms.TC.owner }}), any code, any build |
 
 Hand-off (the orchestrator prints it): plan + registry split by the toolkit into
-`{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/`, delivered on
-`{{ factory.naming.delivery_branch }}` after the `{{ st.next }}` verdict, then tagged
-`{{ factory.naming.tag }}`. The implementer reads the plan in profile-phase order, the spec for
+`{{ factory.paths.module.packages_dir }}/{{ factory.tracks[track].packages.exec }}/` inside the
+shared repo after the `{{ st.next }}` verdict, then tagged `{{ factory.naming.tag }}`. Nothing is
+copied anywhere: the implementer reads it where it was written, at the commit its own repo pins. The implementer reads the plan in profile-phase order, the spec for
 intent, the api-docs for shapes, and never invents a route, component, permission or field
 not traceable to an F-block (a gap → ADR, not an invention).

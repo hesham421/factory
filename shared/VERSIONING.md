@@ -1,9 +1,9 @@
-# VERSIONING — filesystem authority, delta versions, generated state, delivery
+# VERSIONING — filesystem authority, delta versions, generated state, pinning
 
 ```
 Doc            : shared/VERSIONING.md
 Role           : the one place that says how module versions, tags, branches, deltas and current state work
-Loaded by      : gov.py (version / state / tag / deliver / split), every engine brief for a version > 1, reviewers/pass-review.md
+Loaded by      : gov.py (version / state / tag / split / sync), every engine brief for a version > 1, reviewers/pass-review.md
 Generated parts: none (patterns are naming.* keys; layout keys are paths.module.*)
 Links          : GOVERNANCE-CORE.md · ARTIFACT-CONTRACTS.md (C12) · XM-PROTOCOL.md · REGISTRY-SCHEMA.md · MARKER-PROTOCOL.md
 ```
@@ -37,7 +37,6 @@ reports versions, tags and the last committed stage per version.
 | What | Pattern key | When |
 |---|---|---|
 | module version tag | `naming.tag` | at the end of the last pass of the version (`passes.<n>.then` contains `tag`); the tag freezes the version (`versioning.freeze_previous`) |
-| delivery branch (consumer repo) | `naming.delivery_branch` | `gov.py deliver --track` after each pass gate; the branch carries the track's packages plus `factory.delivery.execution_state.file` |
 | stage commit | `naming.commit.stage` | once per stage by the orchestrator |
 | gate commit | `naming.commit.gate` | once per gate, verdict in the message |
 | state commit | `naming.commit.state` | when `_state/` is regenerated |
@@ -99,20 +98,31 @@ registry per stage and the traceability matrix. Rules:
 4. the analyze report and the gate record live in `_state/` too
    (`paths.module.analyze_report`, `paths.module.gate_record`).
 
-## 5. Delivery state
+## 5. What a consumer pins
 
-`gov.py deliver` generates `factory.delivery.execution_state.file` from the
-schema in `factory.delivery.execution_state.schema` (module, version, track,
-profile, marker schema version, packages, phases with traces, traceability
-coverage, analyze counts, gate verdict and scores). It is never hand-written;
-the consumer repo reads it to set up its own work.
+Nothing is delivered, so there is no delivery state. The factory writes a
+version into the shared repo and a consumer **pins a commit of it** — one
+pointer that freezes the plan, the packages and the api-docs together, because
+they are one tree.
+
+What a delivery record used to carry now lives where it was always written:
+
+| Fact | Where it lives | Written by |
+|---|---|---|
+| module, version, profile, packages, marker schema version | `paths.module.manifest_file` | the factory |
+| traceability coverage | `paths.module.state_dir` (`traceability.md`) | the factory |
+| analyze counts | `paths.module.analyze_report` | the factory |
+| gate verdict and scores | `paths.module.gate_record` | the factory |
+| execution progress (current phase, blocked, gaps) | the track's own partition (`repos.shared.partitions`) | that track |
+
+Each has exactly one writer, so none can be overwritten by the other side.
 
 ## 6. Versioned reuse — the concept, stated once
 
 - A committed and tagged version is **immutable**. Nothing edits it; a change
   is a new version.
-- A consumer (another module through `XM`/`UXD`, or a consumer repo through a
-  delivery branch) **pins** a version explicitly. No consumer is auto-upgraded;
+- A consumer (another module through `XM`/`UXD`, or a consumer repo through
+  its submodule pointer) **pins** a version explicitly. No consumer is auto-upgraded;
   a version move is an explicit change in the consumer's own next version.
 - A new version of a target raises a **resolution event** for every pinned
   consumer; ADDITIVE lets the consumer stay or move, BREAKING obliges an impact

@@ -33,8 +33,8 @@ every category is findable and a compliance map says where.
 | **CAT-5 structural registry** | the structural artifacts implementing the entities (tables or their domain equivalent), by `DBF`/entity ID, per module version |
 | **CAT-6 dependency indexes** | every cross-module dependency: one index for `XM` (backend, [XM-PROTOCOL.md](XM-PROTOCOL.md)) and a separate one for `UXD` (frontend); the two are never merged |
 | **CAT-7 decision index** | every ADR across modules with status, and every open resolution event — the cross-module view of the decision stream ([GOVERNANCE-CORE.md §5](GOVERNANCE-CORE.md#5-ambiguity-rule)) |
-| **CAT-8 pipeline status** | per module version: last committed stage, last gate verdict and scores, delivered tracks, tag — as `gov.py status` reports it |
-| **CAT-9 event history** | append-only: date, stage or tool, module, version, event (IDs registered, gate verdicts, deliveries, resolution events, waivers) |
+| **CAT-8 pipeline status** | per module version: last committed stage, last gate verdict and scores, packaged tracks, tag — as `gov.py status` reports it |
+| **CAT-9 event history** | append-only: date, stage or tool, module, version, event (IDs registered, gate verdicts, resolution events, waivers) |
 | **CAT-10 platform findings** | every finding a module-scoped stage recorded that is **not that module's to settle**: a defect in a shared artifact, a platform-wide convention, or another module's surface. One row per finding: what was found, the evidence, the module and stage that found it, the artifact or convention it belongs to, and its status (OPEN · ACCEPTED · FIXED · WAIVED + the ADR). See §4 |
 
 **Compliance map (required).** Near the header, a table `section → category`
@@ -81,7 +81,7 @@ other artifact: in `vN/` it lists only IDs ADDED or MODIFIED in that version;
 | `UXD` | OPEN · CLOSED (referenced by a frontend plan block, C9.6) | frontend stage / analyze |
 | ADR | ACCEPTED · BLOCKED · SUPERSEDED | the writing stage; BLOCKED resolved only at a human decision point |
 | any other atom | ACTIVE · REMOVED (by a change set of a later version) | the owning stage |
-| module version (CAT-8) | last committed stage id · gate verdict (`factory.review.verdicts`) · delivered tracks · tag | `gov.py` |
+| module version (CAT-8) | last committed stage id · gate verdict (`factory.review.verdicts`) · packaged tracks · tag | `gov.py` |
 | platform finding (CAT-10) | OPEN · ACCEPTED · FIXED · WAIVED | the stage that recorded it; closed only by whoever owns the fix, never by the module that found it |
 
 No status is implied. A status that the schema does not list is a finding.

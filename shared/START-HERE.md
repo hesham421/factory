@@ -2,7 +2,7 @@
 # START HERE — the governance-factory in one page
 
 **What it is.** An analysis factory: a raw idea goes in, reviewed and traceable analysis comes out — up to backend and frontend
-execution plans delivered to the consumer repos. It **stops at delivery** (analysis-only). The domain is data
+execution plans written into the shared governance repo the consumers read. It **stops there** (analysis-only). The domain is data
 (`profiles/<id>.yaml`); the active one is `erp`.
 
 **Where the truth lives.** `factory.yaml` (factory facts) + the profile (domain facts). Every table in the docs, every
@@ -18,7 +18,7 @@ execution plans delivered to the consumer repos. It **stops at delivery** (analy
 6. `P2` — Database
 7. `P3.1` — Backend Execution Plan → **review `pass-1`**
 8. `P3.2` — Frontend — UX Design + Execution Plan → **review `pass-2`**
-Then split (marker protocol) → deliver → tag. Outside the line, on demand: `test-gen`, `api-verify`.
+Then split (marker protocol) → tag. Outside the line, on demand: `test-gen`, `api-verify`.
 
 **What a human decides.** `prd-approval` (human-approval after `P0.5`); `pass-1` (review after `P3.1`); `pass-2` (review after `P3.2`). Nothing else asks.
 After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`erp/decisions/<MOD>/`) and continues; a breaking one stops.

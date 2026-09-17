@@ -13,6 +13,8 @@ the key, never against `CFG.root` directly.
 """
 from __future__ import annotations
 
+import pathlib
+
 import yaml
 
 from config import CFG
@@ -144,3 +146,31 @@ def test_an_external_key_that_is_not_a_path_is_a_finding(factory_root):
     found = lint.scan_config(cfg)
     assert len(found) == 1 and "not-a-repo" in found[0].message
     CFG.reload()
+
+
+# ── which partition is per-module (gov.py sync) ──────────────────────────────
+
+def test_a_partition_is_per_module_by_its_template_not_its_name(factory_root):
+    """`gov.py sync` reports each partition of the shared repo. Whether one has
+    a directory per module is read off its template — an entry carrying `{MOD}`
+    is per-module — never off its name. Recognising a partition by name would
+    put the ownership table's vocabulary back into the code C1 keeps it out of."""
+    import gov
+    parts = gov._partitions()
+    assert parts, "the shared repo declares no partitions"
+    for name, template in parts.items():
+        assert gov._per_module(name) == ("{MOD}" in template)
+    # and the resolved path carries no unexpanded token
+    for name in parts:
+        p = gov._shared_dir(name, "ORG" if gov._per_module(name) else None)
+        assert "{" not in str(p), f"{name} resolved to {p}"
+        assert p.is_relative_to(CFG.repo_checkout(CFG.external["repo"]))
+
+
+def test_the_shared_repo_is_never_named_in_code(factory_root):
+    """Which repo governance goes to is `paths.external.repo` and nothing else,
+    so renaming it in config renames it everywhere."""
+    import gov
+    assert gov._shared_repo() == CFG.external["repo"]
+    src = pathlib.Path(gov.__file__).read_text(encoding="utf-8")
+    assert f'"{CFG.external["repo"]}"' not in src, "the repo key is typed in gov.py"
