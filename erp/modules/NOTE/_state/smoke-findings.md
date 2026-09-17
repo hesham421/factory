@@ -849,3 +849,59 @@ Fix     : OPEN, and deliberately not "make the gate auto-approve" — that would
           the gate with the JSON — which is the workflow as it actually stands.
 Status  : OPEN
 
+## F-22 — the self-check's COVERAGE prose goes stale and no machine check sees it
+Where   : erp/modules/NOTE/P3_1/backend-execution-plan-note.md, PHASE 8
+          ALIGN-BE · found by the gate reviewer (finding G1), not by `analyze`
+Expected: the ALIGN block states the run's coverage. `profile.self_check` says
+          the verdict is the ORCHESTRATOR's to write "from the analyze report
+          (gov.py), the author leaves it alone", and `verdict-agrees`
+          (C7.15/C9.12) guards it so a plan cannot claim fewer findings than
+          the machine produced.
+Actual   : that guarantee covers the verdict LINE only. `gov.py:145` stamps
+          `RESULT: <token> — <n> findings` via `analyze.render_verdict()`, and
+          `_c_verdict_agrees` checks the COUNT on that line. The surrounding
+          COVERAGE narrative — which clauses examined nothing, and why — is
+          author prose that nothing writes and nothing checks.
+          It was already wrong at the gate. The plan's COVERAGE row named
+          "C7.23, C7.5, C7.5b — the three clauses the analyze report lists as
+          having examined nothing" and spent a paragraph re-explaining the
+          C7.23 separator defect. The analyze report actually bound to the gate
+          lists **C6.3, C7.5, C7.5b**: C7.23 now examines 6 subjects.
+          The cause is worth stating plainly because it is mine: the plan was
+          generated BEFORE I fixed F-19, and my fix changed the analyze result
+          underneath it. So the plan honestly described the world when it was
+          written, and the ONE clause that is genuinely vacuous this run —
+          C6.3 — is named nowhere in the artifact, while a defect that no
+          longer reproduces is explained at length.
+          This is the exact hazard the vacuous-clause paragraph warns about,
+          one level up: a reader is told which clauses enforced nothing, by a
+          sentence with nothing behind it.
+          The gate REVIEWER caught it and `analyze` could not — which is a
+          point in the gate's favour, and the clearest argument in this run for
+          why the review lane is worth dispatching (F-21).
+Fix     : OPEN. Two shapes, and the choice is not mine to force:
+          (a) the orchestrator stamps the coverage list too, the way it already
+              stamps the verdict line — `AnalyzeReport.vacuous()` is exactly
+              the list needed, so this is small. It makes more of the ALIGN
+              block generated and less of it authored, which is the direction
+              `self_check` already points;
+          (b) a contract clause guards the authored list against the report the
+              same way `verdict-agrees` guards the count — the author keeps
+              writing the reasoning, and a stale list becomes a finding.
+          (a) is cheaper, (b) preserves the author's judgement about WHY a
+          clause is empty, which is the part worth keeping. `gov.py analyze
+          --all-modules` (the `reanalyze` command, documented "sweep after a
+          rules change") re-derives the reports but re-stamps no prose, so
+          neither is available today.
+Status  : OPEN
+
+## GATE 1 — recorded outcome
+`gov.py gate 1 -m NOTE -v 1 --complete --result …` → **REVISE**, exit 1.
+Scores: unambiguous 3 · verifiable 3 · complete 3 · consistent 2 · singular 3 ·
+feasible 3 · traceable 2 — every attribute at or above `review.pass_threshold`
+(2), so the verdict was the reviewer's own judgement, not the automatic
+downgrade. One MAJOR finding (G1), recorded above as F-22. All five ERP extra
+checks PASS; all six ADRs reviewed and confirmed accurate; all three vacuous
+clauses confirmed empty by nature rather than by check failure.
+The gate did its job: it blocked on something no machine clause could see.
+
