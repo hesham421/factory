@@ -206,3 +206,58 @@ def test_feedback_says_so_when_it_examined_nothing(linked, capsys):
     gov, mod, _ = linked
     assert gov.cmd_feedback(mod) == 0
     assert "nothing recorded" in capsys.readouterr().out
+
+
+# ── the gate will not open over a gap the factory has not answered ───────────
+
+def _gate_with_feedback():
+    return next(g for g in CFG.gates if g.get("requires_feedback") == "answered")
+
+
+def test_a_waiver_is_pinned_to_the_items_it_saw(linked):
+    """A waiver that says only "feedback waived" covers whatever appears next,
+    which is the opposite of a decision. It names its items, the same way
+    `approve` binds an approval to `artifact_sha`."""
+    import json as _j
+    gov, mod, _ = linked
+    track = next(iter(CFG.tracks))
+    g = _gate_with_feedback()
+    pass_no = CFG.gate(g["id"])["after"]
+    _write_state(track, mod, {"api_doc_gaps": [
+        {"type": "ABSENT", "phase": "P", "endpoint": "old-1", "resolution": "OPEN"},
+        {"type": "ABSENT", "phase": "P", "endpoint": "old-2", "resolution": "HUMAN"},
+    ]})
+    blockers, waiver = gov._feedback_blockers(mod, 1, pass_no)
+    assert len(blockers) == 2 and not waiver
+
+    assert gov.cmd_waive_feedback(mod, 1, pass_no, by="t", why="decided") == 0
+    blockers, waiver = gov._feedback_blockers(mod, 1, pass_no)
+    assert blockers == [] and waiver["by"] == "t" and len(waiver["waived"]) == 2
+
+    # a gap recorded AFTER the waiver is not covered by it
+    _write_state(track, mod, {"api_doc_gaps": [
+        {"type": "ABSENT", "phase": "P", "endpoint": "old-1", "resolution": "OPEN"},
+        {"type": "ABSENT", "phase": "P", "endpoint": "old-2", "resolution": "HUMAN"},
+        {"type": "ABSENT", "phase": "P", "endpoint": "new-1", "resolution": "OPEN"},
+    ]})
+    blockers, _ = gov._feedback_blockers(mod, 1, pass_no)
+    assert [b["id"] for b in blockers] == ["new-1"], "a standing waiver swallowed a new gap"
+
+
+def test_a_closed_item_never_blocks(linked):
+    gov, mod, _ = linked
+    track = next(iter(CFG.tracks))
+    pass_no = CFG.gate(_gate_with_feedback()["id"])["after"]
+    _write_state(track, mod, {"api_doc_gaps": [
+        {"type": "ABSENT", "phase": "P", "endpoint": "done", "resolution": "RESOLVED"},
+    ]})
+    assert gov._feedback_blockers(mod, 1, pass_no)[0] == []
+
+
+def test_waiving_nothing_writes_nothing(linked):
+    """A waiver file with an empty list would read as a decision that was never
+    taken, and would then cover the first gap recorded after it."""
+    gov, mod, _ = linked
+    pass_no = CFG.gate(_gate_with_feedback()["id"])["after"]
+    assert gov.cmd_waive_feedback(mod, 1, pass_no, by="t", why="nothing here") == 0
+    assert not gov._waiver_path(mod, 1, pass_no).exists()

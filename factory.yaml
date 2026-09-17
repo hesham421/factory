@@ -78,12 +78,18 @@ gates:
     type: review                   # one human review per pass (scorecard + analyze report)
     lanes: [review-per-engine, review-holistic]   # both review the same brief; merged below
     requires_analyze: clean        # no finding at a severity in `analyze.blocking`
+    requires_feedback: answered    # no consumer gap the factory has not answered
+                                   # (feedback.status → open/human/unrecognised).
+                                   # Waivable by a named human, per item: `gov.py waive-feedback`
     on_revise: merge-review-notes  # lane used to apply findings; re-gate once, then escalate
   - id: pass-2
     after: P3.2
     type: review
     lanes: [review-per-engine, review-holistic]
     requires_analyze: clean
+    requires_feedback: answered    # no consumer gap the factory has not answered
+                                   # (feedback.status → open/human/unrecognised).
+                                   # Waivable by a named human, per item: `gov.py waive-feedback`
     on_revise: merge-review-notes
 
 # ── Stages — the governed pipeline (order = run order) ─────────────────────

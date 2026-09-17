@@ -470,6 +470,18 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
             _say("  ", f)
         _say("GATE CLOSED: analyze is not clean")
         return BLOCKED
+    if g.get("requires_feedback") == "answered":
+        blockers, waiver = _feedback_blockers(mod, version, pass_no)
+        if waiver:
+            _say(f"feedback waiver: {len(waiver.get('waived', []))} item(s) by {waiver.get('by')} — {waiver.get('why')}")
+        if blockers:
+            for r in blockers[:25]:
+                _say(f"  [{r['status']:12s}] {r['track']:8s} {r['label']:12s} {r['id'][:90]}")
+            _say(f"GATE CLOSED: {len(blockers)} consumer item(s) the factory has not answered.")
+            _say("  These are what the implementation found that the plan did not say. Either")
+            _say("  answer them in the plan, or decide not to and say so:")
+            _say(f"    gov.py waive-feedback -m {mod} -v {version} --pass {pass_no} --by NAME --why '...'")
+            return BLOCKED
     record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
     if not complete:
         brief = _gate_brief(g, pass_no, mod, version, rep)
@@ -936,6 +948,57 @@ def _feedback_rows(mod: str | None = None) -> list[dict]:
     return rows
 
 
+UNANSWERED = ("OPEN", "HUMAN", "UNRECOGNISED")
+
+
+def _feedback_key(row: dict) -> str:
+    """A stable name for one recorded item, so a waiver can be pinned to it.
+
+    A waiver that says only "feedback waived" covers whatever appears next, which
+    is the opposite of a decision. This is the same shape `approve` uses when it
+    binds an approval to `artifact_sha`: name the subject, or approve nothing."""
+    return f"{row['track']}|{row['channel']}|{row['id']}"
+
+
+def _waiver_path(mod: str, version: int, pass_no: str) -> Path:
+    return an.approval_path(mod, version, f"feedback-pass-{pass_no}")
+
+
+def cmd_waive_feedback(mod: str, version: int | None, pass_no: str, by: str, why: str) -> int:
+    """Record a human decision to open a gate over consumer feedback it owes.
+
+    Pinned to the exact items present now: a gap recorded afterwards is not
+    covered, and the gate closes again. That is the point — a standing waiver
+    is an off switch, and an off switch is what people reach for when a gate
+    cannot be answered."""
+    from toolkit.common import write_json
+    version = _version(mod, version)
+    rows = [r for r in _feedback_rows(mod) if r["status"] in UNANSWERED]
+    if not rows:
+        _say(f"nothing to waive for {mod.upper()} — no unanswered consumer feedback")
+        return OK
+    p = _waiver_path(mod, version, pass_no)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    write_json(p, {"module": mod.upper(), "version": version, "pass": pass_no,
+                   "by": by, "at": now_iso(), "why": why,
+                   "waived": sorted({_feedback_key(r): r["status"] for r in rows}.items())})
+    _say(f"waived {len(rows)} item(s) for {mod.upper()} v{version} gate pass-{pass_no}, by {by}")
+    for r in rows:
+        _say(f"  [{r['status']}] {r['label']} {r['id'][:90]}")
+    _say(f"  reason: {why}")
+    _say("A gap recorded after this is NOT covered — the gate closes again.")
+    return OK
+
+
+def _feedback_blockers(mod: str, version: int, pass_no: str) -> tuple[list[dict], dict]:
+    """Unanswered consumer items this gate would open over, and the waiver (if any)."""
+    from toolkit.common import read_json
+    rows = [r for r in _feedback_rows(mod) if r["status"] in UNANSWERED]
+    waiver = read_json(_waiver_path(mod, version, pass_no), {}) or {}
+    covered = {k for k, _ in waiver.get("waived", [])}
+    return [r for r in rows if _feedback_key(r) not in covered], waiver
+
+
 def cmd_feedback(mod: str | None = None, verbose: bool = False) -> int:
     """What the consumers have discovered that the plan could not know.
 
@@ -1361,6 +1424,7 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
     p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
     p = sub.add_parser("feedback"); p.add_argument("-m", "--module"); p.add_argument("-v", "--verbose", action="store_true")
+    p = mv(sub.add_parser("waive-feedback")); p.add_argument("--pass", dest="pass_no", required=True); p.add_argument("--by", required=True); p.add_argument("--why", required=True)
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
@@ -1422,6 +1486,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_publish(a.name, a.dry_run)
     if a.cmd == "feedback":
         return cmd_feedback(a.module, a.verbose)
+    if a.cmd == "waive-feedback":
+        return cmd_waive_feedback(a.module, a.version, a.pass_no, a.by, a.why)
     if a.cmd == "verify-split":
         return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
     if a.cmd == "status":
