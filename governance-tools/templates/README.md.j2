@@ -71,7 +71,13 @@ gov.py run-standalone api-verify -m MOD -v N             # outside the line, on 
 gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) -v N   # test-gen's own scopes
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
 ```
-Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/relay.mjs --lane {lane} {read_only_flag} --brief {brief} --out {out}'` — a lane-name-matching delegate CLI needs nothing else, since its own config maps `{lane}` to a model/effort/readonly (dialogue lanes alternate implementers until `<!-- CONVERGED -->`); `GOV_RUNNER=manual` (Claude Code + delegate skills execute each brief by hand).
+`gov.py next -m MOD [-v N] [--run]` prints — or with `--run` executes — the single next protocol step, derived from what exists (artifacts, approvals, gate records, packages, tags).
+
+## Runners — how a brief reaches a model
+Every reasoning step (a stage, a gate review, a revise) is a brief `gov.py` builds; `{{ factory.runner.env }}` chooses who answers it:
+- `cmd` — `${{ factory.runner.cmd_env }}` is run once per round with `{% for p in factory.runner.placeholders %}{{ '{' ~ p ~ '}' }}{{ ' ' if not loop.last }}{% endfor %}` filled; `{% for p in factory.runner.required %}{{ '{' ~ p ~ '}' }}{{ ' ' if not loop.last }}{% endfor %}` is mandatory in the template (a dialogue lane alternates implementers, and a template that does not pass the model collapses the debate to one). The shipped template is the adapter `{{ factory.runner.adapter }} {{ factory.runner.adapter_args }}`, which runs the claude-delegate relay (`{{ factory.runner.relay }}`, or `${{ factory.runner.relay_env }}`) and hands the implementer's final response back as the `{out}` file. In this mode **nothing waits for an operator**: `run-pass` advances stage by stage (dispatch → analyze → commit), `gate` dispatches the review lane and records the verdict, a REVISE is applied by the gate's `on_revise` lane, re-analyzed and re-gated at most {{ factory.review.revise_max }} time(s), then ESCALATES to a human. What still stops it: a `[QUESTION]` from a questions-forbidden stage, a BLOCKED ADR, a finding at {{ factory.analyze.blocking | join('/') }}, and the human decision points ({% for g in factory.gates if g.type == 'human-approval' %}`{{ g.id }}`{{ ', ' if not loop.last }}{% endfor %}).
+- `manual` — the brief is written, the command exits 2, and the operator (Claude Code + the delegate skills) executes it by hand and calls the command again with `--complete`; a pass is one bundled brief.
+- `fake` — the test hook (the nightly job drives the whole line through it under a non-ERP toy profile).
 
 ## Quality gates in code
 - `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.

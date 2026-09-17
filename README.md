@@ -120,7 +120,13 @@ gov.py run-standalone api-verify -m MOD -v N             # outside the line, on 
 gov.py run-standalone test-gen --module MOD (or --modules A,B,... or --scope project) -v N   # test-gen's own scopes
 gov.py version -m MOD --new                  # a delta version: only what changed + change-manifest; gov.py state folds it
 ```
-Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/relay.mjs --lane {lane} {read_only_flag} --brief {brief} --out {out}'` — a lane-name-matching delegate CLI needs nothing else, since its own config maps `{lane}` to a model/effort/readonly (dialogue lanes alternate implementers until `<!-- CONVERGED -->`); `GOV_RUNNER=manual` (Claude Code + delegate skills execute each brief by hand).
+`gov.py next -m MOD [-v N] [--run]` prints — or with `--run` executes — the single next protocol step, derived from what exists (artifacts, approvals, gate records, packages, tags).
+
+## Runners — how a brief reaches a model
+Every reasoning step (a stage, a gate review, a revise) is a brief `gov.py` builds; `GOV_RUNNER` chooses who answers it:
+- `cmd` — `$GOV_RUNNER_CMD` is run once per round with `{brief} {lane} {model} {read_only_flag} {out} {implementer} {provider} {effort}` filled; `{model}` is mandatory in the template (a dialogue lane alternates implementers, and a template that does not pass the model collapses the debate to one). The shipped template is the adapter `governance-tools/runner/claude_delegate.sh {brief} {lane} {model} {read_only_flag} {out}`, which runs the claude-delegate relay (`delegate-skills/skills/claude-delegate/scripts/relay.mjs`, or `$GOV_DELEGATE_RELAY`) and hands the implementer's final response back as the `{out}` file. In this mode **nothing waits for an operator**: `run-pass` advances stage by stage (dispatch → analyze → commit), `gate` dispatches the review lane and records the verdict, a REVISE is applied by the gate's `on_revise` lane, re-analyzed and re-gated at most 1 time(s), then ESCALATES to a human. What still stops it: a `[QUESTION]` from a questions-forbidden stage, a BLOCKED ADR, a finding at CRITICAL/MAJOR, and the human decision points (`prd-approval`).
+- `manual` — the brief is written, the command exits 2, and the operator (Claude Code + the delegate skills) executes it by hand and calls the command again with `--complete`; a pass is one bundled brief.
+- `fake` — the test hook (the nightly job drives the whole line through it under a non-ERP toy profile).
 
 ## Quality gates in code
 - `gov.py analyze` — every machine-checkable clause of `shared/ARTIFACT-CONTRACTS.md` (EARS, traces, orphans, ID ownership/continuity, registry agreement, markers, manifest); a gate cannot open with a CRITICAL.

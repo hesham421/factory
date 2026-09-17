@@ -254,6 +254,8 @@ class FactoryConfig:
     @property
     def dialogue(self) -> dict:     return self.data.get("dialogue", {})
     @property
+    def runner(self) -> dict:       return self.data.get("runner", {})
+    @property
     def versioning(self) -> dict:   return self.data["versioning"]
     @property
     def inputs(self) -> dict:       return self.data.get("inputs", {})

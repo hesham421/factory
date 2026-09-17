@@ -16,7 +16,7 @@ and the active profile (`config.CFG`).
   analyze -m MOD [-v N] [--scope all|stage:ID|pass:N|gate:ID]
   state -m MOD [-v N]
   version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
-  status -m MOD
+  status -m MOD · next -m MOD [-v N] [--run]                           # the single next protocol step, printed or executed
   publish [name] [--dry-run]                                           # factory publications → into each consumer repo
   structure/archive/split (toolkit) · render · lint [--profile ID]
   new-domain ID [--yes|--force] [--module CODE]   # resets stale project content, then starts ID
@@ -629,25 +629,89 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
             _say("  answer them in the plan, or decide not to and say so:")
             _say(f"    gov.py waive-feedback -m {mod} -v {version} --pass {pass_no} --by NAME --why '...'")
             return BLOCKED
-    record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
-    if not complete:
-        brief = _gate_brief(g, pass_no, mod, version, rep)
+    if complete:
+        if not result or not Path(result).exists():
+            _say("BLOCKED: --complete needs --result FILE.json (the reviewer's structured output)")
+            return BLOCKED
+        data = json.loads(Path(result).read_text(encoding="utf-8"))
+        return _gate_complete(g, pass_no, mod, version, data, rep, no_commit)[0]
+    brief = _gate_brief(g, pass_no, mod, version, rep)
+    if dp.runner_kind() == "manual" or not CFG.lane(g["lane"]).get("implementers"):
         _say(f"AWAITING REVIEW: gate brief → {rel(brief)} (lane `{g['lane']}`, read-only reviewers)")
         _say(f"  when the review JSON exists: gov.py gate {pass_no} -m {mod} -v {version} --complete --result <file.json>")
         return AWAITING
-    if not result or not Path(result).exists():
-        _say("BLOCKED: --complete needs --result FILE.json (the reviewer's structured output)")
-        return BLOCKED
-    data = json.loads(Path(result).read_text(encoding="utf-8"))
-    verdict, scores = data.get("verdict", "").upper(), data.get("scores", {})
+    # Automated: the review lane reads the brief (a dialogue — two reviewers
+    # converge on one scorecard), the verdict is recorded exactly as --complete
+    # would, and a REVISE is applied by the on_revise lane, re-analyzed and
+    # re-gated at most review.revise_max times before it ESCALATES to the human.
+    revise_max = int(CFG.review.get("revise_max", 0))
+    attempts = 0
+    while True:
+        data = _dispatch_review(g, pass_no, mod, version, brief)
+        if data is None:
+            return BLOCKED
+        rc, verdict = _gate_complete(g, pass_no, mod, version, data, rep, no_commit)
+        if verdict != "REVISE":
+            return rc
+        if attempts >= revise_max:
+            _say(f"ESCALATE: gate {g['id']} returned REVISE {attempts + 1} time(s) — the limit is "
+                 f"{revise_max} (review.revise_max); a human decides now")
+            _gate_complete(g, pass_no, mod, version, dict(data, verdict="ESCALATE"), rep, no_commit)
+            return BLOCKED
+        attempts += 1
+        _say(f"REVISE {attempts}/{revise_max}: applying the findings through lane `{g['on_revise']}`")
+        rc = _auto_revise(g, pass_no, mod, version, data, no_commit)
+        if rc != OK:
+            return rc
+        _prepare(mod, version)
+        rep = an.run(mod, version, scope=f"gate:{g['id']}")
+        _say(f"analyze gate:{g['id']} after revise → {counts_line(rep.counts())}")
+        if g.get("requires_analyze") == "clean" and not rep.clean:
+            for f in rep.findings[:25]:
+                _say("  ", f)
+            _say("GATE CLOSED: analyze is not clean after the revise")
+            return BLOCKED
+        c = rep.counts()
+        brief = _gate_brief(g, pass_no, mod, version, rep)
+
+
+def _dispatch_review(g: dict, pass_no: str, mod: str, version: int, brief: Path) -> dict | None:
+    """The review lane over the gate brief → the scorecard it returned, or None.
+    The extracted JSON is kept beside the brief (`<brief>.result.json`) — the
+    record of what the verdict was read from — and every decision the
+    reviewers settled between them becomes an ADR."""
+    stage = CFG.stage(g["after"])
+    res = dp.run_lane(brief, g["lane"], dialogue=True)
+    if not res.responses:
+        _say(f"BLOCKED: lane `{g['lane']}` returned no response for gate {g['id']}")
+        return None
+    final = res.responses[-1].read_text(encoding="utf-8")
+    data = dp.extract_json(final)
+    if data is None:
+        _say(f"BLOCKED: the reviewer's final response ({rel(res.responses[-1])}) carries no JSON block — no verdict to record")
+        return None
+    write_json(brief.with_name(brief.stem + ".result.json"), data)
+    adrs = dp.persist_decisions(stage, mod, version, res, lane_id=g["lane"])
+    _say(f"reviewed gate {g['id']}: {res.rounds} round(s), converged={res.converged}, "
+         f"verdict {str(data.get('verdict', '')).upper() or '?'}" + (f", {len(adrs)} decision(s) → ADR" if adrs else ""))
+    return data
+
+
+def _gate_complete(g: dict, pass_no: str, mod: str, version: int, data: dict, rep, no_commit: bool) -> tuple[int, str]:
+    """Record a reviewer's scorecard as the gate's verdict: the record, its JSON
+    twin, the coverage the analyze report measured, one commit. Returns the
+    exit code and the verdict it settled on (a low score downgrades APPROVE)."""
+    c = rep.counts()
+    record = CFG.version_root(mod, version) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": pass_no})
+    verdict, scores = str(data.get("verdict", "")).upper(), data.get("scores", {}) or {}
     rv = CFG.review
-    low = [k for k in rv["rubric"] if int(scores.get(k, 0)) < int(rv["pass_threshold"])]
+    low = [k for k in rv["rubric"] if int(scores.get(k) or 0) < int(rv["pass_threshold"])]
     if verdict == "APPROVE" and low:
         verdict = "REVISE"
         _say(f"verdict downgraded to REVISE: attributes below threshold {low}")
     if verdict not in rv["verdicts"]:
         _say(f"BLOCKED: verdict must be one of {rv['verdicts']}")
-        return BLOCKED
+        return BLOCKED, verdict
     lines = [CFG.data["lint"]["generated_marker"], f"# Gate record — {g['id']} — {mod.upper()} v{version}", "",
              f"Verdict: **{verdict}** · {now_iso()} · analyze {c}", "", "| Attribute | Score |", "|---|---|"]
     lines += [f"| {k} | {scores.get(k, '—')} |" for k in rv["rubric"]]
@@ -665,9 +729,140 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     write_json(record.with_suffix(".json"), {"gate": g["id"], "pass": pass_no, "verdict": verdict, "scores": scores,
                                               "findings": data.get("findings", []), "coverage": rep.metrics, "at": now_iso()})
     _record_coverage(mod, version, rep)
-    _commit([CFG.version_root(mod, version)], CFG.commit_msg("gate", **{"pass": pass_no}, mod=mod, version=version, verdict=verdict), no_commit)
+    _commit([CFG.version_root(mod, version), CFG.decisions_dir(mod)],
+            CFG.commit_msg("gate", **{"pass": pass_no}, mod=mod, version=version, verdict=verdict), no_commit)
     _say(f"GATE {g['id']}: {verdict}")
-    return OK if verdict == "APPROVE" else BLOCKED
+    return (OK if verdict == "APPROVE" else BLOCKED), verdict
+
+
+def _revise_brief(g: dict, pass_no: str, mod: str, version: int, data: dict) -> Path:
+    """The brief the on_revise lane gets: every finding of the review with its
+    fix, the files it may rewrite (this pass's artifacts, complete files, as
+    `<<<FILE:>>>` blocks), the rules that still bind, and the current state."""
+    stages = [CFG.stage(s) for s in CFG.passes[str(pass_no)]["stages"]]
+    lane = CFG.lane(g["on_revise"])
+    outputs = []
+    for s in stages:
+        for a in s.produces:
+            if not a.dir:
+                outputs.append(f"- `{rel(CFG.artifact_path(mod, s.id, a.artifact, version))}` ({s.id}{' · registry' if a.registry else ''})")
+    parts = [
+        f"# REVISE BRIEF — gate `{g['id']}` · module {mod.upper()} · v{version} · profile `{CFG.profile_id}`",
+        "",
+        f"Lane `{g['on_revise']}` · implementers {lane.get('implementers')} · effort {lane.get('effort')}",
+        "",
+        "## What to do",
+        f"The reviewers returned **{str(data.get('verdict', '')).upper()}**. Apply EVERY finding below in the artifact it names,",
+        "with the fix it states. Where a fix needs a choice, take the best-practice one and record it as an ADR",
+        f"(`{CFG.paths['decisions']}/{mod.upper()}/{CFG.naming['adr_file']}`, next sequence, status ACCEPTED). Never re-number an id,",
+        "never restart a sequence, never raise a `[QUESTION]` — this pass's stages forbid questions.",
+        "Respond with one `<<<FILE: <path>>>> … <<<END FILE>>>` block per file you change — the COMPLETE file — and nothing else",
+        "for files you do not change. The files you may write:",
+        *outputs,
+        "",
+        "## Findings to apply",
+        "```json",
+        json.dumps({k: data.get(k) for k in ("verdict", "scores", "findings", "extra_checks", "analyze_confirmed") if k in data},
+                   indent=2, ensure_ascii=False),
+        "```",
+        "", "---", "# ARTIFACTS UNDER REVISION (generated current state — write the source file listed above, not this copy)",
+    ]
+    for p in sorted(CFG.state_dir(mod, version).glob("current-*")):
+        parts += [f"\n<<<ARTIFACT: {p.name}>>>", p.read_text(encoding="utf-8"), "<<<END ARTIFACT>>>"]
+    out = CFG.state_dir(mod, version) / "briefs" / f"revise-pass-{pass_no}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    return out
+
+
+def _auto_revise(g: dict, pass_no: str, mod: str, version: int, data: dict, no_commit: bool) -> int:
+    """Apply a REVISE through the gate's on_revise lane: dispatch the findings,
+    ingest what it wrote, re-run every stage's completion (analyze → stamp →
+    commit) so the pass is judged again on what is on disk now."""
+    brief = _revise_brief(g, pass_no, mod, version, data)
+    res = dp.run_lane(brief, g["on_revise"])
+    if res.awaiting or not res.responses:
+        _say(f"BLOCKED: lane `{g['on_revise']}` returned no response to the revise brief")
+        return BLOCKED
+    written = [p for resp in res.responses for p in dp.ingest(resp)]
+    if not written:
+        _say(f"BLOCKED: lane `{g['on_revise']}` changed no file — the findings were not applied")
+        return BLOCKED
+    _say(f"revise: lane `{g['on_revise']}` rewrote {len(written)} file(s)")
+    for s in [CFG.stage(x) for x in CFG.passes[str(pass_no)]["stages"]]:
+        rc = _complete_stage(s, mod, version, no_commit)
+        if rc != OK:
+            _say(f"BLOCKED: stage {s.id} does not complete after the revise")
+            return rc
+    return OK
+
+
+# ── the next protocol step, from what exists ────────────────────────────────
+
+def _pass_plan_of(pass_no: str) -> str | None:
+    """The plan this pass's track artifact carries (`produces[*].plan`), for the
+    split the pass ends with — read off the stages, never spelled."""
+    p = CFG.passes[str(pass_no)]
+    for sid in p["stages"]:
+        for a in CFG.stage(sid).produces:
+            if a.plan and a.track == p.get("track"):
+                return a.plan
+    return None
+
+
+def next_step(mod: str, version: int | None = None) -> tuple[str, list[str] | None]:
+    """What the protocol says comes next for this module version, and the gov.py
+    arguments that do it — None when the version is complete.
+
+    Derived from factory.yaml (the stage order, each pass's `then` list, the
+    gates) and the filesystem (which artifacts, records, packages and tags
+    exist), so it never disagrees with what the commands themselves check."""
+    mod = mod.upper()
+    v = _version(mod, version)
+    mv = ["-m", mod, "-v", str(v)]
+    for s in CFG.stages:
+        if s.pass_ in ("pre", "bootstrap") and not _stage_is_done(s.id, mod, v):
+            return f"run `{s.id}` ({s.title})", ["run-stage", s.id, *mv]
+    for k in sorted(CFG.passes, key=int):
+        p = CFG.passes[k]
+        for inp in p.get("required_inputs", []):
+            if not (CFG.inputs_dir(mod, v) / CFG.fmt(CFG.inputs[inp]["file"], mod=mod)).exists():
+                return f"fetch `{inp}` — pass {k} cannot start without it", ["fetch-inputs", *mv]
+        for sid in p["stages"]:
+            if _stage_is_done(sid, mod, v):
+                continue
+            gate = _gate_blocking(CFG.stage(sid), mod, v)
+            if gate:
+                return f"human approval `{gate}` before `{sid}` can run", ["approve", gate, *mv]
+            return f"run pass {k} — next stage `{sid}` ({CFG.stage(sid).title})", ["run-pass", k, *mv]
+        for step in p.get("then", []):
+            if step.startswith("gate:"):
+                gid = step.split(":", 1)[1]
+                rec = read_json(CFG.version_root(mod, v) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": k}).replace(".md", ".json")) or {}
+                if rec.get("verdict") != "APPROVE":
+                    last = f" (last verdict {rec['verdict']})" if rec.get("verdict") else ""
+                    return f"gate {k} (`{gid}`){last}", ["gate", k, *mv]
+            elif step == "split":
+                track, plan = p.get("track"), _pass_plan_of(k)
+                if track and plan:
+                    man = tk_struct.load_manifest(mod, v) or {}
+                    if not ((man.get("status") or {}).get("split") or {}).get(f"{track}/{plan}"):
+                        return f"split track `{track}` (pass {k}) into packages", ["split", "--track", track, *mv]
+            elif step == "tag":
+                if not _git("tag", "-l", CFG.tag_name(mod, v)).stdout.strip():
+                    return f"tag `{CFG.tag_name(mod, v)}` — freeze v{v}", ["tag", *mv]
+    return f"v{v} is complete — `gov.py version -m {mod} --new` starts a delta", None
+
+
+def cmd_next(mod: str, version: int | None, run: bool) -> int:
+    what, argv = next_step(mod, version)
+    _say(f"next: {what}")
+    if argv is None:
+        return OK
+    _say("  gov.py " + " ".join(argv))
+    if not run:
+        return OK
+    return main(argv)
 
 
 def _gate_brief(g: dict, pass_no: str, mod: str, version: int, rep: an.AnalyzeReport) -> Path:
@@ -1556,6 +1751,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
     mv(sub.add_parser("status"), version=False)
+    p = mv(sub.add_parser("next")); p.add_argument("--run", action="store_true", help="execute the step instead of printing it")
     p = mv(sub.add_parser("structure")); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("archive")); p.add_argument("--source", required=True); p.add_argument("--force", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
@@ -1621,6 +1817,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_verify_split(a.track, a.module, _version(a.module, a.version), a.plan)
     if a.cmd == "status":
         return cmd_status(a.module)
+    if a.cmd == "next":
+        return cmd_next(a.module, a.version, a.run)
     if a.cmd == "structure":
         created = tk_struct.ensure_structure(a.module, a.version, dry_run=a.dry_run)
         _say(f"structure: {len(created)} folder(s) {'would be ' if a.dry_run else ''}created"); return OK

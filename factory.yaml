@@ -426,6 +426,24 @@ feedback:
     closed: [RESOLVED, CLOSED, IMPLEMENTED]  # the consumer settled it in code
     human:  [HUMAN, ADR]                     # needs a decision, not a plan edit
 
+# ── Runner — how a brief reaches a model (dispatch.run_round) ───────────────
+# `cmd` runs the template once per round with the placeholders filled;
+# `manual` writes the brief and stops for the operator (exit 2); `fake` is the
+# test hook. The adapter below is the shipped template for the claude-delegate
+# relay; the README renders the exact exports from this block.
+runner:
+  env: GOV_RUNNER                        # cmd | manual | fake
+  cmd_env: GOV_RUNNER_CMD                # the command template, run once per round
+  placeholders: [brief, lane, model, read_only_flag, out, implementer, provider, effort]
+  required: [model]                      # a template without {model} is refused — a dialogue lane
+                                         # alternates implementers, and a lane-name-only mapping
+                                         # would collapse the debate to one model
+  adapter: governance-tools/runner/claude_delegate.sh
+  adapter_args: "{brief} {lane} {model} {read_only_flag} {out}"
+  relay_env: GOV_DELEGATE_RELAY          # overrides the adapter's search for relay.mjs
+  relay: delegate-skills/skills/claude-delegate/scripts/relay.mjs   # the claude-delegate skill's relay;
+                                         # the adapter also searches every parent's .agents/skills/ and ~/.agents/skills/
+
 # ── Delegate lanes — model/effort per reasoning step (implementers = list) ──
 # Every lane id here is also a lane the delegate setup must know by the SAME
 # name (`$delegate-setup` — see the README's operator steps): the runner passes

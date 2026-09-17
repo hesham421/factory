@@ -29,6 +29,7 @@ Runners (how a brief reaches a model) are pluggable and chosen by env:
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -277,7 +278,7 @@ def set_fake(fn: Callable[[Path, Implementer, str, int], str] | None) -> None:
 
 
 def runner_kind() -> str:
-    return os.environ.get("GOV_RUNNER", "cmd")
+    return os.environ.get(CFG.runner.get("env", "GOV_RUNNER"), "cmd")
 
 
 def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,
@@ -290,14 +291,20 @@ def run_round(brief: Path, impl: Implementer, effort: str, round_no: int, *,
         out.write_text(_FAKE(brief, impl, effort, round_no), encoding="utf-8")
         return out
     if kind == "cmd":
-        tpl = os.environ.get("GOV_RUNNER_CMD")
+        cmd_env = CFG.runner.get("cmd_env", "GOV_RUNNER_CMD")
+        tpl = os.environ.get(cmd_env)
         if not tpl:
-            raise RuntimeError("GOV_RUNNER=cmd requires GOV_RUNNER_CMD")
-        # {lane} is the factory.yaml lane id (e.g. "analysis", "review-per-engine") — the same
-        # string a lane-name-matching delegate tool (e.g. `claude-delegate --lane <id>`)
-        # keys its own model/effort/readonly config by, so no model/effort mapping needs
-        # to be duplicated here. {read_only_flag} is "--read-only" when the lane sets
-        # `read_only: true`, else "" — safe to reference or ignore in the template.
+            raise RuntimeError(f"{CFG.runner.get('env', 'GOV_RUNNER')}=cmd requires {cmd_env}")
+        # {lane} is the factory.yaml lane id — the same string the delegate setup keys its
+        # own effort/timeout/read-only dials by. {model} is passed explicitly and is
+        # REQUIRED (factory.runner.required): a dialogue lane alternates implementers,
+        # and a lane-name-only mapping would hand every round to one model.
+        # {read_only_flag} is "--read-only" when the lane sets `read_only: true`, else "".
+        missing = [p for p in (CFG.runner.get("required") or []) if "{" + p + "}" not in tpl]
+        if missing:
+            raise RuntimeError(f"{cmd_env} must carry {', '.join('{' + p + '}' for p in missing)} — "
+                               f"a dialogue lane alternates implementers, and a template that does not "
+                               f"pass the model would collapse the debate to one model")
         cmd = tpl.format(brief=shlex.quote(str(brief)), implementer=impl, provider=impl.provider, model=impl.model,
                          effort=effort, out=shlex.quote(str(out)), lane=lane_id,
                          read_only_flag=("--read-only" if read_only else ""))
@@ -381,6 +388,85 @@ def ingest(response: Path) -> list[Path]:
         target.write_text(body, encoding="utf-8")
         written.append(target)
     return written
+
+
+# ── a brief that is not a stage's: the gate review, the revise pass ─────────
+
+_JSON_FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
+
+
+def extract_json(text: str) -> dict | None:
+    """The one JSON object a response carries — the reviewer's scorecard.
+
+    A fenced ```json block first (the last one that parses, since a merged
+    scorecard follows the drafts it merged); failing that, the widest `{ … }`
+    that parses. None when nothing does — a reviewer that returned prose is a
+    failed round, never a verdict."""
+    for m in reversed(_JSON_FENCE.findall(text)):
+        try:
+            data = json.loads(m)
+        except ValueError:
+            continue
+        if isinstance(data, dict):
+            return data
+    start, end = text.find("{"), text.rfind("}")
+    while 0 <= start < end:
+        try:
+            data = json.loads(text[start:end + 1])
+            return data if isinstance(data, dict) else None
+        except ValueError:
+            start = text.find("{", start + 1)
+    return None
+
+
+def round_brief(base: Path, round_no: int, previous: Path, lane: dict, implementer: Implementer) -> Path:
+    """The brief of a later round of a dialogue over a fixed brief: the base
+    brief, then the previous round to answer, then what this round must
+    return. Written beside the base as `<stem>-round<N>.md`."""
+    tok = CFG.dialogue
+    d = lane.get("dialogue") or {}
+    parts = [
+        base.read_text(encoding="utf-8"), "", "---",
+        f"# PREVIOUS ROUND — round {round_no - 1} of at most {d.get('max_rounds', round_no)}, to be answered by {implementer}",
+        f"Converge on **{d.get('converge_on', 'agreement')}**: confirm or contest each finding and score of the previous",
+        "round with evidence from the artifacts, then return ONE merged result in the format the brief specifies —",
+        f"the last response is final. Record every point you settle as a `{tok.get('decision_token', 'DECISION:')} <title>` block.",
+        f"Append `{CONVERGED}` at the very end when nothing material remains contested.",
+        "", previous.read_text(encoding="utf-8"), "",
+    ]
+    path = base.with_name(f"{base.stem}-round{round_no}.md")
+    path.write_text("\n".join(parts), encoding="utf-8")
+    return path
+
+
+def run_lane(brief: Path, lane_id: str, *, dialogue: bool = False) -> DispatchResult:
+    """Dispatch an already-built brief on a lane. With `dialogue`, the lane's
+    implementers alternate for at most `dialogue.max_rounds`, each later round
+    answering the previous (round_brief), until a response carries the
+    convergence marker. The same runner contract as `dispatch()` — this is
+    what the gate and the revise pass go through, so an automated review runs
+    exactly like an automated stage."""
+    lane = CFG.lane(lane_id)
+    impls = [Implementer.parse(s) for s in lane.get("implementers", [])]
+    res = DispatchResult("", lane_id, brief)
+    if runner_kind() == "manual" or not impls:
+        res.awaiting = True
+        return res
+    max_rounds = int(lane["dialogue"]["max_rounds"]) if (dialogue and lane.get("dialogue")) else 1
+    previous: Path | None = None
+    for r in range(1, max_rounds + 1):
+        impl = impls[(r - 1) % len(impls)]
+        b = brief if r == 1 else round_brief(brief, r, previous, lane, impl)
+        resp = run_round(b, impl, lane.get("effort", "high"), r, lane_id=lane_id, read_only=bool(lane.get("read_only")))
+        res.rounds = r
+        if resp is None:
+            break
+        res.responses.append(resp)
+        previous = resp
+        if max_rounds == 1 or CONVERGED in resp.read_text(encoding="utf-8"):
+            res.converged = True
+            break
+    return res
 
 
 def dispatch(stage: Stage, mod: str, version: int) -> DispatchResult:
@@ -484,7 +570,7 @@ def _decision_key(stage_id: str, version: int, title: str) -> str:
     return hashlib.sha256(f"{stage_id}|{version}|{title.strip().lower()}".encode("utf-8")).hexdigest()[:12]
 
 
-def persist_decisions(stage: Stage, mod: str, version: int, res: DispatchResult) -> list[Path]:
+def persist_decisions(stage: Stage, mod: str, version: int, res: DispatchResult, lane_id: str | None = None) -> list[Path]:
     """Every decision block of the dialogue's responses → one ADR each, status
     `dialogue.adr_status`, sequence continuing the module's ADR stream.
     Idempotent: a decision already persisted (same stage, version, title —
@@ -497,7 +583,8 @@ def persist_decisions(stage: Stage, mod: str, version: int, res: DispatchResult)
     existing = ""
     if d.exists():
         existing = "\n".join(p.read_text(encoding="utf-8") for p in sorted(d.glob("*.md")))
-    lane = CFG.lane(stage.lane)
+    lane_id = lane_id or stage.lane
+    lane = CFG.lane(lane_id)
     impls = lane.get("implementers") or []
     written: list[Path] = []
     seq = _next_adr_seq(mod)
@@ -518,7 +605,7 @@ def persist_decisions(stage: Stage, mod: str, version: int, res: DispatchResult)
                 f"# {adr_id} — {title}",
                 f"Status      : {tok['adr_status']}",
                 f"Stage       : {stage.id}        Module: {mod.upper()}        Version: v{version}",
-                f"Lane        : {stage.lane} · round {r} · {impl}",
+                f"Lane        : {lane_id} · round {r} · {impl}",
                 f"Decided     : {_now()}",
                 f"Dialogue-key: {key}",
                 f"traces      : {', '.join(traces) or '—'}",

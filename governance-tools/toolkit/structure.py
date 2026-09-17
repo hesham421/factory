@@ -156,7 +156,14 @@ def require_supported_marker_schema(mod: str, version: int | None = None) -> int
 
 def write_manifest(mod: str, version: int | None = None) -> Path:
     """Write a fresh manifest, preserving `status` and `created_at` of an
-    existing one (the layout is regenerated, the history is kept)."""
+    existing one (the layout is regenerated, the history is kept).
+
+    `status` is the one part of the manifest other writers add to — the
+    archive stamps it, and the orchestrator records the factory's own
+    execution facts there (`gov.py::_execution_state`: which commit an input
+    was fetched at, what the last gate measured). The layout regenerates only
+    the keys it owns (`archived`, `split`); every other key is carried over,
+    or the next `_prepare` would erase what the last fetch recorded."""
     path = _manifest_path(mod.upper(), version)
     fresh = build_manifest(mod, version)
     old = read_json(path) or {}
@@ -166,9 +173,9 @@ def write_manifest(mod: str, version: int | None = None) -> Path:
         for key, done in (old["status"].get("split") or {}).items():
             if key in status["split"]:
                 status["split"][key] = bool(done)
-        for extra in ("archived_at", "archived_files"):
-            if extra in old["status"]:
-                status[extra] = old["status"][extra]
+        for key, value in old["status"].items():
+            if key not in status:
+                status[key] = value
     fresh["created_at"] = old.get("created_at") or now_iso()
     write_json(path, fresh)
     return path
