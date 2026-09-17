@@ -128,7 +128,7 @@ Runners: `GOV_RUNNER=cmd` (default) with `GOV_RUNNER_CMD='node claude-delegate/r
 - `python3 -m pytest governance-tools/tests -q` — the toolkit and orchestrator tests (the checked-in `erp` profile + a synthetic toy profile, proving domain-agnosticism).
 
 ## Linking consumer repos
-Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `governance/modules/{MOD}/api-docs`; the factory delivers to `governance/modules/{MOD}` on branch `gov/{mod}-v{version}-{track}` and tags `{mod}-v{version}`.
+Edit `factory.yaml → repos` (url, checkout, deliver_to, publishes). The backend repo publishes `backend/modules/{MOD}/api-docs`; the factory delivers to `governance/modules/{MOD}` on branch `gov/{mod}-v{version}-{track}` and tags `{mod}-v{version}`.
 
 Each `repos.<name>` resolves through `CFG.repo_checkout()`: the env var named by `checkout_env`, falling back to `checkout_default` (a path relative to this factory's own root). That one mechanism supports two deployments with **zero code difference**, only config values:
 - **Standalone** — this factory is its own repo; `checkout_default` points at a sibling checkout (e.g. `../backend`).

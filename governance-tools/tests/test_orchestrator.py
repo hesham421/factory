@@ -24,6 +24,18 @@ from conftest import REAL_ROOT
 OK, BLOCKED, AWAITING = gov.OK, gov.BLOCKED, gov.AWAITING
 
 
+
+def _publish_root(repo: str = "backend"):
+    """Where `repos.<repo>.publishes` paths resolve — the producer's own checkout,
+    or the repo named by `reads_from` when it publishes into a shared one. Mirrors
+    cmd_fetch_inputs so a fixture cannot put the input somewhere the tool will not
+    look for it."""
+    from config import CFG
+    host = CFG.repos[repo].get("reads_from", repo)
+    root = CFG.repo_checkout(host)
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
 def _git(*a, cwd):
     return subprocess.run(["git", *a], cwd=str(cwd), check=True, capture_output=True, text=True)
 
@@ -146,8 +158,8 @@ def test_full_dry_run_both_passes_split_deliver_tag(orch_root, mod, tmp_path, mo
     assert _git("branch", "--show-current", cwd=backend).stdout.strip() == CFG.delivery_branch(mod, 1, "backend")
     # pass 2 needs the api-docs input back from the backend repo
     assert gov.run_pass("2", mod, 1, new=False, complete=False, no_commit=False) == BLOCKED
-    pub = backend / CFG.fmt(CFG.repos["backend"]["publishes"]["api-docs"], mod=mod)
-    pub.parent.mkdir(parents=True, exist_ok=True); pub.write_text(fx.api_docs(mod))
+    pub = _publish_root() / CFG.fmt(CFG.repos["backend"]["publishes"]["api-docs"], mod=mod)
+    pub.mkdir(parents=True, exist_ok=True); (pub / "index.md").write_text(fx.api_docs(mod))
     assert gov.cmd_fetch_inputs(mod, 1, pull=False) == OK
     assert gov.run_pass("2", mod, 1, new=False, complete=False, no_commit=False) == AWAITING
     fx.write_stage("P3.2", mod)

@@ -527,7 +527,11 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
     missing = []
     for name, spec in CFG.inputs.items():
         repo = spec["from_repo"]
-        checkout = CFG.repo_checkout(repo)
+        # WHO authors it and WHERE it lands are two questions. A producer that
+        # publishes into the shared repo says so with `reads_from`; without it the
+        # path resolves against the producer's own checkout, as before.
+        host = CFG.repos[repo].get("reads_from", repo)
+        checkout = CFG.repo_checkout(host)
         src = checkout / CFG.fmt(CFG.repos[repo]["publishes"][name], mod=mod)
         if pull and (checkout / ".git").exists():
             _git("pull", "--ff-only", cwd=checkout, check=False)
@@ -627,6 +631,21 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
              f"  fresh clone of a consumer, it is a submodule: `git submodule update --init`")
         return BLOCKED
 
+    stale = []
+    for name, repo in CFG.repos.items():
+        if name == "shared":
+            continue
+        try:
+            co = CFG.repo_checkout(name)
+        except Exception:
+            continue
+        mods = (co / ".gitmodules")
+        if co.is_dir() and mods.exists() and "governance-shared" in mods.read_text(encoding="utf-8"):
+            r = _git("submodule", "status", cwd=co, check=False).stdout
+            for line in r.splitlines():
+                if line.startswith(("-", "+")):
+                    stale.append((name, line.strip()))
+
     _git("fetch", "--quiet", "origin", cwd=shared, check=False)
     head = _git("rev-parse", "--short", "HEAD", cwd=shared).stdout.strip()
     upstream = _git("rev-parse", "--short", "@{u}", cwd=shared, check=False).stdout.strip()
@@ -646,6 +665,9 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
         _say(f"  uncommitted in shared: {len(dirty)} path(s)")
         for l in dirty[:8]:
             _say(f"    {l}")
+
+    for name, line in stale:
+        _say(f"  {name}: submodule {'not initialised' if line.startswith('-') else 'differs from its pinned commit'} — {line}")
 
     if not push:
         if behind != "0":

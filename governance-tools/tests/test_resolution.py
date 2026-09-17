@@ -369,8 +369,12 @@ def test_the_delivered_tree_resolves_in_the_consumer_repo(orch_root, mod, tmp_pa
         assert (dest / ph["package"]).is_dir()
     # the decision records the plans cite travelled with them
     assert (dest / index["decisions_dir"] / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=1)).exists()
-    # and the place the consumer is asked to publish its api-docs actually exists
-    assert (backend / index["publishes"]["api-docs"]).is_dir()
+    # The publish location used to be asserted here, back when it sat inside this
+    # consumer's own tree. It lives in the shared repo now, which this delivery
+    # test never initialises and never publishes into — so the row had nothing
+    # behind it. The assertion is not softened, it is removed: the full dry-run
+    # (test_orchestrator) publishes api-docs at the resolved location and fetches
+    # them back, which is the check that actually exercises the path.
 
 
 # ── F4 — delivery provenance, and resolution IN the consumer ────────────────
