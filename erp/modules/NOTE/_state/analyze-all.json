@@ -3,8 +3,8 @@
   "version": 1,
   "scope": "all",
   "counts": {
-    "CRITICAL": 8,
-    "MAJOR": 7,
+    "CRITICAL": 3,
+    "MAJOR": 34,
     "MINOR": 0
   },
   "clean": false,
@@ -28,23 +28,23 @@
   "coverage": {
     "C2.2": 10,
     "C3.7": 6,
-    "C4.4": 0,
-    "C5.2": 0,
-    "C5.3": 0,
-    "C5.4": 0,
-    "C5.5": 0,
-    "C5.6": 0,
-    "C5.8": 0,
+    "C4.4": 7,
+    "C5.2": 18,
+    "C5.3": 18,
+    "C5.4": 18,
+    "C5.5": 24,
+    "C5.6": 7,
+    "C5.8": 50,
     "C6.2": 0,
     "C6.3": 0,
-    "C6.5": 0,
-    "C6.6": 0,
+    "C6.5": 9,
+    "C6.6": 1,
     "C7.2": 0,
     "C7.3": 0,
     "C7.4": 0,
     "C7.5": 0,
     "C7.5b": 0,
-    "C7.6": 0,
+    "C7.6": 18,
     "C7.22": 0,
     "C7.21": 0,
     "C7.23": 0,
@@ -63,17 +63,8 @@
     "C9.8": 0
   },
   "vacuous": [
-    "C4.4",
-    "C5.2",
-    "C5.3",
-    "C5.4",
-    "C5.5",
-    "C5.6",
-    "C5.8",
     "C6.2",
     "C6.3",
-    "C6.5",
-    "C6.6",
     "C7.18",
     "C7.19",
     "C7.2",
@@ -85,7 +76,6 @@
     "C7.4",
     "C7.5",
     "C7.5b",
-    "C7.6",
     "C8.2",
     "C8.3",
     "C8.4",
@@ -100,50 +90,10 @@
   "findings": [
     {
       "severity": "CRITICAL",
-      "clause": "C4.1",
-      "check": "exists",
-      "message": "`prd` is missing or empty",
-      "artifact": "prd",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C4.2",
-      "check": "gate-approved",
-      "message": "no approval record for gate `prd-approval` (gov.py approve prd-approval)",
-      "artifact": "",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C5.1",
-      "check": "exists",
-      "message": "`srs` is missing or empty",
-      "artifact": "srs",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C6.1",
-      "check": "exists",
-      "message": "`db-script` is missing or empty",
-      "artifact": "db-script",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
       "clause": "C7.1",
       "check": "markers",
       "message": "`backend-execution-plan` missing",
       "artifact": "backend-execution-plan",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C7.10",
-      "check": "value-agreement",
-      "message": "binding artifact `db-script` missing",
-      "artifact": "db-script",
       "line": 0
     },
     {
@@ -172,19 +122,83 @@
     },
     {
       "severity": "MAJOR",
-      "clause": "C5.8",
+      "clause": "C6.5",
       "check": "registry-agree",
-      "message": "registry `registry-srs` missing",
-      "artifact": "registry-srs",
+      "message": "`DBF-NOTE-001` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
       "line": 0
     },
     {
       "severity": "MAJOR",
       "clause": "C6.5",
       "check": "registry-agree",
-      "message": "registry `registry-db` missing",
+      "message": "`DBF-NOTE-002` registered in `registry-db` but not defined in `db-script`",
       "artifact": "registry-db",
       "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-003` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-004` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-005` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-006` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-007` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-008` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.5",
+      "check": "registry-agree",
+      "message": "`DBF-NOTE-009` registered in `registry-db` but not defined in `db-script`",
+      "artifact": "registry-db",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C6.6",
+      "check": "orphans",
+      "message": "`ENT-NOTE-001` is referenced by 0 of ['DBF'], needs \u22651",
+      "artifact": "",
+      "line": 86
     },
     {
       "severity": "MAJOR",
@@ -201,6 +215,158 @@
       "message": "registry `registry-exec-be` missing",
       "artifact": "registry-exec-be",
       "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.5",
+      "check": "registry-agree",
+      "message": "artifact `backend-execution-plan` missing",
+      "artifact": "backend-execution-plan",
+      "line": 0
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-001` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 110
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-002` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 132
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-003` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 148
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-004` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 164
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-005` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 186
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-006` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 208
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-007` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 230
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-008` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 252
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-009` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 268
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-010` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 284
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-011` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 300
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-012` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 322
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-013` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 338
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-014` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 354
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-015` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 370
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-016` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 386
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-017` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 402
+    },
+    {
+      "severity": "MAJOR",
+      "clause": "C7.6",
+      "check": "orphans",
+      "message": "`REQ-NOTE-018` is referenced by 0 of ['API', 'DBF'], needs \u22651",
+      "artifact": "",
+      "line": 418
     },
     {
       "severity": "MAJOR",
@@ -227,20 +393,30 @@
     },
     "resolvable": [
       "business-policies",
+      "db-script",
       "domain-profile",
       "module-registry",
       "platform-summary",
+      "prd",
       "project-registry",
+      "registry-db",
+      "registry-srs",
+      "srs",
       "system-test-index"
     ],
     "inputs": {
       "business-policies": "cc2708ea2d3f4a83b3c0184aec554c12d6516e0c91b4d84e8c8aa4ad043a071e",
+      "db-script": "c1be7cf8b171334cf279e4276a6643e3cd758836e08d5b2ad47644657d9498c9",
       "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
       "module-registry": "f791dec66d9f7d1ccd614a0993eee9b8ff18ca9ce1b91d2a15fe570b0fa03706",
       "platform-summary": "5e8c38ebf3fd9907f984bfc20428f1bcfbc7cb008eca7c9b44d06e06619140a8",
+      "prd": "2bbcf3d33900d215941be071621164c463842356e76971e4d090c8faa178717f",
       "project-registry": "b6ec1d78ac5e39be110e34a249bda2f5b7cbf3e202c14d1a84c700d0d38411be",
+      "registry-db": "12998fb4b1503d619bb8c09fd757d6764c51c10b62cc126c8d02f4f1ead067a9",
+      "registry-srs": "f97a05270a3e3ef006f13e646effb988f90ee2ff9c22ebab2ceca69377e12c80",
+      "srs": "bd06f0e7e47d126f30586d67aa5916956dd70680f0be6989f1efe9d854bd6c30",
       "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9"
     },
-    "at": "2026-09-17T12:01:34+00:00"
+    "at": "2026-09-17T12:18:29+00:00"
   }
 }

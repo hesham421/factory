@@ -583,3 +583,19 @@ Fix     : OPEN. I implemented the obvious repair — teach `records()` that a
           violating — and the documents do not settle which.
 Status  : OPEN
 
+### F-18 — how the run was unblocked (scaffolding, NOT the fix)
+NOTE's own `db-script-note.md` now carries a `## 1a. DB FIELD DEFINITIONS`
+section — nine `**DBF-NOTE-00n** — NOTE_NOTE.<column> [ENT-NOTE-001]` lines
+each with a `Traces:` line — which is the same shape SEC and MDL already ship.
+P2 then analyzes `0 critical · 0 major · 0 minor · CLEAN · 1 clause(s) examined
+nothing (C6.3)`, and C6.3 is the XM-traces clause, correctly empty for a module
+that declares no cross-module dependency.
+No check was weakened and no row was softened: the artifact was made to carry
+what the checker requires, exactly as every shipped module does. The engine
+still does not ask for that section, so the next module generated from the
+template will block in the same place. That is what F-18 stays OPEN for.
+Also noted while doing it: the db-script carries the nine ids in TWO tables
+(the §2 matrix at line 21 and the §10 registry-content table at line 203) and
+neither was a definition — so the artifact already duplicated the data twice
+before this third listing was added, which is an argument for repair (a).
+
