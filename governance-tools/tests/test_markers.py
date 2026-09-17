@@ -235,11 +235,27 @@ def test_threshold_boundary_respects_op(mod):
 
 
 def test_threshold_of_non_marker_kind_is_not_counted(mod):
-    """A threshold whose kind is not a marker kind (e.g. screens) is skipped, never guessed."""
-    g = fx.grammar("frontend", "exec")
-    ph = next(p for p in g.phases if p.split_threshold and p.split_threshold["kind"] not in g.atom_kinds)
-    res = parse(marker(g.phase_kind, ph.key, START) + "x\n" + marker(g.phase_kind, ph.key, END), "frontend", "exec")
-    assert res.findings == []
+    """A threshold whose kind is not a marker kind (e.g. screens) is skipped, never guessed.
+
+    The track was typed in here, and the profile it named stopped declaring such a
+    threshold — so the test raised StopIteration instead of reporting that it had
+    nothing to examine. It now searches every track and plan the profile declares
+    and says plainly when none of them exercises this path: a profile whose phases
+    all count marker kinds is served unchanged, and that is not a failure."""
+    for track in CFG.tracks:
+        if track not in CFG.profile.tracks:
+            continue
+        for plan in CFG.profile.plans(track):
+            g = fx.grammar(track, plan)
+            ph = next((p for p in g.phases
+                       if p.split_threshold and p.split_threshold["kind"] not in g.atom_kinds), None)
+            if ph is None:
+                continue
+            res = parse(marker(g.phase_kind, ph.key, START) + "x\n" + marker(g.phase_kind, ph.key, END), track, plan)
+            assert res.findings == [], f"{track}/{plan}/{ph.key}: an uncountable threshold produced a finding"
+            return
+    pytest.skip(f"profile `{CFG.profile.id}` declares no threshold on a non-marker kind — "
+                f"nothing to examine, which is not the same as passing")
 
 
 # ── (h) never_split ──────────────────────────────────────────────────────────
