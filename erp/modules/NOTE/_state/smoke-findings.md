@@ -385,3 +385,36 @@ Fix     : `run_pass` now skips a stage whose non-optional `produces` are all
           and the approved PRD's md5 was unchanged.
 Status  : FIXED
 
+## F-14 — the track's phase list is restated in both consumer generators
+Where   : backend/.claude/commands/generate-module-setup.md:129 and :211
+          frontend/.claude/commands/generate-frontend-module-setup.md:168 and :232
+Expected: the phase vocabulary is a PROFILE fact
+          (`profile.tracks.<track>.plans.<plan>.phases`, C1). Adding a phase to
+          a track should be a profile edit plus the phase's own content.
+          `GOVERNANCE-SHARED-DESIGN.md` §7 lists both generators under "does
+          not change" and credits C1 with keeping the blast radius small.
+Actual   : each generator restates the whole ordered list twice — once as
+          "Expected phases, in strict order" and once as the `gated_by_phases`
+          array of the test phase (`grep -c` returns 2 in each file).
+          The first is partly defensive: the surrounding text says to derive
+          phases from the delivered package folders and "only include ones
+          actually present", so the list reads as a sanity ordering. The
+          second is not — `gated_by_phases` is written verbatim into
+          `execution-state.json` and decides which phases must be COMPLETE
+          before the test phase may run. A phase added to the profile and
+          delivered in the package would be scanned into `phases` by the
+          generator and silently ABSENT from `gated_by_phases`, so the test
+          phase would run without it.
+          Measured extension cost for "add a phase to a track": 1 profile file
+          + 2 consumer files in 2 repos, of which the consumer half is invisible
+          to `gov.py lint` — `lint.scan_paths` covers the factory only, so
+          nothing in the factory can see these two files drift.
+Fix     : OPEN. The clean repair is for `gated_by_phases` to be derived rather
+          than typed: `gov.py deliver` already writes `phases` into the
+          execution-state it delivers (`delivery.execution_state.schema`), so
+          the generator could read the delivered list instead of restating it.
+          That is blocked on F-6 — the generator currently OVERWRITES that
+          delivered file rather than reading it, so the data it needs is the
+          data it destroys. Recorded together; F-6 is the one to settle first.
+Status  : OPEN
+
