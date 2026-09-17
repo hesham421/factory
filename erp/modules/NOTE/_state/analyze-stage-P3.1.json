@@ -1,44 +1,23 @@
 {
   "module": "NOTE",
   "version": 1,
-  "scope": "all",
+  "scope": "stage:P3.1",
   "counts": {
-    "CRITICAL": 2,
-    "MAJOR": 4,
+    "CRITICAL": 0,
+    "MAJOR": 0,
     "MINOR": 0
   },
-  "clean": false,
+  "clean": true,
   "blocking": [
     "CRITICAL",
     "MAJOR"
   ],
   "contracts": [
-    "C1",
-    "C2",
-    "C3",
-    "C4",
-    "C5",
-    "C6",
     "C7",
-    "C8",
-    "C9",
     "C12"
   ],
   "skipped": [],
   "coverage": {
-    "C2.2": 10,
-    "C3.7": 6,
-    "C4.4": 7,
-    "C5.2": 18,
-    "C5.3": 18,
-    "C5.4": 18,
-    "C5.5": 24,
-    "C5.6": 7,
-    "C5.8": 50,
-    "C6.2": 9,
-    "C6.3": 0,
-    "C6.5": 9,
-    "C6.6": 1,
     "C7.2": 13,
     "C7.3": 5,
     "C7.4": 11,
@@ -50,84 +29,14 @@
     "C7.23": 0,
     "C7.20": 8,
     "C7.19": 4,
-    "C7.18": 4,
-    "C8.2": 0,
-    "C8.3": 0,
-    "C8.4": 0,
-    "C9.2": 0,
-    "C9.3": 0,
-    "C9.4": 0,
-    "C9.5": 0,
-    "C9.6": 0,
-    "C9.7": 0,
-    "C9.8": 0
+    "C7.18": 4
   },
   "vacuous": [
-    "C6.3",
     "C7.23",
     "C7.5",
-    "C7.5b",
-    "C8.2",
-    "C8.3",
-    "C8.4",
-    "C9.2",
-    "C9.3",
-    "C9.4",
-    "C9.5",
-    "C9.6",
-    "C9.7",
-    "C9.8"
+    "C7.5b"
   ],
-  "findings": [
-    {
-      "severity": "CRITICAL",
-      "clause": "C8.1",
-      "check": "exists",
-      "message": "`api-docs` is missing or empty",
-      "artifact": "api-docs",
-      "line": 0
-    },
-    {
-      "severity": "CRITICAL",
-      "clause": "C9.1",
-      "check": "markers",
-      "message": "`frontend-execution-plan` missing",
-      "artifact": "frontend-execution-plan",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C2.2",
-      "check": "registry-agree",
-      "message": "registry does not map categories ['CAT-10']",
-      "artifact": "project-registry",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C8.2",
-      "check": "registry-agree",
-      "message": "artifact `api-docs` missing",
-      "artifact": "api-docs",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C9.2",
-      "check": "traces",
-      "message": "`frontend-execution-plan` missing",
-      "artifact": "frontend-execution-plan",
-      "line": 0
-    },
-    {
-      "severity": "MAJOR",
-      "clause": "C9.8",
-      "check": "registry-agree",
-      "message": "registry `registry-exec-fe` missing",
-      "artifact": "registry-exec-fe",
-      "line": 0
-    }
-  ],
+  "findings": [],
   "provenance": {
     "rules": {
       "contracts": "077c2efb24f5f57a1ee6978a553d000f3d70b6326646ebfbfc94cb16e7f26c9e",
@@ -164,6 +73,6 @@
       "srs": "bd06f0e7e47d126f30586d67aa5916956dd70680f0be6989f1efe9d854bd6c30",
       "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9"
     },
-    "at": "2026-09-17T12:25:22+00:00"
+    "at": "2026-09-17T12:25:19+00:00"
   }
 }

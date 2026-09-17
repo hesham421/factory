@@ -15,7 +15,9 @@
     "test-gen": "test_gen",
     "api-verify": "api_verify"
   },
-  "plans": {},
+  "plans": {
+    "backend/exec": "P3_1/backend-execution-plan-note.md"
+  },
   "packages": {
     "backend/exec": "packages/backend-execution",
     "backend/test": "packages/backend-test",
