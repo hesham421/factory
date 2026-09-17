@@ -6,3 +6,14 @@ __pycache__/
 
 # macOS Finder metadata — never content
 .DS_Store
+
+# Derived current-state — `_state/` mixes two things, and only these are caches.
+# `build_state()` rewrites every one of them from the v{N}/ sources on EVERY run
+# (`_prepare` calls it before any stage), so running pass 2 rewrote pass 1's files
+# and every diff carried that noise — hiding the real change. Verified regenerable
+# byte-for-byte. NOT ignored, because nothing can rebuild them: `approvals/`,
+# `gate-pass-*` (human approval), `analyze-*` (the evidence a gate was passed) and
+# `briefs/` (what an implementer was actually handed).
+**/_state/current-*.md
+**/_state/traceability.md
+**/_state/state.json
