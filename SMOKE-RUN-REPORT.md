@@ -6,8 +6,8 @@ evidence. **The findings are the deliverable; the module is scaffolding.**
 | | |
 |---|---|
 | Subject | `NOTE` · 1 entity · 4 operations · 1 screen · 0 cross-module deps |
-| Pipeline reached | pass 1 complete (P0 · P0.5 · P1 · P2 · P3.1), gate 1 open and awaiting its review JSON |
-| Findings | **21** — 11 FIXED · 9 OPEN · 1 WONTFIX |
+| Pipeline reached | pass 1 complete (P0 · P0.5 · P1 · P2 · P3.1) · **gate 1 ran and returned REVISE** |
+| Findings | **22** — 11 FIXED · 10 OPEN · 1 WONTFIX |
 | Baseline before | lint `0 critical · 0 major · 0 minor` · `237 passed, 1 skipped` |
 | Baseline after | lint `0 critical · 0 major · 0 minor` · `242 passed, 1 skipped` (+5 regression tests) |
 | Detailed log | [`erp/modules/NOTE/_state/smoke-findings.md`](erp/modules/NOTE/_state/smoke-findings.md) — full evidence per finding |
@@ -221,6 +221,7 @@ cost this defect charged, once per module, invisibly.
 | **F-4** | The no-hardcode scan does not cover severity names | Needs either an owner-exemption concept or a factory-side twin of `profile_term_sources` |
 | **F-12** | A consumer repo must silently share its track's name (`CFG.repos[track]`, 6 sites) | Merge the two tables, or let a track name its repo. Undeclared either way |
 | **F-14** | The phase list is restated twice in each consumer generator | Blocked on F-6: the data the generator should read is the data it destroys |
+| **F-22** | The ALIGN self-check's COVERAGE prose goes stale and no machine check sees it | Stamp it like the verdict line, or guard it like `verdict-agrees` guards the count — the second keeps the author's reasoning about *why* a clause is empty |
 
 ### F-18 in full, because the measurement is the point
 
@@ -337,12 +338,43 @@ produced one is named and was run.
 
 ---
 
-## 9 · Where the run stops, and why
+## 9 · Gate 1 — the gate caught what no machine clause could
 
-Pass 1 is complete and gate 1 is open with analyze clean. The run stops at the
-**gate review**, for the reason recorded as F-21: the factory declares two
-reviewer lanes and dispatches neither, so the scorecard has to be produced by
-an operator by hand.
+Analyze was clean, so the gate opened. I acted as the operator F-21 leaves in
+the loop, ran the brief through the reviewer lane's own model, and completed
+the gate with its JSON:
+
+```
+GATE pass-1: REVISE          (exit 1)
+unambiguous 3 · verifiable 3 · complete 3 · consistent 2
+singular 3 · feasible 3 · traceable 2
+```
+
+Every attribute is at or above `review.pass_threshold` (2), so this was the
+reviewer's **own judgement**, not the automatic downgrade. Five ERP extra
+checks PASS; six ADRs reviewed and confirmed accurate; all three vacuous
+clauses confirmed empty *by nature* rather than by check failure — the exact
+confirmation the vacuous-clause paragraph asks a human to make.
+
+Its one MAJOR finding is now **F-22**, and it is a good one: the plan's
+ALIGN-BE COVERAGE narrative names `C7.23` as vacuous, but the analyze report
+bound to the gate lists `C6.3, C7.5, C7.5b` — C7.23 now examines 6 subjects.
+The cause is mine: the plan was generated before I fixed F-19, and my fix
+changed the analyze result underneath it. The plan honestly described the world
+when it was written, and the one clause genuinely vacuous this run is named
+nowhere in the artifact while a defect that no longer reproduces is explained
+at length.
+
+`gov.py` stamps the verdict *line* and `verdict-agrees` guards its *count*; the
+coverage list beside it is author prose that nothing writes and nothing checks.
+**`analyze` could not see this and the reviewer could** — which is the clearest
+argument in this run for why the review lane is worth dispatching (F-21).
+
+## 10 · Where the run stops, and why
+
+The run stops after gate 1, at REVISE — which is the pipeline working, not
+failing. Acting on it means regenerating one section of a disposable module's
+plan; the pipeline question it would answer has already been answered.
 
 Beyond that, `/orchestrate-module NOTE --auto` builds an actual Spring Boot
 module across eight phases plus a test phase that needs a running backend —
@@ -352,7 +384,8 @@ collision, F-5's fix in practice) are reachable much more cheaply by running
 `/generate-module-setup NOTE` alone.
 
 **Verdict:** the factory-side pipeline runs end to end once F-20 is fixed —
-and before that fix, it could not have, for any module. The three invariants:
+P0 → P0.5 → gate → P1 → P2 → P3.1 → gate 1, ending in a reasoned REVISE. Before
+that fix it could not have, for any module. The three invariants:
 **one-copy** violated and repaired (F-15, F-5); **determinism** held;
 **no-weakened-check** held — every check that fired wrongly was fixed as the
 defect, one proposed fix was measured and reverted for making things worse
