@@ -738,11 +738,17 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
         if not (co.is_dir() and mods.exists()):
             continue
         if url and url.removesuffix(".git") not in mods.read_text(encoding="utf-8").replace(".git", ""):
-            stale.append((name, "MOUNTS NOTHING — .gitmodules does not name the shared repo"))
+            stale.append((name, "mounts the shared repo nowhere",
+                          ".gitmodules does not name it"))
             continue
         for line in _git("submodule", "status", cwd=co, check=False).stdout.splitlines():
             if line.startswith(("-", "+")):
-                stale.append((name, line.strip()))
+                # The leading character is git's own diagnosis and the only thing
+                # that carries it: '-' is a submodule never initialised, '+' one
+                # sitting on a commit other than the pinned one. Deriving this at
+                # the print site made every non-git row read as '+'.
+                kind = "not initialised" if line.startswith("-") else "differs from its pinned commit"
+                stale.append((name, kind, line.strip()))
 
     _git("fetch", "--quiet", "origin", cwd=shared, check=False)
     head = _git("rev-parse", "--short", "HEAD", cwd=shared).stdout.strip()
@@ -773,8 +779,8 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
         for l in dirty[:8]:
             _say(f"    {l}")
 
-    for name, line in stale:
-        _say(f"  {name}: submodule {'not initialised' if line.startswith('-') else 'differs from its pinned commit'} — {line}")
+    for name, kind, line in stale:
+        _say(f"  {name}: submodule {kind} — {line}")
 
     if not push:
         if behind != "0":

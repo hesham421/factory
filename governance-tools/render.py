@@ -34,7 +34,9 @@ _FRONTMATTER_RX = re.compile(r"^---\n(.*?)\n---\n", re.S)
 
 
 def _env(cfg: FactoryConfig) -> jinja2.Environment:
-    loader = jinja2.FileSystemLoader(str(cfg.root / cfg.paths["templates"]))
+    # `dir()`, not `root / paths[...]`: which repo owns a path key is declared in
+    # `paths.external`, and re-joining it here silently ignores that declaration.
+    loader = jinja2.FileSystemLoader(str(cfg.dir("templates")))
     env = jinja2.Environment(loader=loader, keep_trailing_newline=True, trim_blocks=True, lstrip_blocks=True)
     env.filters["join_ids"] = lambda xs: ", ".join(f"`{x}`" for x in xs) if xs else "—"
     return env
