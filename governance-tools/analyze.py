@@ -83,6 +83,7 @@ class AnalyzeReport:
     provenance: dict = field(default_factory=dict)
     coverage: dict = field(default_factory=dict)     # clause id -> subjects examined
     clause_checks: dict = field(default_factory=dict)  # clause id -> check name
+    metrics: list = field(default_factory=list)      # traceability ratios (factory.yaml → analyze.coverage)
 
     def vacuous(self) -> list[str]:
         """Clauses that ran and examined NOTHING.
@@ -133,6 +134,20 @@ class Ctx:
         if not v:
             raise ClauseSkipped(address, what)
         return v
+
+    def factory_need(self, address: str, what: str = ""):
+        """The factory.yaml value at a dotted `address`, or a recorded skip — the
+        same contract as `need`, for vocabulary the FACTORY declares (the
+        maturity word lists) rather than the profile."""
+        cur = CFG.data
+        for part in address.split("."):
+            if isinstance(cur, dict) and part in cur:
+                cur = cur[part]
+            else:
+                raise ClauseSkipped(address, what)
+        if not cur:
+            raise ClauseSkipped(address, what)
+        return cur
 
     def saw(self, n: int) -> None:
         """A check calls this with the number of subjects it actually examined.
@@ -1692,6 +1707,279 @@ def _walk_paths(node, key: str = "") -> list[tuple[str, str]]:
     return out
 
 
+# ── maturity — is the analysis MATURE, not merely consistent? ────────────────
+# Every clause above asks whether a reference is shaped right, resolves, or is
+# complete against another artifact. None asks whether the text a human wrote is
+# text the next stage can act on: a requirement resting on "as appropriate", an
+# acceptance criterion whose Then can never fail, an entity nothing ever
+# deletes, a story with no unwanted-behaviour path, a screen with no empty
+# state, a glossary term spelled three ways. The gate reviewer saw these; the
+# machine did not. These clauses are charged at `analyze.maturity_severity`
+# (contracts cite the address, not a name) — MINOR by default: they inform the
+# reviewer and do not close a gate. Every word list is config (factory.yaml →
+# analyze.maturity, extended by the profile); nothing here knows a word.
+
+_LABEL_LINE = r"^\s*[-*]?\s*\**\s*(?:{labels})\s*\**\s*:\s*(.+)$"
+
+
+def _labelled(text: str, labels) -> list[str]:
+    """The values of every `Label : value` line whose label is one of `labels`."""
+    rx = re.compile(_LABEL_LINE.format(labels="|".join(re.escape(str(l)) for l in labels)), re.I)
+    return [m.group(1).strip() for ln in text.splitlines() if (m := rx.match(ln))]
+
+
+def _statement_of(r: idmodel.Record, label: str | None) -> str:
+    """A record's statement: its labelled line when it has one, else the rest of
+    its definition line after the id — the same reading `_c_ears` uses."""
+    if label:
+        found = _labelled(r.text, [label])
+        if found:
+            return found[0].strip("[]")
+    first = r.text.splitlines()[0] if r.text else ""
+    return re.sub(r"^.*?" + re.escape(r.id) + r"\s*(—|-|:)?\s*", "", first).strip()
+
+
+def _words_rx(words, *, stems: bool) -> re.Pattern | None:
+    """Case-insensitive whole-word regex over a word list (phrases allowed). With
+    `stems`, a common inflection may follow: create → creates / created / creating."""
+    words = [str(w).strip() for w in (words or []) if str(w).strip()]
+    if not words:
+        return None
+    parts = []
+    for w in sorted(set(words), key=len, reverse=True):
+        esc = re.escape(w)
+        if stems:
+            alts = [esc + r"(?:s|es|ed|d|ing)?"]
+            if w.endswith("e"):
+                alts.append(re.escape(w[:-1]) + "ing")
+            esc = "(?:" + "|".join(alts) + ")"
+        parts.append(esc)
+    return re.compile(r"(?<!\w)(?:" + "|".join(parts) + r")(?!\w)", re.I)
+
+
+def _per_language(table: dict, extra: dict | None = None) -> list[str]:
+    """Flatten a `{language: [words]}` table (plus a profile's additions) over the
+    languages the profile declares — a domain in one language never inherits the
+    other's words."""
+    out: list[str] = []
+    for lang in CFG.profile.languages["all"]:
+        out += list((table or {}).get(lang) or [])
+        out += list((extra or {}).get(lang) or [])
+    return out
+
+
+def _c_ambiguity(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A requirement, criterion or rule that uses a word two implementers read
+    two ways. The lexicon is factory data per language (`lexicon`), extended —
+    never replaced — by the profile (`extend`). Only the labelled lines (`lines`:
+    the statement, the Given/When/Then) are read: a rationale may say "usually";
+    a requirement may not."""
+    lex = ctx.factory_need(c["lexicon"], "the ambiguity lexicon")
+    extra = (CFG.profile.get(c["extend"]) or {}) if c.get("extend") else {}
+    rx = _words_rx(_per_language(lex, extra), stems=False)
+    if rx is None:
+        raise ClauseSkipped(c["lexicon"], "an empty lexicon")
+    out, seen = [], 0
+    for kind in (c["kinds"] if isinstance(c["kinds"], list) else [c["kinds"]]):
+        for r in ctx.records_of(kind):
+            seen += 1
+            lines = _labelled(r.text, c.get("lines") or []) or [_statement_of(r, None)]
+            hits = sorted({m.group(0).lower() for ln in lines for m in rx.finditer(ln)})
+            if hits:
+                out.append(Finding(sev, "", "ambiguity",
+                                   f"`{r.id}` uses {', '.join(repr(h) for h in hits[:5])} — a word two "
+                                   f"implementers read two ways; state the measure, the set or the rule instead",
+                                   c.get("artifact", ""), r.line))
+    ctx.saw(seen)
+    return out
+
+
+def _c_ac_measurable(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """An acceptance criterion whose outcome no test can fail. Its `label` line
+    (the Then) must carry a number, an id, a `name=value`, a quoted literal, or an
+    outcome verb from `spec` — an enumerable state change. "The system responds
+    correctly" passes every shape check and is checkable by nothing."""
+    spec = ctx.factory_need(c["spec"], "what makes an outcome measurable")
+    verbs = _words_rx(_per_language(spec), stems=True)
+    idrx = CFG.id_regex()
+    literal = re.compile(r"""["“'`«][^"”'`»\n]+["”'`»]|[A-Za-z_][A-Za-z0-9_]*\s*=\s*\S""")
+    out, seen = [], 0
+    for r in ctx.records_of(c["kind"]):
+        seen += 1
+        then = _labelled(r.text, [c["label"]])
+        if not then:
+            out.append(Finding(sev, "", "ac-measurable",
+                               f"`{r.id}` has no `{c['label']}` line — a criterion with no stated outcome is not a criterion",
+                               c.get("artifact", ""), r.line))
+            continue
+        outcome = " ".join(then)
+        if re.search(r"\d", outcome) or idrx.search(outcome) or literal.search(outcome) or (verbs and verbs.search(outcome)):
+            continue
+        out.append(Finding(sev, "", "ac-measurable",
+                           f"`{r.id}` `{c['label']}: {outcome[:70]}` names no number, limit, id or enumerable "
+                           f"outcome — no test can fail it; say what is created, rejected, returned or shown, and how much",
+                           c.get("artifact", ""), r.line))
+    ctx.saw(seen)
+    return out
+
+
+def _c_crud_covered(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """An entity whose requirements never say how it is created, read, changed
+    or retired. `spec` maps each operation group to verb stems per language; a
+    requirement belongs to an entity when it names the entity's id (its
+    `Entities` line, or the statement). A group no requirement of the entity
+    touches is a lifecycle nobody specified — and the plan will invent it."""
+    spec = ctx.factory_need(c["spec"], "the operation groups an entity's requirements cover")
+    groups = {g: _words_rx(_per_language(v), stems=True) for g, v in spec.items()}
+    groups = {g: rx for g, rx in groups.items() if rx}
+    if not groups:
+        raise ClauseSkipped(c["spec"], "no operation group carries a word for this profile's languages")
+    reqs = ctx.records_of(c["kind"])
+    ents = ctx.records_of(c["entity"])
+    out = []
+    for e in ents:
+        related = [r for r in reqs if e.id in r.text]
+        if not related:
+            out.append(Finding(sev, "", "crud-covered",
+                               f"`{e.id}` is named by no `{c['kind']}` — an entity no requirement touches has no lifecycle",
+                               c.get("artifact", ""), e.line))
+            continue
+        text = "\n".join(_statement_of(r, c.get("statement")) for r in related)
+        missing = [g for g, rx in groups.items() if not rx.search(text)]
+        if missing:
+            out.append(Finding(sev, "", "crud-covered",
+                               f"`{e.id}` has {len(related)} requirement(s) and none of them states how it is "
+                               f"{', '.join(missing)}d — the plan will decide that lifecycle on its own",
+                               c.get("artifact", ""), e.line))
+    ctx.saw(len(ents))
+    return out
+
+
+def _c_feature_unwanted(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A feature group (every requirement tracing to one story) with no
+    unwanted-behaviour requirement. The grammar (`factory.ids.ears.patterns`)
+    has a pattern for what the system does when the input is wrong; a story
+    whose requirements only ever describe the happy path leaves that to the
+    implementer. `pattern` names the EARS pattern; the story atom is `group`."""
+    pat = re.compile(CFG.ids["ears"]["patterns"][c["pattern"]])
+    stories = ctx.records_of(c["group"])
+    reqs = ctx.records_of(c["kind"])
+    out, seen = [], 0
+    for s in stories:
+        mine = [r for r in reqs if s.id in r.traces]
+        if not mine:
+            continue                      # story → requirement coverage is a ratio the report carries
+        seen += 1
+        if not any(pat.search(_statement_of(r, c.get("statement"))) for r in mine):
+            out.append(Finding(sev, "", "feature-unwanted",
+                               f"`{s.id}` is covered by {len(mine)} requirement(s) and none states an "
+                               f"`{c['pattern']}` path — what the system does when the input, state or "
+                               f"sequence is wrong is unspecified for this feature",
+                               c.get("artifact", ""), s.line))
+    ctx.saw(seen)
+    return out
+
+
+def _c_screen_states(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A screen that does not say what it shows when there is nothing, while it
+    waits, and when the call fails. `spec` names the line (`label`) and the
+    states it must list (`required`) — the engine renders that line, this reads it."""
+    spec = ctx.factory_need(c["spec"], "the states a screen must declare")
+    text = ctx.text(c["artifact"])
+    if text is None:
+        return []
+    out, seen = [], 0
+    for r in idmodel.by_prefix(idmodel.records(text), c["kind"]):
+        seen += 1
+        lines = _labelled(r.text, [spec["label"]])
+        if not lines:
+            out.append(Finding(sev, "", "screen-states",
+                               f"`{r.id}` declares no `{spec['label']}` line — its empty, loading and error "
+                               f"states are left to the implementer", c["artifact"], r.line))
+            continue
+        joined = " ".join(lines).lower()
+        missing = [s for s in spec["required"] if not re.search(r"(?<!\w)" + re.escape(str(s).lower()) + r"(?!\w)", joined)]
+        if missing:
+            out.append(Finding(sev, "", "screen-states",
+                               f"`{r.id}` `{spec['label']}` names no {' / '.join(missing)} state",
+                               c["artifact"], r.line))
+    ctx.saw(seen)
+    return out
+
+
+def _variant_rx(term: str) -> re.Pattern:
+    """A glossary term's SEPARATOR variants — the same letters joined, hyphenated,
+    underscored or spaced — as whole words. Case is left alone for ordinary words
+    (prose lowercases them legitimately); an all-capitals term is an acronym and
+    any other casing of it is a variant too."""
+    letters = re.sub(r"[\s_-]+", "", term)
+    body = r"[\s_-]*".join(re.escape(ch) for ch in letters)
+    flags = re.I if term.isupper() and len(term) >= 2 else 0
+    return re.compile(r"(?<!\w)" + body + r"(?!\w)", flags)
+
+
+def _c_glossary(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """The glossary (`profile.vocabulary.glossary`) is used verbatim. A term
+    written with different separators or, for an acronym, a different case is a
+    variant; a word the profile lists as a synonym of a term (`synonyms`) is a
+    substitute. Either is one finding per artifact and variant, with the lines —
+    not one per line, or a common word would drown the report."""
+    glossary = ctx.need(c["glossary"], "the glossary")
+    synonyms = (CFG.profile.get(c["synonyms"]) or {}) if c.get("synonyms") else {}
+    names = c["artifact"] if isinstance(c["artifact"], list) else [c["artifact"]]
+    out, seen = [], 0
+    for name in names:
+        text = ctx.text(name)
+        if text is None:
+            continue
+        seen += 1
+        lines = text.splitlines()
+        hits: dict[tuple[str, str], list[int]] = {}
+        for term in glossary:
+            vrx = _variant_rx(str(term))
+            srx = _words_rx(synonyms.get(term) or [], stems=False)
+            for n, ln in enumerate(lines, 1):
+                for m in vrx.finditer(ln):
+                    if m.group(0) != term:
+                        hits.setdefault((str(term), m.group(0)), []).append(n)
+                if srx:
+                    for m in srx.finditer(ln):
+                        hits.setdefault((str(term), m.group(0)), []).append(n)
+        for (term, variant), where in sorted(hits.items()):
+            out.append(Finding(sev, "", "glossary",
+                               f"`{variant}` appears {len(where)}× where the glossary term is `{term}` "
+                               f"(lines {', '.join(str(x) for x in where[:6])}{' …' if len(where) > 6 else ''})",
+                               name, where[0]))
+    ctx.saw(seen)
+    return out
+
+
+def coverage_metrics(ctx: Ctx) -> list[dict]:
+    """The traceability ratios `factory.yaml → analyze.coverage` declares, read
+    off the traceability matrix `gov.py state` writes — the same rows, so the
+    report, the gate record and the module's execution state quote one number.
+    A subject is covered when a record of one of the `to` atoms traces to it."""
+    specs = CFG.analyze.get("coverage") or []
+    if not specs:
+        return []
+    refs: dict[str, set[str]] = {}
+    for ln in st_mod.traceability_matrix(ctx.all_texts()).splitlines():
+        cells = _cells(ln)
+        if len(cells) != 4 or not cells[0].startswith("`"):
+            continue
+        refs[cells[0].strip("`")] = set(idmodel.find_ids(cells[3]))
+    out = []
+    for s in specs:
+        to = set(s["to"] if isinstance(s["to"], list) else [s["to"]])
+        subjects = [rid for rid in refs if (p := idmodel.split_id(rid)) and p[0] == s["from"] and p[1] == ctx.mod]
+        covered = [rid for rid in subjects
+                   if any((q := idmodel.split_id(x)) and q[0] in to for x in refs[rid])]
+        out.append({"id": s["id"], "from": s["from"], "to": sorted(to), "total": len(subjects),
+                    "covered": len(covered),
+                    "pct": (round(100.0 * len(covered) / len(subjects), 1) if subjects else None)})
+    return out
+
+
 CHECKS = {
     "exists": _c_exists, "no-questions": _c_no_questions, "languages": _c_languages,
     "ids-owned": _c_ids_owned, "ids-continue": _c_ids_continue, "traces": _c_traces,
@@ -1703,6 +1991,8 @@ CHECKS = {
     "xref-surface": _c_xref_surface, "endpoint-agrees": _c_endpoint_agrees,
     "count-agrees": _c_count_agrees, "required-writer": _c_required_writer,
     "operation-resolves": _c_operation_resolves, "bootstrap-complete": _c_bootstrap_complete,
+    "ambiguity": _c_ambiguity, "ac-measurable": _c_ac_measurable, "crud-covered": _c_crud_covered,
+    "feature-unwanted": _c_feature_unwanted, "screen-states": _c_screen_states, "glossary": _c_glossary,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -1711,7 +2001,9 @@ CHECKS = {
 # one list that has to stay trustworthy.
 for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
             _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer,
-            _c_operation_resolves, _c_bootstrap_complete):
+            _c_operation_resolves, _c_bootstrap_complete,
+            _c_ambiguity, _c_ac_measurable, _c_crud_covered, _c_feature_unwanted,
+            _c_screen_states, _c_glossary):
     _fn.counts_subjects = True
 
 
@@ -1801,6 +2093,7 @@ def load_report(path: Path) -> AnalyzeReport:
     # a reloaded verdict must carry what it did NOT examine, or the signal survives
     # only until the first cache hit — which is where a silent pass would hide best.
     rep.coverage = dict(data.get("coverage") or {})
+    rep.metrics = list(data.get("metrics") or [])
     rep.findings = [Finding(**{k: f[k] for k in ("severity", "clause", "check", "message", "artifact", "line") if k in f})
                     for f in (data.get("findings") or [])]
     return rep
@@ -1855,10 +2148,11 @@ def select_contracts(scope: str, ctx: "Ctx | None" = None) -> list[dict]:
     raise ValueError(f"unknown analyze scope '{scope}'")
 
 
-def _evaluate(ctx: Ctx, fn, cl: dict, args: dict, rep: "AnalyzeReport | None" = None) -> list[Finding]:
+def _evaluate(ctx: Ctx, fn, cl: dict, args: dict, rep: "AnalyzeReport | None" = None,
+              severity: str | None = None) -> list[Finding]:
     ctx._examined = 0
     try:
-        fs = fn(ctx, args, cl["severity"])
+        fs = fn(ctx, args, severity or cl["severity"])
     except ClauseSkipped as s:
         # the profile declares nothing this clause needs. Legal, and recorded: the
         # one shape a silent pass hides best is a check that never ran.
@@ -1908,7 +2202,10 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
                                             f"contract clause names a check `gov.py analyze` does not implement — "
                                             f"this clause enforces nothing"))
                 continue
-            if not known_severity(cl["severity"]):
+            # a clause may cite a factory.yaml ADDRESS as its severity (the maturity
+            # knob) — resolved once here, so every reader below sees a name
+            severity = contracts_mod.clause_severity(CFG, cl)
+            if not known_severity(severity):
                 # a clause charged at a severity the vocabulary does not declare is
                 # charged at nothing: it can never reach `analyze.blocking`, so the
                 # clause enforces nothing. Same defensive shape as the unknown check
@@ -1923,11 +2220,12 @@ def run(mod: str, version: int | None = None, scope: str = "all", write: bool = 
             if not ctx.when(args.pop("when", None)):
                 continue
             if getattr(fn, "reads_report", False):
-                deferred.append((cl, args))
+                deferred.append((cl, args, severity))
                 continue
-            rep.findings += _evaluate(ctx, fn, cl, args, rep)
-    for cl, args in deferred:
-        rep.findings += _evaluate(ctx, CHECKS[cl["check"]], cl, args, rep)
+            rep.findings += _evaluate(ctx, fn, cl, args, rep, severity)
+    for cl, args, severity in deferred:
+        rep.findings += _evaluate(ctx, CHECKS[cl["check"]], cl, args, rep, severity)
+    rep.metrics = coverage_metrics(ctx)
     # the same defect reached through two clauses (an interface re-checked with a
     # stronger argument downstream) is ONE finding — reported under the first clause
     # that names it, so the count is a count of defects, not of clauses.
@@ -1985,6 +2283,12 @@ def _write_report(rep: AnalyzeReport) -> Path:
                           "really does own no cross-module id — but it enforced nothing on this "
                           "run, so its verdict is a statement about an empty set. Confirm each is "
                           "empty by nature and not because the check failed to find its subject."]
+    if rep.metrics:
+        lines += ["", "## Coverage — traceability ratios", "",
+                  "| Ratio | From | Covered by | Covered | Total | % |", "|---|---|---|---|---|---|"]
+        for m in rep.metrics:
+            pct = "—" if m["pct"] is None else f"{m['pct']:.1f}"
+            lines.append(f"| {m['id']} | `{m['from']}` | {', '.join('`' + t + '`' for t in m['to'])} | {m['covered']} | {m['total']} | {pct} |")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     # `skipped` used to reach the prose and stop there, so a programmatic reader
     # could not see that a clause never ran; `provenance` says what the verdict
@@ -1992,6 +2296,6 @@ def _write_report(rep: AnalyzeReport) -> Path:
     (path.parent / f"analyze-{tag}.json").write_text(json.dumps(
         {"module": rep.mod, "version": rep.version, "scope": rep.scope, "counts": c, "clean": rep.clean,
          "blocking": sorted(blocking_severities()), "contracts": rep.contracts, "skipped": rep.skipped,
-         "coverage": rep.coverage, "vacuous": rep.vacuous(),
+         "coverage": rep.coverage, "vacuous": rep.vacuous(), "metrics": rep.metrics,
          "findings": [f.__dict__ for f in rep.findings], "provenance": rep.provenance}, indent=2), encoding="utf-8")
     return path

@@ -31,6 +31,26 @@ def contracts_path(cfg: FactoryConfig) -> Path:
     return cfg.dir("shared") / _CONTRACTS_FILE
 
 
+def clause_severity(cfg: FactoryConfig, clause: dict) -> str:
+    """The severity a clause is charged with.
+
+    Normally the name the clause states. A dotted ADDRESS into factory.yaml
+    (`analyze.maturity_severity`) is resolved there instead, so a whole family
+    of clauses is re-tuned with one knob rather than edited row by row. An
+    address that resolves to nothing comes back as written — and is then, like
+    any unknown severity, a finding of its own in `analyze`."""
+    raw = str(clause.get("severity", ""))
+    if "." not in raw:
+        return raw
+    cur = cfg.data
+    for part in raw.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return raw
+    return str(cur)
+
+
 def contracts_from_doc(cfg: FactoryConfig) -> list[dict]:
     path = contracts_path(cfg)
     if not path.exists():

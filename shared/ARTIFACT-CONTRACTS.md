@@ -9,6 +9,10 @@
 #   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
 #   · verdict-agrees · forward-refs · xref-surface · endpoint-agrees
 #   · count-agrees · required-writer · operation-resolves · bootstrap-complete
+#   · ambiguity · ac-measurable · crud-covered · feature-unwanted · screen-states · glossary
+# A clause's `severity` is a name from factory.analyze.severities, or a dotted
+# factory.yaml address that holds one (`analyze.maturity_severity`: one knob for
+# the whole maturity family).
 contracts:
   - id: C1
     title: domain profile → registry bootstrap
@@ -54,6 +58,7 @@ contracts:
       - {id: C4.4, check: traces,        args: {from: US, to: [POL], min: 1},                    severity: MAJOR}
       - {id: C4.5, check: no-questions,  args: {stage: P0.5},                                    severity: CRITICAL}
       - {id: C4.6, check: languages,     args: {stage: P0.5},                                    severity: MAJOR}
+      - {id: C4.7, check: glossary,      args: {artifact: [prd], glossary: vocabulary.glossary, synonyms: vocabulary.glossary_synonyms}, severity: analyze.maturity_severity}
   - id: C5
     title: SRS → database
     owner: P1
@@ -72,6 +77,12 @@ contracts:
       - {id: C5.10, check: languages,     args: {stage: P1},                                                      severity: MAJOR}
       - {id: C5.11, check: ids-continue,  args: {stage: P1},                                                      severity: CRITICAL}
       - {id: C5.12, check: data-source,   args: {kind: RULE, label: "Data source", resolves_to: [ENT], deferral: DEFERRED}, severity: CRITICAL}
+      # maturity (analyze.maturity_severity — MINOR by default: they inform the reviewer, they do not close the gate)
+      - {id: C5.13, check: ambiguity,        args: {artifact: srs, kinds: [REQ, AC, RULE], lines: [Statement, Given, When, Then], lexicon: analyze.maturity.ambiguity_lexicon, extend: review.ambiguity_lexicon}, severity: analyze.maturity_severity}
+      - {id: C5.14, check: ac-measurable,    args: {artifact: srs, kind: AC, label: Then, spec: analyze.maturity.measurable}, severity: analyze.maturity_severity}
+      - {id: C5.15, check: crud-covered,     args: {artifact: srs, entity: ENT, kind: REQ, statement: Statement, spec: analyze.maturity.crud}, severity: analyze.maturity_severity}
+      - {id: C5.16, check: feature-unwanted, args: {artifact: srs, group: US, kind: REQ, statement: Statement, pattern: unwanted}, severity: analyze.maturity_severity}
+      - {id: C5.17, check: glossary,         args: {artifact: [srs], glossary: vocabulary.glossary, synonyms: vocabulary.glossary_synonyms}, severity: analyze.maturity_severity}
   - id: C6
     title: SRS + database → backend execution plan
     owner: [P1, P2]
@@ -161,6 +172,8 @@ contracts:
       - {id: C9.11, check: ids-continue,  args: {stage: P3.2},                                                               severity: CRITICAL}
       - {id: C9.13, check: xref-surface,  args: {artifact: [frontend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
       - {id: C9.14, check: languages,     args: {stage: P3.2},                                                        severity: MAJOR}
+      - {id: C9.15, check: screen-states, args: {artifact: ui-ux-spec, kind: SCR, spec: analyze.maturity.screen_states}, severity: analyze.maturity_severity}
+      - {id: C9.16, check: glossary,      args: {artifact: [flow-diagram, ui-ux-spec], glossary: vocabulary.glossary, synonyms: vocabulary.glossary_synonyms}, severity: analyze.maturity_severity}
       - {id: C9.12, check: verdict-agrees, args: {artifact: [frontend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C10
     title: acceptance criteria → test generation (standalone)
@@ -210,12 +223,12 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C1` | domain profile → registry bootstrap | `domain-profile` | `P-1` | `domain-profile` | 3 |
 | `C2` | project registry → inception | `P-1` | `P0` | `project-registry` | 3 |
 | `C3` | inception → PRD | `P0` | `P0.5` | `platform-summary`, `module-registry`, `business-policies` | 7 |
-| `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 6 |
-| `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 12 |
+| `C4` | PRD → SRS (human PRD approval in between) | `P0.5` | `P1` | `prd` | 7 |
+| `C5` | SRS → database | `P1` | `P2` | `srs`, `registry-srs` | 17 |
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
 | `C7` | backend execution plan → split | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
-| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 14 |
+| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 16 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
@@ -273,8 +286,8 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | Consumer | `P1`, blocked by gate `prd-approval` (`factory.gates`, `type: human-approval`) |
 | What crosses | `prd` with `US` IDs; every `US` traces to ≥1 `POL`; priority and success metric per story (optional) |
 | What does not cross | enforceable rules, requirements, entities, screens, APIs — a story is a NEED, not a specification; anything requirement-shaped in the PRD is a boundary violation |
-| Clauses | C4.1 exists · C4.2 the approval is recorded for `prd-approval` · C4.3 only `US` defined · C4.4 `US` → `POL` ≥1 · C4.5 no open questions · C4.6 languages |
-| Violation | C4.1/C4.2/C4.3/C4.5 CRITICAL — `P1` cannot start; C4.4/C4.6 MAJOR |
+| Clauses | C4.1 exists · C4.2 the approval is recorded for `prd-approval` · C4.3 only `US` defined · C4.4 `US` → `POL` ≥1 · C4.5 no open questions · C4.6 languages · C4.7 glossary terms used verbatim |
+| Violation | C4.1/C4.2/C4.3/C4.5 CRITICAL — `P1` cannot start; C4.4/C4.6 MAJOR; C4.7 `analyze.maturity_severity` |
 
 ## C5 — SRS → database
 
@@ -284,8 +297,8 @@ recorded. Stage ids, artifact ids and ID kinds below are addresses into
 | Consumer | `P2` (and every later stage: the SRS is the functional ceiling) |
 | What crosses | `srs` + `registry-srs`: `REQ` (one EARS pattern each, `factory.ids.ears.patterns`) tracing to `US`; `AC` (Given / When / Then) tracing to `REQ`, ≥1 per `REQ`; `ENT` with kind from `vocabulary.entity_kinds`; `RULE` tracing to `REQ`; screen inventory |
 | What does not cross | column names, types, DDL, endpoints, UX layout, technology — the SRS says *what*, never *how* |
-| Clauses | C5.1 exists · C5.2 every `REQ` matches an EARS pattern · C5.3 `REQ` → `US` · C5.4 every `REQ` has ≥1 `AC` · C5.5 `AC` → `REQ` · C5.6 `RULE` → `REQ` · C5.7 only `stages[P1].owns_ids` defined · C5.8 srs ↔ registry-srs agree · C5.9 no questions · C5.10 languages · C5.11 sequences continue the previous version · C5.12 every `RULE` declares a `Data source` — the `ENT.field` values the check **reads**, or the explicit `DEFERRED` marker |
-| Violation | C5.1/C5.2/C5.4/C5.7/C5.9/C5.11/C5.12 CRITICAL; the rest MAJOR |
+| Clauses | C5.1 exists · C5.2 every `REQ` matches an EARS pattern · C5.3 `REQ` → `US` · C5.4 every `REQ` has ≥1 `AC` · C5.5 `AC` → `REQ` · C5.6 `RULE` → `REQ` · C5.7 only `stages[P1].owns_ids` defined · C5.8 srs ↔ registry-srs agree · C5.9 no questions · C5.10 languages · C5.11 sequences continue the previous version · C5.12 every `RULE` declares a `Data source` — the `ENT.field` values the check **reads**, or the explicit `DEFERRED` marker · **maturity:** C5.13 no `REQ`/`AC`/`RULE` statement uses an ambiguity-lexicon word · C5.14 every `AC` Then names a number, limit, id or enumerable outcome · C5.15 every `ENT` has requirements covering its create/read/update/delete lifecycle · C5.16 every story's feature group has an unwanted-behaviour `REQ` · C5.17 glossary terms used verbatim |
+| Violation | C5.1/C5.2/C5.4/C5.7/C5.9/C5.11/C5.12 CRITICAL; C5.3/C5.5/C5.6/C5.8/C5.10 MAJOR; C5.13–C5.17 `analyze.maturity_severity` (MINOR — recorded for the reviewer, never closes the gate on its own) |
 
 `RULE` → `REQ` (C5.6) says the rule is *wanted*; C5.12 says it is *enforceable*. A rule
 whose statement leans on data no entity declares ("a module-declared X", "a configured Y")
@@ -360,8 +373,8 @@ these are mechanical clauses here and not a checklist line there.
 | Consumer | `gov.py split`; the pass-2 gate reads it first |
 | What crosses | `flow-diagram`, `ui-ux-spec` with `UXD` → `REQ`/`AC` and `SCR` → `REQ`/`UXD`; `frontend-execution-plan` whose phase blocks carry `traces` and cite only `API` IDs present in api-docs; `registry-exec-fe`. When `profile.conventions.composite_screen` is true a screen group is one `SCR` (scored via `profile.review.extra_checks`) |
 | What does not cross | fields, rules or permissions not in the SRS; endpoints not in api-docs; backend content; a UI implementation of any kind (a mockup is a design artifact, never a build) |
-| Clauses | C9.1 markers valid for `track: frontend`, `plan: exec` · C9.2 every `PHASE`/`SUB` block carries `traces` · C9.3 `UXD` → `REQ`/`AC` · C9.4 `SCR` → `REQ`/`UXD` · C9.5 every `API` cited by the plan is defined in api-docs · C9.6 every `UXD` is referenced by a plan block (this is where a UX decision closes) · C9.7 every `SCR` is referenced by a plan block · C9.8 plan ↔ registry-exec-fe agree · C9.9 only `stages[P3.2].owns_ids` defined · C9.10 no questions · C9.11 sequences continue · C9.14 languages |
-| Violation | C9.1/C9.5/C9.9/C9.10/C9.11 CRITICAL; the rest MAJOR |
+| Clauses | C9.1 markers valid for `track: frontend`, `plan: exec` · C9.2 every `PHASE`/`SUB` block carries `traces` · C9.3 `UXD` → `REQ`/`AC` · C9.4 `SCR` → `REQ`/`UXD` · C9.5 every `API` cited by the plan is defined in api-docs · C9.6 every `UXD` is referenced by a plan block (this is where a UX decision closes) · C9.7 every `SCR` is referenced by a plan block · C9.8 plan ↔ registry-exec-fe agree · C9.9 only `stages[P3.2].owns_ids` defined · C9.10 no questions · C9.11 sequences continue · C9.14 languages · **maturity:** C9.15 every `SCR` lists its empty / loading / error states · C9.16 glossary terms used verbatim in the design artifacts |
+| Violation | C9.1/C9.5/C9.9/C9.10/C9.11 CRITICAL; C9.15/C9.16 `analyze.maturity_severity`; the rest MAJOR |
 
 ## C10 — acceptance criteria → test generation (standalone)
 
@@ -428,6 +441,23 @@ these are mechanical clauses here and not a checklist line there.
 | `operation-resolves` | every operation the artifact DECLARES resolves to an endpoint, in **both** directions. `actions` is a profile address holding the operation vocabulary — never a list here. With `declared` (`{kind, label}`, the label a profile address), every action word on a subject's label line must be named by some `resolves_to` block that also names the subject: an operation specified and never built. With `matrix` (`{present, permission}`), every table cell under an action header that carries the profile's `present` token must sit on a row that cites a `resolves_to` id **and** a name matching the profile's permission template with the action slot bound to that action — a ✓ with no endpoint and no permission behind it grants nothing, is enforced by nothing, and reads as a decision that was implemented. One check, both directions, so there is no separate matrix clause to keep in step. | `artifact`, `actions`, `resolves_to`, `declared?`, `matrix?` |
 | `bootstrap-complete` | the data that must EXIST before any planned structure or behaviour can work is itself planned, and covers what the other registries declare. `spec` is a profile address holding `{section, items}`; each item says what one row is (`label`), where the needed names are declared (`declared_in`), how to enumerate them (`names`, a profile address to a NAME template — or `column`, a table column header), and the word a row must carry naming who produces the data (`source_label`). The factory planned structure and behaviour and had no section for this at all: a module whose lookup tables belong to another module seeded nothing anywhere, and registering a permission is not granting it. A profile that declares no bootstrap data carries no such clause. | `artifact`, `spec`, `when?` |
 | `verdict-agrees` | the verdict the artifact states **about itself** does not claim fewer findings than `gov.py analyze` produced for that artifact. The block name, the verdict label and the pass/fail wording are read from the profile address in `spec` — the checker knows none of them, and a profile that declares no self-check carries no such clause. Evaluated after every clause that produces findings. The orchestrator normally *writes* this line from the report (`gov.py` stamps it after analyze), so the check is the guard for anything still authored by hand. | `artifact`, `spec`, `when?` |
+| `ambiguity` | **maturity.** No record of `kinds` uses, on its labelled `lines` (the statement, the Given/When/Then), a word from the ambiguity lexicon at the factory address `lexicon` (per language, over `profile.languages.all`), extended — never replaced — by the profile address `extend`. A word two implementers read two ways is a requirement two implementers build two ways. | `artifact`, `kinds`, `lines`, `lexicon`, `extend?` |
+| `ac-measurable` | **maturity.** Every record of `kind` has a `label` line (the Then) that names a number, an id, a `name=value`, a quoted literal, or an outcome verb from the factory address `spec` (stems, per language). An outcome nothing can fail is not a criterion. | `artifact`, `kind`, `label`, `spec` |
+| `crud-covered` | **maturity.** Every `entity` record is named by ≥1 `kind` record, and those records' `statement` lines together cover every operation group at the factory address `spec` (create / read / update / delete, as verb stems per language). A lifecycle no requirement states is one the plan invents. | `artifact`, `entity`, `kind`, `statement`, `spec` |
+| `feature-unwanted` | **maturity.** Every `group` record (a story) whose `kind` records (its feature group) exist has at least one of them stating the EARS `pattern` (`factory.ids.ears.patterns[pattern]`, the unwanted-behaviour form). A feature specified only on the happy path leaves the wrong input to the implementer. | `artifact`, `group`, `kind`, `statement`, `pattern` |
+| `screen-states` | **maturity.** Every `kind` record in `artifact` carries the line named by the factory address `spec` (`label`) and that line names every state in `spec.required` (empty · loading · error). | `artifact`, `kind`, `spec` |
+| `glossary` | **maturity.** The glossary at the profile address `glossary` is used verbatim in each `artifact`: a term written with other separators (joined, hyphenated, underscored), an acronym in another case, or a word the profile lists under `synonyms` for it, is one finding per artifact and variant, with the lines. A profile that declares no glossary carries no such clause. | `artifact`, `glossary`, `synonyms?` |
+
+The six **maturity** clauses do not check consistency between artifacts; they check whether
+the text a stage wrote is text the next stage can act on. They are charged at one factory
+knob, `analyze.maturity_severity` — a dotted address a clause may cite in place of a severity
+name — MINOR by default, so they are recorded for the gate reviewer (§3 of the brief) and
+never close a gate on their own. Every word they read is data: `factory.yaml →
+analyze.maturity` (per language, taken over `profile.languages.all`), the profile's own
+additions, the glossary. The report also carries the **coverage ratios** of `analyze.coverage`
+(story → requirement, requirement → criterion, requirement → endpoint, requirement → design),
+read off the traceability matrix, and the gate record and `manifest.json → status.coverage`
+quote the same numbers.
 
 **A clause that could not run is never silent.** Most clauses above take their
 vocabulary from a profile address — the code format, the operation set, the totals, the

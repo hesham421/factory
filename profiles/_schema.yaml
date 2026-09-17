@@ -25,6 +25,8 @@ vocabulary:                                 # REQUIRED — the domain's ubiquito
   keyword_map?: "map[str, list[str]]"       # module code → free-text keywords (any language) P0 uses to detect modules
   entity_kinds: "list[str]"                 # e.g. [master, transactional, lookup, config]
   glossary?: "map[str, str]"                # term → definition (used verbatim by every stage)
+  glossary_synonyms?: "map[str, list[str]]" # term → the words an artifact may NOT use for it
+                                             # (analyze: glossary — a synonym in an artifact is a finding)
   bounded_contexts?: "list[{id: str, owns: list[str]}]"
 
 ids?:                                       # OPTIONAL — domain atoms ADDED to factory.yaml ids.atoms
@@ -240,3 +242,6 @@ knowledge?:                                 # OPTIONAL — primary sources the e
 
 review?:                                    # OPTIONAL — extra domain checks scored at the gate (data, not prose)
   extra_checks?: "list[{id: str, stage: str, check: str, severity: (CRITICAL|MAJOR|MINOR)}]"
+  ambiguity_lexicon?: "map[str, list[str]]" # language code → words this domain ADDS to
+                                             # factory.yaml → analyze.maturity.ambiguity_lexicon
+                                             # (analyze: ambiguity); never a replacement

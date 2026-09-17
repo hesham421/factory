@@ -167,7 +167,7 @@ def build_brief(stage: Stage, mod: str, version: int, *, round_no: int = 1, impl
     if contracts:
         head += ["", "## Contracts checked by `gov.py analyze` after this stage"]
         for c in contracts:
-            head += [f"- **{c['id']}** {c['title']}: " + "; ".join(f"{cl['id']} {cl['check']} {cl.get('args', {})} [{cl['severity']}]" for cl in c.get("clauses", []))]
+            head += [f"- **{c['id']}** {c['title']}: " + "; ".join(f"{cl['id']} {cl['check']} {cl.get('args', {})} [{contracts_mod.clause_severity(CFG, cl)}]" for cl in c.get("clauses", []))]
     body = render_engine(stage, mod, version)
     parts = ["\n".join(head), "", "---", "# ENGINE", body, "", "---", "# INPUTS (generated current state)"]
     for label, text in _state_bundle(stage, mod, version):

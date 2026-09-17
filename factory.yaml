@@ -478,6 +478,66 @@ forward_reference:
 analyze:
   severities: [CRITICAL, MAJOR, MINOR]
   blocking: [CRITICAL, MAJOR]
+  # ── Maturity — is the analysis MATURE, not merely consistent? ─────────────
+  # Every contract clause asks whether a reference is shaped right, resolves,
+  # or is complete against another artifact. None asked whether the text a
+  # human wrote is text the next stage can act on: a requirement resting on
+  # "as appropriate", an acceptance criterion whose Then can never fail, an
+  # entity nothing ever deletes, a story with no unwanted-behaviour path, a
+  # screen with no empty state, a glossary term spelled three ways. The gate
+  # reviewer saw these; the machine did not. The clauses below fire at ONE
+  # severity — this knob, cited by the contract as `severity:
+  # analyze.maturity_severity` — MINOR by default: they inform the reviewer,
+  # they do not close a gate. Raise it here and every one of them blocks.
+  maturity_severity: MINOR
+  maturity:
+    # words two implementers read two ways — per language; a profile ADDS its
+    # own under `review.ambiguity_lexicon` (never replaces these)
+    ambiguity_lexicon:
+      en: [etc, "as appropriate", "as needed", "as required", "and/or", appropriate, adequate,
+           "user-friendly", fast, quickly, efficient, easy, simple, "if possible", "where possible",
+           possibly, may, might, should, could, some, several, various, many, few, normally, usually,
+           typically, generally, flexible, robust, reasonable, sufficient, minimal, optimal,
+           "best effort", relevant, timely, "in a timely manner", intuitive, seamless, "and so on"]
+      ar: [إلخ, "حسب الحاجة", "حسب الاقتضاء", "بشكل مناسب", مناسب, ملائم, سريع, بسرعة, سهل, بسيط,
+           "إن أمكن", "قدر الإمكان", ربما, بعض, عدة, مختلف, كثير, قليل, عادة, غالباً, غالبا,
+           مرن, كافٍ, كاف, معقول, "أفضل جهد", "ذات صلة", "وما إلى ذلك", "وغيرها"]
+    # a Then-clause is measurable when it carries a number, an id, a
+    # `name=value`, a quoted literal — or one of these outcome verbs (stems:
+    # an inflection may follow — create → creates / created / creating)
+    measurable:
+      en: [create, record, store, save, reject, refuse, return, display, show, set, mark, send,
+           delete, remove, deactivate, activate, update, generate, block, prevent, allow, redirect,
+           log, notify, compute, calculate, increment, decrement, validate, raise, fail, succeed,
+           exist, contain, equal, list, open, close, post, reverse, reopen, lock, unlock, assign,
+           revoke, grant, deny, persist, publish, archive, restore, expire, disable, enable]
+      ar: [ينشئ, يسجل, يخزن, يحفظ, يرفض, يعيد, يعرض, يضبط, يرسل, يحذف, يزيل, يعطل, يفعل, يحدث,
+           يولد, يمنع, يسمح, يحول, يحتسب, يحسب, يزيد, ينقص, يتحقق, يفشل, ينجح, يحتوي, يساوي,
+           يفتح, يغلق, يرحل, يعكس, يقفل, يمنح, يلغي, ينشر, يؤرشف, يستعيد, ينتهي]
+    # the operation groups an entity's requirements must cover (verb stems, per language)
+    crud:
+      create: {en: [create, add, register, insert, record, open, issue, generate, submit, post, upload, enrol, enroll, define],
+               ar: [إنشاء, ينشئ, إضافة, يضيف, تسجيل, يسجل, فتح, يفتح, إصدار, يصدر, تعريف, يعرف]}
+      read:   {en: [read, view, list, search, retrieve, display, show, query, browse, filter, report, export, get, fetch, lookup, "look up", print],
+               ar: [عرض, يعرض, بحث, يبحث, استعلام, يستعلم, قراءة, يقرأ, قائمة, تصفية, تقرير, استرجاع, يسترجع, طباعة]}
+      update: {en: [update, edit, modify, change, rename, reassign, move, adjust, correct, amend, reorder, set, mark, transition, approve, reopen],
+               ar: [تعديل, يعدل, تحديث, يحدث, تغيير, يغير, "إعادة تسمية", تصحيح, يصحح, ضبط, يضبط, اعتماد, يعتمد]}
+      delete: {en: [delete, remove, deactivate, archive, cancel, void, reverse, close, revoke, disable, retire, withdraw, purge, expire],
+               ar: [حذف, يحذف, تعطيل, يعطل, إلغاء, يلغي, أرشفة, يؤرشف, إغلاق, يغلق, عكس, يعكس, سحب, يسحب, إبطال, يبطل]}
+    # the line of a screen block that lists its states (engines/P3.2 renders it), and what it must name
+    screen_states:
+      label: States
+      required: [empty, loading, error]
+  # ── Coverage — the traceability ratios every report carries ──────────────
+  # Computed from the traceability matrix `gov.py state` writes, so the report,
+  # the gate record and the module's execution state (manifest.json → status)
+  # all quote the same number. `from` is an atom; a subject counts as covered
+  # when any record of a `to` atom traces to it.
+  coverage:
+    - {id: us-req,  from: US,  to: [REQ]}
+    - {id: req-ac,  from: REQ, to: [AC]}
+    - {id: req-api, from: REQ, to: [API]}
+    - {id: req-ux,  from: REQ, to: [UXD, SCR]}
 
 # ── Review rubric (ISO/IEC/IEEE 29148 attributes) used by every gate ────────
 review:

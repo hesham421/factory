@@ -245,6 +245,20 @@ def _stamp_verdict(stage, mod: str, version: int, rep) -> list[Path]:
     return changed
 
 
+def _coverage_line(rep) -> str:
+    """The report's traceability ratios, for the operator's one line."""
+    if not rep.metrics:
+        return ""
+    return " · coverage " + " ".join(f"{m['id']}={'—' if m['pct'] is None else str(m['pct']) + '%'}" for m in rep.metrics)
+
+
+def _record_coverage(mod: str, version: int, rep) -> None:
+    """The ratios the report just measured, into the module's execution state —
+    the same numbers the gate record will quote."""
+    if rep.metrics:
+        _execution_state(mod, version, coverage={m["id"]: m["pct"] for m in rep.metrics})
+
+
 def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
     """After the artifacts exist: outputs → question policy → analyze → commit."""
     missing = [a.artifact for a in stage.produces if not a.optional and not CFG.artifact_path(mod, stage.id, a.artifact, version).exists()]
@@ -263,9 +277,10 @@ def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
         st.build_state(mod, version)
         rep = an.run(mod, version, scope=f"stage:{stage.id}")
     c = rep.counts()
-    _say(f"analyze stage:{stage.id} → {counts_line(c)}")
+    _say(f"analyze stage:{stage.id} → {counts_line(c)}" + _coverage_line(rep))
     for f in rep.findings[:25]:
         _say("  ", f)
+    _record_coverage(mod, version, rep)
     if not rep.clean:
         return BLOCKED
     blocked = dp.blocked_adrs(mod, version)
@@ -639,10 +654,17 @@ def gate(pass_no: str, mod: str, version: int | None, complete: bool, result: Pa
     if data.get("findings"):
         lines += ["", "| Severity | Artifact | Clause | Finding | Fix |", "|---|---|---|---|---|"]
         lines += [f"| {f.get('severity','')} | {f.get('artifact','')} | {f.get('clause','')} | {f.get('finding', f.get('message',''))} | {f.get('fix','')} |" for f in data["findings"]]
+    if rep.metrics:
+        # the ratios analyze measured for THIS gate's scope — the record quotes the
+        # report, and the module's execution state quotes the record
+        lines += ["", "| Coverage | Covered | Total | % |", "|---|---|---|---|"]
+        lines += [f"| {m['id']} (`{m['from']}` → {', '.join('`' + t + '`' for t in m['to'])}) | {m['covered']} | {m['total']} | "
+                  f"{'—' if m['pct'] is None else m['pct']} |" for m in rep.metrics]
     record.parent.mkdir(parents=True, exist_ok=True)
     record.write_text("\n".join(lines) + "\n", encoding="utf-8")
     write_json(record.with_suffix(".json"), {"gate": g["id"], "pass": pass_no, "verdict": verdict, "scores": scores,
-                                              "findings": data.get("findings", []), "at": now_iso()})
+                                              "findings": data.get("findings", []), "coverage": rep.metrics, "at": now_iso()})
+    _record_coverage(mod, version, rep)
     _commit([CFG.version_root(mod, version)], CFG.commit_msg("gate", **{"pass": pass_no}, mod=mod, version=version, verdict=verdict), no_commit)
     _say(f"GATE {g['id']}: {verdict}")
     return OK if verdict == "APPROVE" else BLOCKED
