@@ -201,3 +201,187 @@ Fix     : OPEN — not fixed, and deliberately not fixed by making `sync` exit
           is a policy call the documents do not settle.
 Status  : OPEN
 
+## F-8 — the human-approval gate approved a PRD that did not exist
+Where   : governance-tools/gov.py:437 `approve()` · :452 `_artifact_shas()`
+Expected: CONSTITUTION.md §2 — this gate is where "the user approves the PRD
+          **file itself**". The approval record carries `artifact_sha`, a
+          field whose whole purpose is to bind the decision to the bytes
+          approved.
+Actual  : with `erp/modules/NOTE/P0_5/prd-note.md` deleted,
+            gov.py approve prd-approval -m NOTE -v 1 --by smoke-run
+          printed `approved 'prd-approval' for NOTE v1 by smoke-run`, exited
+          0, and wrote a record whose `artifact_sha` was `{}`.
+          `_artifact_shas()` collects a hash only `if p.exists()`, and
+          `approve()` never looks at what came back — so the one field that
+          could have noticed recorded the emptiness and told nobody. The gate
+          the Constitution calls a human decision point certified nothing,
+          and the pass continued into P1 on that certificate.
+Fix     : `approve()` now compares the shas it collected against the
+          `produces` list of the gate's `after` stage and returns BLOCKED,
+          naming the missing artifact and the path it looked at, when any is
+          absent. Nothing was softened: the happy path still approves and now
+          provably binds the record to the file
+          (`artifact_sha: {'prd': '2bbcf3d33900d215…'}`). Values all come
+          from `CFG.gate()` / `CFG.stage().produces`; no gate id, stage id or
+          filename is spelled. Pinned by
+          `test_the_human_approval_gate_refuses_to_approve_an_absent_artifact`.
+Status  : FIXED
+
+## F-9 — only the last dialogue round was ingested; the artifact survived by luck
+Where   : governance-tools/dispatch.py:344 (`res.written = ingest(previous)`)
+Expected: a dialogue stage's artifacts are what the run produced across its
+          rounds. The documented runner contract is that the response carries
+          the work as `<<<FILE: path>>>` blocks and `dispatch.ingest()` writes
+          them.
+Actual  : `ingest()` was called on `previous` — the LAST round — only, so
+          every earlier round's blocks were discarded. The triggering shape is
+          not exotic, it is the NORMAL one for a converging dialogue: the
+          final round is a self-review that argues about the artifact instead
+          of re-emitting it. P0.5 of this run was exactly that —
+          `P0.5.response1.md` carries one `<<<FILE: …/prd-note.md>>>` block,
+          `P0.5-round2.response2.md` carries none and only
+          `<!-- CONVERGED -->` — and the orchestrator duly reported
+          `dispatched P0.5: 2 round(s), converged=True, wrote 0 file(s)`
+          while committing a PRD.
+          The PRD existed only because the runner is `claude -p
+          --permission-mode bypassPermissions`, an agent holding write tools,
+          which had saved the file itself. It said so in the response:
+          "Round 2 — written to `erp/modules/NOTE/P0_5/prd-note.md`
+          (as operator, not a file block)." Under the contract as documented —
+          a runner that only answers text — this stage would have produced
+          nothing at all.
+Fix     : `dispatch()` now ingests every round, oldest first, so a file
+          emitted once survives the rounds that do not mention it. Verified
+          against this run's own recorded responses: ingesting the last round
+          alone recovers `[]`; ingesting both recovers `prd-note.md`.
+Status  : FIXED
+
+## F-10 — the shipped artifact is not reconstructible from the archived run
+Where   : same two response files as F-9
+Expected: a dialogue's briefs and responses are archived under
+          `_state/briefs/` so a run can be re-derived and audited.
+Actual  : found while fixing F-9, and it is why that fix needed a second
+          half. Round 2's amendments — a `القصة :` line per story, `Status :
+          DRAFT`, the corrected trace on US-NOTE-001 — are in the artifact on
+          disk and in **no file block anywhere**: the round-1 block is the
+          pre-amendment draft (11756 bytes vs the shipped 15186; `القصة`
+          appears 7 times on disk and 0 times in the block). The archived
+          responses therefore do not contain the delivered artifact, and a
+          naive replay of them REPLACES it with a superseded draft — which
+          the first version of the F-9 fix did, silently.
+Fix     : partially, and the remainder is OPEN.
+          FIXED half — `ingest()` no longer overwrites a target whose mtime is
+          newer than the response carrying the block and whose content
+          differs: a response cannot supersede a write that happened after it.
+          Verified both directions: with the shipped artifact present nothing
+          is ingested and its 15186 bytes are preserved; with it absent the
+          round-1 block is recovered. Pinned by two tests
+          (`test_a_file_emitted_in_an_earlier_round_is_not_discarded`,
+          `test_a_block_never_overwrites_a_newer_out_of_band_write`).
+          OPEN half — the provenance gap itself. The runner contract asks for
+          file blocks; the runners actually dispatched to hold write tools and
+          may legitimately not use blocks. Two ways to close it, neither
+          groundable in the documents as written:
+          (a) enforce the contract — dispatch refuses a round that changed a
+              declared artifact on disk without emitting its block. Honest,
+              but it makes the factory police a CLI it does not own;
+          (b) drop the contract for agent runners and record a content hash of
+              each declared artifact per round instead, so provenance is a
+              digest chain rather than a transcript.
+Status  : OPEN
+
+## F-11 — `_state/` was added to and never pruned, so `analyze` read a dead copy
+Where   : governance-tools/state.py:189 `build_state` · reported via
+          governance-tools/analyze.py (C4.1 `exists`)
+Expected: invariant 2 — a derivation is deterministic, a function of its
+          sources. `factory.yaml` says `versioning.current_state: generated`
+          and "engines read `_state` only".
+Actual  : `build_state` wrote a `current-*` for every artifact it found and
+          removed none for artifacts it did not. Deleting `prd-note.md` and
+          re-running `gov.py state` printed `missing ['prd', …]` — it KNEW —
+          and left `_state/current-prd.md` in place. `analyze`, which reads
+          `_state`, then examined the dead copy and reported
+          `0 critical · 0 major · 0 minor · CLEAN`, where with the copy gone
+          it correctly reports `[CRITICAL] C4.1 (exists) prd — 'prd' is
+          missing or empty` and BLOCKED. Two tools looking at one module,
+          disagreeing, with only the quieter one believed.
+          `versioning.delta_only: true` makes this routine rather than
+          exotic: a vN whose change manifest REMOVES an artifact would keep
+          passing the existence clause off v1's snapshot.
+          Worth recording that the surrounding machinery is SOUND and was not
+          the defect: `C4.1 exists` fires correctly, and the vacuous-clause
+          reporter does its job, printing "1 clause(s) examined nothing
+          (C4.4)" with a paragraph on how to read it. Invariant 3 is well
+          served here — the input to it was stale.
+Fix     : `build_state` now prunes any `current-*` in the state dir that is
+          not among the copies this run wrote, and reports them in
+          `StateReport.pruned` and in `state.json`. The glob comes from
+          `naming.current_state_file`, so no filename is spelled. Pinned by
+          `test_a_derived_state_copy_does_not_outlive_its_artifact`.
+Status  : FIXED
+
+## F-12 — a consumer repo must silently share its track's name
+Where   : governance-tools/gov.py:739, 740, 855, 962, 966, 1017
+Expected: an extension point should be config only, and the config should say
+          what it requires. Adding a third consumer repo is one of the five
+          extension questions this review is asked to answer.
+Actual  : six call sites index the repo table with a TRACK name —
+          `CFG.repos[track]`, `CFG.repo_checkout(track)` — so a track and its
+          consumer repo must carry the identical key. Nothing declares that
+          and nothing checks it. Measured on the live config:
+            tracks : ['backend', 'frontend']
+            repos  : ['backend', 'frontend', 'shared']
+            tracks with no repo of the same name: []
+            repos that are not tracks           : ['shared']
+          A track whose repo key differs fails with an unhandled
+          `KeyError: 'mobile'` rather than a message naming the two tables
+          that disagree — and the profile already ships
+          `stack.mobile.framework`, so a third track is a live prospect, not
+          a hypothetical.
+          This is NOT a C2 violation: no literal is typed, the value is read
+          from config. It is an undeclared invariant between two config
+          tables, which `profiles/_schema.yaml` cannot catch because C5 scopes
+          it to profiles — `factory.yaml`'s own structure is validated by
+          nothing.
+Fix     : OPEN. The one-line repair (a lint rule asserting every
+          `tracks.<k>` has a `repos.<k>`) is easy but picks a winner between
+          two readings the documents do not settle: either a track IS a
+          consumer repo and the tables should be merged, or a track MAY name
+          its repo (`tracks.<k>.repo`, defaulting to `<k>`), which is the more
+          flexible shape and the larger change. Recorded with both rather
+          than guessed at.
+Status  : OPEN
+
+## F-13 — `run-pass` could not resume, and the pass is designed to stop
+Where   : governance-tools/gov.py:343 `run_pass` (`for sid in p["stages"]`)
+Expected: `gates.prd-approval` has `blocks: [P1]`, and pass 1's stages are
+          `[P0, P0.5, P1, P2, P3.1]`. So EVERY module's pass 1 halts in the
+          middle of itself at a human-approval gate, and re-invoking
+          `run-pass 1` after the approval is the documented way forward —
+          the smoke prompt's own command list does exactly that. Resuming is
+          the normal path, not an edge case.
+Actual  : `run_pass` looped over `p["stages"]` unconditionally, with no
+          completion check anywhere in it or in `run_stage`. The resume
+          re-dispatched P0 from scratch. Observed live: after
+          `approve prd-approval`, the second `run-pass 1` rewrote
+          `_state/briefs/P0.md` at 16:10:15 and left all three P0 artifacts
+          modified in `git status` before it was stopped.
+          Two costs, the second serious:
+          · the two dialogue stages are the most expensive in the pipeline
+            (~4 opus dispatches) and were paid again for no new information;
+          · it rewrites the PRD the human has just approved. The approval
+            record binds `artifact_sha` to those exact bytes (F-8), so a
+            resume silently leaves an approval pointing at content that no
+            longer exists — the gate would still read as passed.
+Fix     : `run_pass` now skips a stage whose non-optional `produces` are all
+          present and non-empty, printing what it skipped and how to redo it.
+          `run-stage <id>` stays unconditional — that is how a single stage is
+          re-run — and `--redo` restores the old whole-pass behaviour.
+          Nothing is spelled: the artifacts come from `CFG.stage().produces`.
+          Verified on the live run: the resume printed
+            skipped P0: already produced platform-summary, module-registry,
+                        business-policies
+            skipped P0.5: already produced prd
+          and the approved PRD's md5 was unchanged.
+Status  : FIXED
+

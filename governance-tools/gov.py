@@ -314,7 +314,7 @@ def run_standalone(stage_id: str, module: str | None, modules_csv: str | None, s
     return run_scoped_modules(stage_id, mods, version, complete, no_commit)
 
 
-def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool) -> int:
+def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: bool, no_commit: bool, redo: bool = False) -> int:
     p = CFG.passes[str(pass_no)]
     if new:
         version = cmd_version(mod, True, quiet=True)
@@ -341,11 +341,40 @@ def run_pass(pass_no: str, mod: str, version: int | None, new: bool, complete: b
         _say(f"  execute stage by stage (stop at a human-approval gate), then: gov.py run-pass {pass_no} -m {mod} -v {version} --complete")
         return AWAITING
     for sid in p["stages"]:
+        # A pass RESUMES. Every pass that contains a human-approval gate is
+        # designed to stop inside itself — `gates.prd-approval` blocks a stage
+        # in the middle of this list — so re-invoking run-pass after the
+        # approval is the documented way forward, not an edge case. It used to
+        # re-dispatch from the first stage: the two dialogue stages ran again,
+        # and the artifact the human had just approved was rewritten underneath
+        # the approval record that binds its sha. Observed on this run — P0's
+        # three artifacts were modified by the resume.
+        # `run-stage <id>` stays unconditional: that is how a stage is redone.
+        if not complete and not redo and _stage_is_done(sid, mod, version):
+            _say(f"skipped {sid}: already produced {_produced_names(sid)} (gov.py run-stage {sid} -m {mod} -v {version} to redo)")
+            continue
         rc = run_stage(sid, mod, version, complete, no_commit)
         if rc != OK:
             return rc
     _say(f"pass {pass_no} stages complete → gov.py gate {pass_no} -m {mod} -v {version}")
     return OK
+
+
+def _produced_names(stage_id: str) -> str:
+    return ", ".join(a.artifact for a in CFG.stage(stage_id).produces if not a.optional)
+
+
+def _stage_is_done(stage_id: str, mod: str, version: int) -> bool:
+    """Every non-optional artifact the stage declares is on disk and non-empty."""
+    stage = CFG.stage(stage_id)
+    produced = [a for a in stage.produces if not a.optional]
+    if not produced:
+        return False                      # nothing to judge by — always run it
+    for a in produced:
+        p = CFG.artifact_path(mod, stage.id, a.artifact, version)
+        if not p.exists() or not p.read_text(encoding="utf-8").strip():
+            return False
+    return True
 
 
 # ── gates ───────────────────────────────────────────────────────────────────
@@ -1334,7 +1363,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("stage"); p.add_argument("-m", "--module"); p.add_argument("--modules")
     p.add_argument("--scope", choices=["module", "project"], default="module")
     p.add_argument("-v", "--version", type=int); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
-    p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true")
+    p = mv(sub.add_parser("run-pass")); p.add_argument("pass_no"); p.add_argument("--new", action="store_true"); p.add_argument("--complete", action="store_true"); p.add_argument("--no-commit", action="store_true"); p.add_argument("--redo", action="store_true", help="re-run stages that are already complete")
     p = mv(sub.add_parser("gate")); p.add_argument("pass_no"); p.add_argument("--complete", action="store_true"); p.add_argument("--result"); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("approve")); p.add_argument("gate"); p.add_argument("--by", default=os.environ.get("USER", "human")); p.add_argument("--no-commit", action="store_true")
     p = mv(sub.add_parser("analyze"), module=False); p.add_argument("--scope", default="all")
@@ -1366,7 +1395,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "run-standalone":
         return run_standalone(a.stage, a.module, a.modules, a.scope, a.version, a.complete, a.no_commit)
     if a.cmd == "run-pass":
-        return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit)
+        return run_pass(a.pass_no, a.module, a.version, a.new, a.complete, a.no_commit, a.redo)
     if a.cmd == "gate":
         return gate(a.pass_no, a.module, a.version, a.complete, Path(a.result) if a.result else None, a.no_commit)
     if a.cmd == "approve":
