@@ -519,3 +519,67 @@ Fix     : OPEN, and deliberately not patched by making the message cosmetic.
           message alone would paper over the same gap in a different place.
 Status  : OPEN
 
+## F-18 — the P2 engine's canonical DBF form is one the ID model cannot read
+Where   : engines/P2/references/ENGINE.md §2 (:79) and §7 (:265)
+          vs governance-tools/idmodel.py:24 `_HEAD` / `records()`
+          surfaced as: C6.5 `registry-agree`, C6.6 `orphans`
+Expected: a plan that follows its own engine template exactly should satisfy
+          the contracts that engine's stage is checked against. "If a check
+          fires wrongly, the check is the defect."
+Actual   : P2 blocked NOTE with 10 MAJOR — nine `DBF-NOTE-001..009`
+          "registered in `registry-db` but not defined in `db-script`", plus
+          `ENT-NOTE-001 is referenced by 0 of ['DBF']`. The db-script is not
+          wrong. It carries all nine exactly where §2 puts them:
+            | DBF-NOTE-001 | note_pk | BIGINT | ENT-NOTE-001.notePk … |
+          §2 calls that table "the single canonical source of `DBF` → column →
+          type → SRS origin", and §7's six-section output structure for the
+          db-script contains no definition list at all — a matrix, an XM
+          register, the SQL, decisions, registry content. The template asks
+          for a table and nothing else.
+          `idmodel._HEAD` only accepts an id at the START of a line (optionally
+          `#`-headed or `**`-bolded) followed by `— - : (` or EOL. A table row
+          starts with `|`, and a `COMMENT ON COLUMN … 'DBF-NOTE-001 …'` line
+          starts with `COMMENT`. So `defined_ids()` sees zero DBF definitions
+          in a db-script written to spec, and `registry-agree` — whose
+          artifact side deliberately requires a DEFINITION while the registry
+          side accepts a mere reference — charges every one.
+          WHY THE SHIPPED MODULES PASS, which is the part that matters: SEC
+          and MDL carry an EXTRA section the engine never asks for —
+          `**DBF-MDL-001** — MDL_LOOKUP_TYPE.lookup_type_pk [ENT-MDL-001,
+          REQ-MDL-001]`, 104 such lines in SEC, from line 188 in MDL. That
+          bold form does match `_HEAD`. So the suite has been passing on a
+          convention that exists only in the authored artifacts, never in the
+          template — and NOTE, the first module generated strictly from the
+          template, is the first to expose it. This is a latent defect the
+          existing corpus was hiding, not a regression.
+Fix     : OPEN. I implemented the obvious repair — teach `records()` that a
+          table row whose FIRST cell is an id defines it — and MEASURED it
+          before keeping it. It is wrong, and the measurement is the reason:
+            SEC   62 → 96 MAJOR
+            MDL   30 → 67 MAJOR
+            NOTE  34 → 61 MAJOR
+          with new mass `C6.2`/`C6.3`/`C9.4` `traces` and `C6.6` `orphans`
+          findings. The cause is structural, not a regex detail: a `Record`'s
+          body is the block under its definition and its traces come from a
+          `Traces:` line in that body, whereas a table row carries its traces
+          in COLUMNS. Recognising the row without also reading its columns
+          makes every newly-defined id an untraced one. Reverted; the four
+          modules' counts return to baseline and the suite is 242 passed.
+          The two coherent repairs:
+          (a) teach `records()` to parse a definition table properly — read the
+              header row, learn which columns are traces, populate
+              `Record.traces` from them. Architecturally indicated: §2 says the
+              matrix IS the canonical source, so the model should be able to
+              read it. Needs the column semantics declared as config (C1), not
+              typed in the parser, which is the part that makes it real work
+              rather than a patch.
+          (b) add a definition list to the engine's §7 output structure, so the
+              instructed form matches the enforced one — which is what SEC and
+              MDL already do in practice. Cheap and immediately correct, but it
+              duplicates the matrix that §2 calls "the single canonical
+              source", which is the kind of second copy C4 exists to refuse.
+          I did not force the choice. It changes either a shared parser used by
+          every atom and artifact, or a rule the corpus has been quietly
+          violating — and the documents do not settle which.
+Status  : OPEN
+
