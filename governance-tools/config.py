@@ -481,6 +481,27 @@ class FactoryConfig:
         not the other — so a track's repo is named, not inferred (F-12)."""
         return self.tracks[track].get("repo", track)
 
+    # ── the shared governance repo ────────────────────────────────────────
+    def shared_repo(self) -> str:
+        """The repo key governance is written to — `paths.external.repo`, so the
+        name is never typed in code."""
+        return self.external["repo"]
+
+    def partitions(self) -> dict:
+        """One entry per WRITER: GOVERNANCE-SHARED-DESIGN.md §3's ownership table
+        in the form the tools address."""
+        return self.repos[self.shared_repo()].get("partitions", {})
+
+    def partition_is_per_module(self, part: str) -> bool:
+        """Read off the template — an entry carrying `{MOD}` is per-module.
+        Recognising a partition by its NAME would put the ownership table's
+        vocabulary back into the code C1 keeps it out of."""
+        return "{MOD}" in self.partitions()[part]
+
+    def partition_dir(self, part: str, mod: str | None = None) -> Path:
+        return self.repo_checkout(self.shared_repo()) / self.fmt(
+            self.partitions()[part], **({"mod": mod} if mod else {}))
+
     def repo_checkout(self, repo: str) -> Path:
         r = self.repos[repo]
         return Path(os.environ.get(r["checkout_env"]) or (self.root / r["checkout_default"])).resolve()

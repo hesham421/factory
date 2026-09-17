@@ -343,16 +343,16 @@ def scan_config(cfg: FactoryConfig) -> list[Finding]:
                                f"names repo '{repo}', which repos does not declare "
                                f"(declared: {', '.join(sorted(repos))})"))
 
-    import gov   # local module; imported here so lint stays importable without it
+    import publications   # the builder registry, split out of gov so this is not a cycle
     for pub, spec in cfg.publications.items():
         builder = (spec or {}).get("builder")
         if not builder:
             out.append(Finding(sev(0), "C2-config", f"publications.{pub}.builder", 0,
                                "no builder named; nothing can derive this publication"))
-        elif builder not in gov._PUBLICATION_BUILDERS:
+        elif builder not in publications.BUILDERS:
             out.append(Finding(sev(0), "C2-config", f"publications.{pub}.builder", 0,
                                f"names '{builder}', which is not registered "
-                               f"(registered: {', '.join(sorted(gov._PUBLICATION_BUILDERS))})"))
+                               f"(registered: {', '.join(sorted(publications.BUILDERS))})"))
     for repo, spec in repos.items():
         for pub in (spec.get("receives") or {}):
             if pub not in cfg.publications:

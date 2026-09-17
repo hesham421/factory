@@ -41,6 +41,7 @@ from config import CFG                     # noqa: E402
 import analyze as an                        # noqa: E402
 import dispatch as dp                       # noqa: E402
 import idmodel                              # noqa: E402
+import publications                          # noqa: E402
 import render as rd                         # noqa: E402
 import state as st                          # noqa: E402
 import toolkit.splitter as tk_split           # noqa: E402
@@ -684,127 +685,20 @@ def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
     return OK
 
 
-def _pub_profile_summary(spec: dict, existing: list[dict]) -> dict:
-    """Every FACTORY fact a consumer needs to set a module up, derived wholly from
-    the active profile.
-
-    A consumer that cannot read the profile has to restate it, and both consumer
-    generators did: the ordered phase list appeared twice in each, once as prose
-    and once as `gated_by_phases`, which decides what must be COMPLETE before a
-    test phase runs. A phase added to the profile was scanned into `phases` and
-    absent from `gated_by_phases`, so the test phase ran without it (F-14). The
-    profile id was typed too, in 29 places, which is why a second profile could
-    not be started without editing them.
-
-    Nothing here is a consumer's to keep, so there is no `preserve`: it is
-    regenerated whole every time."""
-    prof = CFG.profile
-    tracks = {}
-    for track in CFG.tracks:
-        plans = {}
-        for plan in prof.plans(track):
-            plans[plan] = {
-                "package": CFG.tracks[track]["packages"][plan],
-                "phases": [{"key": ph.key, "display": ph.display, "folder": ph.folder,
-                            "never_split": ph.never_split, "sub_bearing": ph.sub_bearing,
-                            "integration": ph.integration, "binds_api": ph.binds_api,
-                            **({"sub_labels": list(ph.sub_labels)} if ph.sub_labels else {}),
-                            **({"split_threshold": ph.split_threshold} if ph.split_threshold else {})}
-                           for ph in prof.phases(track, plan)],
-            }
-        tracks[track] = {
-            "repo": CFG.track_repo(track),
-            "exec_stage": CFG.tracks[track]["exec_stage"],
-            "partition": CFG.fmt(_partitions()[track]) if track in _partitions() else None,
-            "plans": plans,
-        }
-    return {
-        "profile": prof.id,
-        "paths": {k: CFG.paths[k] for k in (CFG.external.get("keys") or ()) if isinstance(CFG.paths[k], str)},
-        "module_dirs": dict(CFG.paths["module"]),
-        "tracks": tracks,
-        "languages": prof.languages,
-    }
-    # No timestamp: the same profile must produce the same bytes, or every
-    # publish reports a change and "unchanged" stops meaning anything. The
-    # profile is the whole input; when it moves, this moves.
-
-
-def _pub_modules_registry(spec: dict, existing: list[dict]) -> dict:
-    """The published module registry, derived from the ONE authority this factory
-    recognises for the module set and its versions: the filesystem (versioning.authority).
-
-    Two rules keep a derived file from destroying what it did not author:
-      * `preserve` — fields the factory has no opinion about (a human-written description,
-        the moment a module was first registered) are carried over from the copy already
-        on disk instead of being regenerated. A rewrite that silently blanked descriptions
-        would be indistinguishable from an intentional edit in the consumer's diff.
-      * `additive` — a module that exists in a consumer's copy but not in this factory
-        (registered by an earlier toolchain, or built before this factory existed) is KEPT
-        exactly as it stands. Deriving is not a licence to forget.
-    """
-    preserve = spec.get("preserve", [])
-    key = "modules"
-    merged: dict = {}
-    for prior in existing:                      # consumer copies first — oldest facts win for `preserve`
-        for code, row in (prior.get(key) or {}).items():
-            merged.setdefault(code, {}).update(row)
-    for mod in CFG.modules():
-        row = merged.setdefault(mod, {})
-        man = _module_manifest(mod)
-        # `preserve` yields to the factory only where the factory actually states the field:
-        # a manifest that carries a description is an authored fact, not a regenerated blank.
-        keep = {f: row[f] for f in preserve if f in row and not man.get(f)}
-        versions = CFG.module_versions(mod)
-        row.update({"code": mod, "description": man.get("description", ""),
-                    "registered_at": man.get("created_at") or now_iso(),
-                    "versions": versions, "current_version": (max(versions) if versions else None)})
-        row.update(keep)
-    return {key: {c: merged[c] for c in sorted(merged, key=lambda c: merged[c].get("registered_at") or "")}}
-
-
-# A publication names its builder in factory.yaml; lint refuses a name that does
-# not resolve here. Adding a publication with a NEW derivation is new code, and
-# says so, instead of failing as a KeyError at the moment someone publishes.
-_PUBLICATION_BUILDERS = {
-    "modules_registry": _pub_modules_registry,
-    "profile_summary": _pub_profile_summary,
-}
-
-
-def _publication_payload(name: str, existing: list[dict]) -> dict:
-    spec = CFG.publications[name]
-    return _PUBLICATION_BUILDERS[spec["builder"]](spec, existing)
-
-
-def _module_manifest(mod: str) -> dict:
-    """The module's own manifest — the factory-side place where a module states the
-    facts a consumer's registry copy shows (when it was registered, what it is)."""
-    return read_json(CFG.module_root(mod) / CFG.paths["module"]["manifest_file"], {}) or {}
-
-
 def _shared_repo() -> str:
-    """The repo key governance is written to — declared in `paths.external`, so
-    the name `shared` is never typed here."""
-    return CFG.external["repo"]
+    return CFG.shared_repo()
 
 
 def _partitions() -> dict[str, str]:
-    return CFG.repos[_shared_repo()].get("partitions", {})
+    return CFG.partitions()
 
 
 def _per_module(part: str) -> bool:
-    """Whether a partition has one directory per module. Read off the template:
-    an entry carrying `{MOD}` is per-module, one without it is not. Recognising
-    a partition by its NAME would put the ownership table's vocabulary back into
-    the code it is supposed to stay out of."""
-    return "{MOD}" in _partitions()[part]
+    return CFG.partition_is_per_module(part)
 
 
 def _shared_dir(part: str, mod: str | None = None) -> Path:
-    """A partition of the shared repo, addressed by name so no path is spelled twice."""
-    rel = CFG.fmt(_partitions()[part], **({"mod": mod} if mod else {}))
-    return CFG.repo_checkout(_shared_repo()) / rel
+    return CFG.partition_dir(part, mod)
 
 
 def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
@@ -1064,7 +958,7 @@ def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
             _say(f"{pub}: SKIPPED {r} — checkout not found at {CFG.repo_checkout(r)} "
                  f"(set ${CFG.repos[r]['checkout_env']})")
             rc = BLOCKED
-        payload = _publication_payload(pub, [read_json(p, {}) or {} for p in live.values()])
+        payload = publications.payload(pub, [read_json(p, {}) or {} for p in live.values()])
         body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
         for r, path in live.items():
             before = path.read_text(encoding="utf-8") if path.exists() else None
@@ -1422,10 +1316,9 @@ def main(argv: list[str] | None = None) -> int:
     p = mv(sub.add_parser("version"), version=False); p.add_argument("--new", action="store_true")
     mv(sub.add_parser("tag"))
     p = mv(sub.add_parser("fetch-inputs")); p.add_argument("--pull", action="store_true")
-    p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None)
+    p = sub.add_parser("publish"); p.add_argument("name", nargs="?", default=None); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("feedback"); p.add_argument("-m", "--module"); p.add_argument("-v", "--verbose", action="store_true")
     p = mv(sub.add_parser("waive-feedback")); p.add_argument("--pass", dest="pass_no", required=True); p.add_argument("--by", required=True); p.add_argument("--why", required=True)
-    p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("sync"); p.add_argument("--push", action="store_true"); p.add_argument("--dry-run", action="store_true")
     p = mv(sub.add_parser("verify-split")); p.add_argument("--track", required=True); p.add_argument("--plan", default=None)
     mv(sub.add_parser("status"), version=False)
