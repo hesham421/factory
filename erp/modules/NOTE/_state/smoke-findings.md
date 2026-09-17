@@ -475,3 +475,47 @@ Fix     : WONTFIX — not mine to delete. It lies outside all three repositories
           today describes three checkouts and knows nothing of a fourth.
 Status  : WONTFIX
 
+## F-17 — the file-block contract is honoured inconsistently, so `wrote N` means nothing
+Where   : governance-tools/dispatch.py `ingest()` / `run_round()` · the
+          `GOV_RUNNER_CMD` contract the smoke prompt specifies
+Expected: "The brief already tells each implementer to answer with
+          `<<<FILE: path>>> … <<<END FILE>>>` blocks; `dispatch.ingest()`
+          writes them." On that contract, `len(res.written)` is the count of
+          what the stage produced, and the archived response is the record of
+          it.
+Actual   : measured across this run's four responses —
+            P0.response1.md           FILE-blocks=3   30127 bytes
+            P0-round2.response2.md    FILE-blocks=3   36592 bytes
+            P0.5.response1.md         FILE-blocks=1   19366 bytes
+            P1.response1.md           FILE-blocks=0    1991 bytes
+          P0 honoured the contract in both rounds. P0.5 honoured it in round 1
+          and abandoned it in round 2 ("written … as operator, not a file
+          block"). P1 never used it at all: a 1991-byte response, while
+          `srs-note.md` and `registry-srs-note.md` both landed on disk and
+          analyzed clean. The orchestrator reported
+          `dispatched P1: 1 round(s), converged=True, wrote 0 file(s)`.
+          So this is NOT a dialogue-only effect (F-9) and not one implementer's
+          quirk: the runner is an agent holding write tools, and whether it
+          uses blocks varies by stage. Two consequences:
+          · `wrote N file(s)` is not a signal. It reads as "this stage
+            produced nothing" and printed exactly that over a committed PRD
+            and a committed SRS. An operator watching that line cannot
+            distinguish a stage that produced nothing from one that produced
+            everything.
+          · the provenance gap of F-10 is total for P1, not partial: the SRS
+            exists in no archived response, so the run cannot be re-derived
+            from what it archived.
+          What DOES catch a genuinely empty stage is the artifact-existence
+          clause C4.1 downstream, which is now reliable (F-11). The dispatch
+          line is the part that lies; the checker is sound.
+Fix     : OPEN, and deliberately not patched by making the message cosmetic.
+          `wrote N` should report what the STAGE produced, not what `ingest`
+          happened to write — i.e. `_complete_stage` already knows the
+          declared artifacts and could report their presence and whether each
+          changed. That is the honest signal and it is a small change; it is
+          left OPEN only because it overlaps F-10's choice (enforce the block
+          contract, or drop it for agent runners and record per-artifact
+          digests). Settle F-10 first and this follows from it — patching the
+          message alone would paper over the same gap in a different place.
+Status  : OPEN
+
