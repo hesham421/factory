@@ -215,7 +215,18 @@ class Ctx:
         reads a record's text (orphans, data-source, traces) then saw an empty
         block: a query cited inside an endpoint was invisible to the clause asking
         whether anything cited it. Across artifacts the first still wins — the
-        upstream artifact governs, and a downstream restatement is a reference."""
+        upstream artifact governs, and a downstream restatement is a reference.
+
+        EXCEPT where a real marker exists somewhere: a marker START is a deliberate
+        declaration in the atom's owning artifact, while a bare heading-shaped hit
+        elsewhere is frequently incidental — prose that opens a line with an id
+        token it is only citing (e.g. an SRS paragraph that starts a sentence with
+        "API-FIN-035 (...)"). Such a hit still becomes a same-named, empty-bodied
+        record, and "first wins" would let it shadow the real marker-backed
+        definition merely for having been read first. So the cross-artifact dedup
+        below breaks ties in favour of whichever candidate's own merge ever saw a
+        marker, before falling back to read order — never suppressing a genuine
+        upstream-only atom, since no marker anywhere exists for it to prefer."""
         out = []
         for name, t in self.all_texts().items():
             if self.is_registry(name):
@@ -229,11 +240,12 @@ class Ctx:
                     prev = per[r.id]
                     prev.text = prev.text + "\n" + r.text
                     prev.traces = list(dict.fromkeys(prev.traces + r.traces))
+                    prev.via_marker = prev.via_marker or r.via_marker
                 else:
                     per[r.id] = r
             out += per.values()
         seen, uniq = set(), []
-        for r in out:
+        for r in sorted(out, key=lambda r: not r.via_marker):
             if r.id not in seen:
                 seen.add(r.id); uniq.append(r)
         return uniq
