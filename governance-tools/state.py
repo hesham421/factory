@@ -35,6 +35,7 @@ class StateReport:
     files: dict[str, Path] = field(default_factory=dict)      # artifact → state file
     sources: dict[str, list[int]] = field(default_factory=dict)  # artifact → versions folded
     missing: list[str] = field(default_factory=list)
+    pruned: list[str] = field(default_factory=list)          # derived copies whose artifact is gone
     warnings: list[str] = field(default_factory=list)
 
 
@@ -187,12 +188,25 @@ def build_state(mod: str, version: int | None = None, write: bool = True) -> Sta
                 sdir.mkdir(parents=True, exist_ok=True)
                 target.write_text(text, encoding="utf-8")
     if write:
+        # `_state/` is DERIVED, so it is a function of the sources and nothing
+        # else: a `current-*` whose artifact no longer exists must go, or the
+        # snapshot outlives its subject. It used to only ever be added to, and a
+        # removed artifact left its copy behind — `state` printed the artifact in
+        # `missing` while `analyze`, which reads `_state`, went on examining the
+        # stale copy and answering CLEAN for `C4.1 exists`. That is the shape
+        # `versioning.delta_only` makes routine: a vN that REMOVES an artifact.
         sdir.mkdir(parents=True, exist_ok=True)
+        keep = {p.name for p in rep.files.values() if p.parent == sdir}
+        stem = CFG.fmt(CFG.naming["current_state_file"], artifact="")
+        for old_copy in sdir.glob(f"{stem}*"):
+            if old_copy.is_file() and old_copy.name not in keep:
+                old_copy.unlink()
+                rep.pruned.append(old_copy.name)
         (sdir / "traceability.md").write_text(
             CFG.data["lint"]["generated_marker"] + "\n# Traceability matrix\n\n" + traceability_matrix(texts), encoding="utf-8")
         (sdir / "state.json").write_text(json.dumps({
             "module": rep.mod, "version": version, "profile": CFG.profile_id, "generated_at": now_iso(),
-            "sources": rep.sources, "missing": rep.missing,
+            "sources": rep.sources, "missing": rep.missing, "pruned": rep.pruned,
             "inputs_mtime": _latest_mtime(mod, version),
         }, indent=2), encoding="utf-8")
     return rep

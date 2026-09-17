@@ -338,3 +338,27 @@ def test_a_block_never_overwrites_a_newer_out_of_band_write(factory_root, mod, t
     assert dispatch.ingest(r1) == []
     assert target.read_text() == "the amended artifact, written by the operator\n"
     target.unlink()
+
+
+def test_a_derived_state_copy_does_not_outlive_its_artifact(factory_root, mod):
+    """`_state/` is derived, so it must be a function of the sources. It used to be
+    added to and never pruned: a removed artifact left its `current-*` behind, and
+    `analyze` — which reads `_state` — kept answering CLEAN for `C4.1 exists` off
+    the stale copy while `state` was printing the same artifact under `missing`."""
+    import state as st
+
+    stage = next(s for s in CFG.all_stages() for a in s.produces if not a.dir)
+    art = next(a for a in stage.produces if not a.dir)
+    src = CFG.artifact_path(mod, stage.id, art.artifact, 1)
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("# present\n", encoding="utf-8")
+
+    rep = st.build_state(mod, 1)
+    copy = rep.files[art.artifact]
+    assert copy.exists(), "the derived copy is written while the artifact exists"
+
+    src.unlink()
+    rep = st.build_state(mod, 1)
+    assert not copy.exists(), "a derived copy whose artifact is gone must be pruned"
+    assert copy.name in rep.pruned
+    assert art.artifact in rep.missing
