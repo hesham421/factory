@@ -3,7 +3,9 @@
   "module": "NOTE",
   "version": 1,
   "by": "smoke-run",
-  "at": "2026-09-17T12:04:44+00:00",
+  "at": "2026-09-17T12:05:02+00:00",
   "after": "P0.5",
-  "artifact_sha": {}
+  "artifact_sha": {
+    "prd": "2bbcf3d33900d215941be071621164c463842356e76971e4d090c8faa178717f"
+  }
 }
