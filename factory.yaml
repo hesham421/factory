@@ -557,6 +557,17 @@ ambiguity:
   non_breaking: {action: adr, then: continue}   # decisions/<MOD>/ADR-… with the chosen best practice
   breaking:     {action: adr, status: BLOCKED, then: stop}
 
+# ── Dialogue — how a converging lane records what it settled ────────────────
+# A dialogue closes its open points inside the brief (C6). What it closed used
+# to live only in the round transcripts under _state/briefs/ — a decision the
+# reviewer could not find and the next version could not cite. Every DECISION
+# block of a converged dialogue is now persisted as an ADR (naming.adr_file)
+# into the decisions partition, with this status, by dispatch.persist_decisions.
+dialogue:
+  proposal_token: "PROPOSAL:"          # round 1 opens a point
+  decision_token: "DECISION:"          # a later round closes it — title on the line, reasoning below
+  adr_status: RESOLVED-IN-DIALOGUE
+
 # ── Versioning ──────────────────────────────────────────────────────────────
 versioning:
   authority: filesystem              # vN/ folders + tags; no registry-based version

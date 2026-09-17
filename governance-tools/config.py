@@ -252,6 +252,8 @@ class FactoryConfig:
     @property
     def ambiguity(self) -> dict:    return self.data["ambiguity"]
     @property
+    def dialogue(self) -> dict:     return self.data.get("dialogue", {})
+    @property
     def versioning(self) -> dict:   return self.data["versioning"]
     @property
     def inputs(self) -> dict:       return self.data.get("inputs", {})

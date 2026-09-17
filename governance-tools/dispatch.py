@@ -153,13 +153,18 @@ def build_brief(stage: Stage, mod: str, version: int, *, round_no: int = 1, impl
     ]
     if dialogue:
         impls = ", ".join(lane.get("implementers", []))
+        tok = CFG.dialogue
         head += [
             "",
             "## Dialogue protocol (converging, in-brief)",
             f"Implementers {impls} alternate for at most {dialogue['max_rounds']} rounds; converge on **{dialogue['converge_on']}**.",
-            "Round 1 drafts the artifacts and, for every open point, a `PROPOSAL:` block (options, researched recommendation, sources).",
-            "Each later round answers every open PROPOSAL (accept / amend with reason), refines the artifacts, and appends "
-            f"`{CONVERGED}` at the end of the response when nothing material remains open. The last response is final.",
+            f"Round 1 drafts the artifacts and, for every open point, a `{tok['proposal_token']}` block (options, researched recommendation, sources).",
+            f"Each later round answers every open {tok['proposal_token'].rstrip(':')} with a `{tok['decision_token']} <title>` line followed by the "
+            f"reasoning (accept / amend, with the source), refines the artifacts, and appends "
+            f"`{CONVERGED}` at the end of the response when nothing material remains open. The last response is final. "
+            f"Every `{tok['decision_token']}` block is persisted by the orchestrator as an ADR "
+            f"(`{CFG.paths['decisions']}/{mod.upper()}/{CFG.naming['adr_file']}`, status {tok['adr_status']}) — "
+            f"write the title as the decision, and cite the ids it binds on a `traces` line.",
         ]
         if previous is not None:
             head += ["", f"## Previous round", f"(see `{rel(previous)}` — appended below)"]
@@ -418,7 +423,123 @@ def dispatch(stage: Stage, mod: str, version: int) -> DispatchResult:
         for path in ingest(resp):
             if path not in res.written:
                 res.written.append(path)
+    if stage.dialogue and lane.get("dialogue"):
+        res.written += persist_decisions(stage, mod, version, res)
     return res
+
+
+# ── what a dialogue settled, kept ───────────────────────────────────────────
+# A dialogue lane closes its open points inside the brief (C6). The closing
+# used to live only in the round transcripts under _state/briefs/ — a decision
+# the gate reviewer could not find and the next version could not cite. Every
+# DECISION block of a converged dialogue is an ADR now, in the decisions
+# partition, with the status factory.dialogue names; the stage commit that
+# already covers decisions_dir carries it.
+
+def decisions_in(text: str) -> list[tuple[str, str]]:
+    """(title, body) for every decision block of a response: the token's line
+    holds the title; the body runs to the next blank line, the next token, a
+    heading, or the convergence marker."""
+    tok = CFG.dialogue.get("decision_token")
+    if not tok:
+        return []
+    out: list[tuple[str, str]] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        ln = lines[i].strip().lstrip("-*# ").strip()
+        if ln.startswith(tok):
+            title = ln[len(tok):].strip().strip("*`").strip()
+            body: list[str] = []
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j].strip()
+                if not nxt or nxt.lstrip("-*# ").startswith(tok) or nxt.startswith("#") or nxt.startswith(CONVERGED):
+                    break
+                body.append(nxt)
+                j += 1
+            if title:
+                out.append((title, "\n".join(body)))
+            i = j
+            continue
+        i += 1
+    return out
+
+
+def _adr_seq_rx(mod: str) -> re.Pattern:
+    """`naming.adr_file` → the regex reading a file's sequence number."""
+    pat = re.escape(CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=0))
+    return re.compile("^" + re.sub(r"0+", r"(\\d+)", pat, count=1) + "$")
+
+
+def _next_adr_seq(mod: str) -> int:
+    d = CFG.decisions_dir(mod)
+    rx = _adr_seq_rx(mod)
+    seqs = [int(m.group(1)) for p in d.glob("*") if (m := rx.match(p.name))] if d.exists() else []
+    return (max(seqs) + 1) if seqs else 1
+
+
+def _decision_key(stage_id: str, version: int, title: str) -> str:
+    import hashlib
+    return hashlib.sha256(f"{stage_id}|{version}|{title.strip().lower()}".encode("utf-8")).hexdigest()[:12]
+
+
+def persist_decisions(stage: Stage, mod: str, version: int, res: DispatchResult) -> list[Path]:
+    """Every decision block of the dialogue's responses → one ADR each, status
+    `dialogue.adr_status`, sequence continuing the module's ADR stream.
+    Idempotent: a decision already persisted (same stage, version, title —
+    the key it carries) is not written twice, so re-running a stage does not
+    mint a second ADR for the same settled point."""
+    tok = CFG.dialogue
+    if not tok.get("decision_token"):
+        return []
+    d = CFG.decisions_dir(mod)
+    existing = ""
+    if d.exists():
+        existing = "\n".join(p.read_text(encoding="utf-8") for p in sorted(d.glob("*.md")))
+    lane = CFG.lane(stage.lane)
+    impls = lane.get("implementers") or []
+    written: list[Path] = []
+    seq = _next_adr_seq(mod)
+    # the decision-record atom is the one owned by `any` (factory.ids.atoms) — never named here
+    adr_prefix = next((k for k, v in CFG.id_atoms().items() if v.get("owner") == "any"), None)
+    if adr_prefix is None:
+        raise RuntimeError("factory.ids.atoms declares no atom with owner `any` — nothing can carry a dialogue decision")
+    for r, resp in enumerate(res.responses, 1):
+        impl = impls[(r - 1) % len(impls)] if impls else "?"
+        for title, body in decisions_in(resp.read_text(encoding="utf-8")):
+            key = _decision_key(stage.id, version, title)
+            if key in existing:
+                continue
+            adr_id = CFG.make_id(adr_prefix, mod, seq)
+            path = d / CFG.fmt(CFG.naming["adr_file"], mod=mod, seq=seq)
+            traces = sorted({x for x in idmodel.find_ids(title + "\n" + body) if x != adr_id})
+            text = "\n".join([
+                f"# {adr_id} — {title}",
+                f"Status      : {tok['adr_status']}",
+                f"Stage       : {stage.id}        Module: {mod.upper()}        Version: v{version}",
+                f"Lane        : {stage.lane} · round {r} · {impl}",
+                f"Decided     : {_now()}",
+                f"Dialogue-key: {key}",
+                f"traces      : {', '.join(traces) or '—'}",
+                "",
+                "## Decision",
+                body or "(the dialogue recorded the title alone)",
+                "",
+                f"Source      : {rel(resp)}",
+                "",
+            ])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+            existing += "\n" + text
+            written.append(path)
+            seq += 1
+    return written
+
+
+def _now() -> str:
+    from toolkit.common import now_iso
+    return now_iso()
 
 
 # ── question policy ─────────────────────────────────────────────────────────
