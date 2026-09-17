@@ -44,47 +44,55 @@
 
 ## ٢ · التقسيم الداخلي
 
+**موديول واحد = مكان واحد.** حوكمة الموديول كلها تحت مسار واحد، وداخله مسارات
+فرعية لكل كاتب. هذا ما يجعل التثبيت (`pin`) ذا معنى: commit واحد يجمّد الخطة
+والحزم والـ api-docs وحالة التنفيذ معاً — لا يمكن لأحدها أن ينزلق عن الآخر.
+
 ```
 governance-shared/
 │
-├── platform/                    ◄── المصنع يكتب · الجميع يقرأ
+├── platform/                    ◄── منشورات المصنع · الجميع يقرأ
 │   ├── rules/                       قواعد الحوكمة، تعريفات الذرّات، العقود
 │   ├── modules-registry.json        سجل الموديولات (مشتقّ من نظام الملفات)
 │   └── profile-summary.md           ملخّص البروفايل الفعّال
 │
-├── backend/                     ◄── منطقة الباك — معزولة
-│   └── modules/{MOD}/
-│       ├── api-docs/                ✍ الباك يكتب (مولَّد من /v3/api-docs)
-│       │   ├── index.md
-│       │   └── endpoints/*.md
-│       ├── packages/                ✍ المصنع يكتب (backend-execution, backend-test)
-│       └── execution-state.json     ✍ المصنع يكتب
-│
-├── frontend/                    ◄── منطقة الفرونت — معزولة
-│   └── modules/{MOD}/
-│       ├── packages/                ✍ المصنع يكتب (frontend-execution, frontend-test)
-│       └── execution-state.json     ✍ المصنع يكتب
-│
-└── CODEOWNERS                   ◄── يفرض الملكية آلياً
+└── {profile_id}/                ◄── حوكمة البروفايل الفعّال  (paths.domain)
+    ├── domain-profile.md            ✍ المصنع
+    ├── project-registry.md          ✍ المصنع
+    ├── system-test-*.md             ✍ المصنع
+    ├── decisions/{MOD}/             ✍ المصنع   (ADR-*)
+    └── modules/{MOD}/
+        ├── P0 P0_5 P1 P2 P3_1 P3_2  ✍ المصنع   مجلدات المراحل
+        ├── test_gen/  api_verify/   ✍ المصنع
+        ├── _state/  _inputs/        ✍ المصنع
+        ├── packages/                ✍ المصنع   (المسارَان الأربعة)
+        ├── manifest.json            ✍ المصنع   سجلّ ما أنتجه المصنع
+        ├── api-docs/                ✍ الباك    (مولَّد من /v3/api-docs)
+        ├── backend/                 ✍ الباك    execution-state.json · test-api/
+        └── frontend/                ✍ الفرونت  execution-state.json
 ```
 
-### لماذا `backend/` و `frontend/` منفصلان تماماً؟
+### لماذا `platform/` منفصل عن `{profile_id}/`؟
 
-**العزل ليس تنظيماً — بل ضمانة.** الفرونت لا يملك مساراً واحداً تحت
-`backend/`، والعكس. فأي محاولة كتابة عابرة للحدّ تُرفَض في مرحلة المراجعة،
-لا تُكتشف بعد أسبوع في diff.
+`platform/` **منشورات** — مشتقّة، يعيد المصنع توليدها، ويقرأها الجميع بلا تأويل.
+`{profile_id}/` **مصنوعات** — لها تاريخ ومراجعة وبوابات. الأول قابل للحذف
+وإعادة البناء؛ الثاني لا. خلطهما يخفي هذا الفرق.
+
+### لماذا لم يعد `backend/` و `frontend/` جذرَين منفصلَين؟
+
+كانا كذلك في التصميم الأول، فانقسمت حوكمة الموديول الواحد على جذرَين: الخطة في
+مكان والـ api-docs في آخر. **العزل ليس تنظيماً بل ضمانة** — وهو محفوظ كما هو،
+لكن على مستوى المسار الفرعي لا الجذر: الفرونت لا يملك مساراً واحداً تحت
+`modules/*/backend/` ولا تحت `api-docs/`، والعكس. الفرق أن الضمانة صارت تُفرَض
+داخل مجلد الموديول، فيبقى الموديول وحدة واحدة قابلة للتثبيت والأرشفة.
 
 ### أين تُقرأ الـ api-docs من الفرونت؟
 
-`frontend/` لا يحوي `api-docs/`. الفرونت يقرأ من `backend/modules/{MOD}/api-docs/`
-**بالقراءة فقط**. هذا مقصود:
+من `{profile_id}/modules/{MOD}/api-docs/` — **بالقراءة فقط**. مصدر واحد لا نسختان،
+فالانحراف **مستحيل بنيوياً** لا مكشوف. والفرونت ممنوع من الكتابة (CODEOWNERS).
 
-- مصدر واحد لا نسختان → **لا انحراف ممكن بنيوياً** (لا مجرّد مكشوف)
-- الفرونت يظلّ ممنوعاً من الكتابة (CODEOWNERS)
-- يحلّ مشكلة CU · FILE · NOTIF الموجودة في الباك دون الفرونت
-
-> هذا يخالف حرفية قاعدة العزل، ويوافق روحها: العزل يمنع **الكتابة** المتبادلة
-> لا القراءة. والبديل (نسختان) هو بالضبط ما نحاول إلغاءه.
+> هذا يخالف حرفية قاعدة العزل ويوافق روحها: العزل يمنع **الكتابة** المتبادلة
+> لا القراءة. والبديل (نسختان) هو بالضبط ما نلغيه.
 
 ---
 
@@ -94,21 +102,79 @@ governance-shared/
 |---|---|---|---|
 | `platform/rules/` | **المصنع** | الجميع | `gov.py publish` |
 | `platform/modules-registry.json` | **المصنع** | الجميع | `gov.py publish` |
-| `backend/modules/*/api-docs/` | **الباك** | المصنع · الفرونت | `generate-api-docs` |
-| `backend/modules/*/packages/` | **المصنع** | الباك | `gov.py deliver --track backend` |
-| `frontend/modules/*/packages/` | **المصنع** | الفرونت | `gov.py deliver --track frontend` |
-| `*/execution-state.json` | **المصنع** | مالك المسار | `gov.py deliver` |
+| `{profile_id}/*.md` | **المصنع** | الجميع | مراحل المصنع |
+| `{profile_id}/decisions/*/` | **المصنع** | الجميع | مراحل المصنع |
+| `{profile_id}/modules/*/P*/` · `test_gen/` · `api_verify/` | **المصنع** | الجميع | مراحل المصنع |
+| `{profile_id}/modules/*/_state/` · `_inputs/` | **المصنع** | الجميع | `gov.py` |
+| `{profile_id}/modules/*/packages/` | **المصنع** | الطرف صاحب المسار | `gov.py split` |
+| `{profile_id}/modules/*/manifest.json` | **المصنع** | الجميع | `gov.py` |
+| `{profile_id}/modules/*/api-docs/` | **الباك** | المصنع · الفرونت | `generate-api-docs` |
+| `{profile_id}/modules/*/backend/` | **الباك** | المصنع | `generate-module-setup` · `orchestrate-module` |
+| `{profile_id}/modules/*/frontend/` | **الفرونت** | المصنع | `generate-frontend-module-setup` · `orchestrate-module` |
+
+### `execution-state.json` — كاتب واحد، وقد كان اثنين
+
+**F-6** رصد كاتبَين على مسار واحد: `gov.py deliver` يكتبه بمخطط المصنع، ثم
+مولِّد المستهلك يدهسه بمخطط التنفيذ. المخططان **منفصلان تماماً** — لا تقاطع في
+المعنى، والدهس ليس دمجاً.
+
+الحلّ بنيوي لا تحكيمي: **الملف واحد لأنه كان يحمل شيئين.**
+
+- ما يخصّ المصنع (`version` · `packages` · `profile` · `markers_schema_version`)
+  له بيت بالفعل: `manifest.json`.
+- وما يخصّ البوابة والتحليل (`gate` · `analyze` · `traceability`) له بيت بالفعل:
+  `_state/gate-pass-*.md` و `_state/analyze-*.md` — **ملفات متتبَّعة لا يدهسها أحد**.
+- ولم يبقَ لـ `execution-state.json` إلا تقدّم التنفيذ (`current_phase` ·
+  `current_sub` · `blocked` · `deferred_xm` · `api_doc_gaps`) — وهذا **ملك المسار**.
+
+فبإلغاء `deliver` لا يبقى إلا كاتب واحد، ولا يضيع شيء: كل حقل كان `deliver`
+يكتبه موجود في مصدر آخر متتبَّع. **F-6 يُغلَق بنيوياً لا باختيار فائز.**
+
+ولهذا صار لكل مسار ملفه: `modules/{MOD}/backend/execution-state.json` و
+`modules/{MOD}/frontend/execution-state.json` — لا ملف واحد يتنازعه طرفان.
 
 ### `CODEOWNERS`
 
 ```
-/platform/                @factory-maintainers
-/backend/*/api-docs/      @backend-maintainers
-/backend/                 @factory-maintainers
-/frontend/                @factory-maintainers
+*                                   @factory-maintainers
+/{profile_id}/modules/*/api-docs/   @backend-maintainers
+/{profile_id}/modules/*/backend/    @backend-maintainers
+/{profile_id}/modules/*/frontend/   @frontend-maintainers
 ```
 
-الأخصّ يفوز: الباك يملك `api-docs/` فقط، والمصنع يملك ما عداه داخل `backend/`.
+الأخصّ يفوز: المصنع يملك كل شيء عدا ثلاثة مسارات فرعية لكل موديول.
+
+---
+
+### ٣-١ · الرافعة التي تجعل هذا إعدادات لا جراحة
+
+كل مسار مصنوع في المصنع يمرّ بدالّة واحدة:
+
+```python
+def dir(self, key: str) -> Path:  return self.root / self.paths[key]
+```
+
+`modules_root` · `module_root` · `version_root` · `artifact_path` ·
+`decisions_dir` · `state_dir` · `inputs_dir` · `packages_dir` كلها مبنية عليها.
+فنقل الحوكمة = **تغيير الجذر لبعض المفاتيح**، لا إعادة كتابة المسارات.
+
+المفاتيح خارجية (تُحلّ على المشترك): `domain` · `platform` · `modules` ·
+`decisions`. وما عداها يبقى في المصنع: `engines` · `standalone` · `shared` ·
+`reviewers` · `profiles` · `templates` · `tools` · `commands`.
+
+**وقد فُحص التسريب، ووُجد ما يبدو تسريبَين ثم تبيّن أنهما ليسا كذلك:**
+
+| الموضع | يبني المسار من `CFG.root` | لماذا يظلّ صحيحاً |
+|---|---|---|
+| `dispatch.ingest()` | `(CFG.root / rel)` + حارس احتواء | المشترك **داخل** جذر المصنع (`repos.shared.checkout_default: governance-shared`)، فالمسار يبقى نسبياً للجذر والحارس يظلّ يمرّ |
+| `splitter._clean_previous()` | `(CFG.root / f)` من `state.json` | نفس السبب |
+| `dispatch` × ٦ · `relative_to(CFG.root)` | يخبر المنفِّذ بمسار الكتابة | نفس السبب — يصير `governance-shared/…` |
+
+> **هذه خاصّية load-bearing.** لو نُقل المشترك إلى خارج جذر المصنع، تنكسر
+> الثلاثة دفعةً واحدة. مذكورة هنا لأن كسرها صامت لا صاخب.
+
+وما يُفحص ولا يتأثر: `lint.scan_paths` (المصنع فقط) · `profile.knowledge_files`
+(داخل `profiles/`) · `_archive-v5` · `history` · `factory.yaml` · `README.md`.
 
 ---
 
