@@ -1,0 +1,6 @@
+# What gov.py actually imports. Pinned so CI and a developer's checkout agree —
+# a lint that passes locally and fails in CI on a library version is a false
+# signal about the governance, which is the one thing CI here exists to check.
+Jinja2==3.1.6
+PyYAML==6.0.3
+pytest==9.1.1

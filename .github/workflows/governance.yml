@@ -1,0 +1,42 @@
+name: governance
+
+# The factory's own checks, plus the one thing the shared repo made possible to
+# get silently wrong: a checkout whose submodule was never initialised. Nothing
+# here builds a product — it verifies that the governance is internally
+# consistent and that its inputs resolve.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive      # without this the shared repo is an empty
+                                     # directory and every input silently vanishes
+          fetch-depth: 0
+
+      - name: The shared submodule is actually there
+        run: |
+          test -d governance-shared/backend -a -d governance-shared/platform || {
+            echo "::error::governance-shared is empty — the checkout did not init submodules"
+            exit 1
+          }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r governance-tools/requirements.txt
+
+      - name: Renders are fresh and the config is valid
+        run: python governance-tools/gov.py lint
+
+      - name: Tests
+        run: python -m pytest governance-tools/tests -q
+
+      - name: Shared repo state (reports, never fails the build)
+        run: python governance-tools/gov.py sync || true
