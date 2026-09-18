@@ -620,6 +620,8 @@ lint:
     - platform-standards.md
     - Claude Projects
   profile_terms_forbidden_in: [engines, standalone, shared, reviewers, governance-tools]   # domain vocabulary must come from the profile, never be typed
+  profile_terms_exempt: [governance-tools/tests]   # the tests' OWN fixtures (a sample project, a clinic profile) are the
+                                                   # one place a profile's words may be typed — they ARE the profile under test
   profile_term_sources:            # which profile values are treated as forbidden literals (multi-char, distinctive)
     - conventions.entity_defaults
     - conventions.security_model.page_registry

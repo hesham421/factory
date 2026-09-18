@@ -254,6 +254,7 @@ def scan_literals(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
     pterms = _profile_terms(cfg, profile)
     pterm_rx = re.compile(r"(?<![\w-])(" + "|".join(re.escape(t) for t in sorted(pterms, key=len, reverse=True)) + r")(?![\w-])") if pterms else None
     profile_roots = set(lint["profile_terms_forbidden_in"])
+    profile_exempt = tuple(lint.get("profile_terms_exempt") or ())
 
     for f in _iter_files(cfg, lint["scan_paths"]):
         rel = f.relative_to(cfg.root)
@@ -262,7 +263,7 @@ def scan_literals(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
         except UnicodeDecodeError:
             continue
         is_generated = gen_marker in text
-        in_profile_scope = any(str(rel).startswith(r) for r in profile_roots)
+        in_profile_scope = any(str(rel).startswith(r) for r in profile_roots) and not str(rel).startswith(profile_exempt)
         for n, line in enumerate(text.splitlines(), 1):
             if forb_rx.search(line) and str(rel) != "factory.yaml":
                 # allow the lint list itself and explicit "removed" notes in history-style lines
