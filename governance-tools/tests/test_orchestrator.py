@@ -25,16 +25,14 @@ OK, BLOCKED, AWAITING = gov.OK, gov.BLOCKED, gov.AWAITING
 
 
 
-def _publish_root(repo: str = "backend"):
-    """Where `repos.<repo>.publishes` paths resolve — the producer's own checkout,
-    or the repo named by `reads_from` when it publishes into a shared one. Mirrors
-    cmd_fetch_inputs so a fixture cannot put the input somewhere the tool will not
-    look for it."""
+def _publish_dir(name: str, mod: str):
+    """Where a track publishes an input — its project partition (inputs.<name>.partition).
+    Mirrors cmd_fetch_inputs so a fixture cannot put the input somewhere the tool
+    will not look for it."""
     from config import CFG
-    host = CFG.repos[repo].get("reads_from", repo)
-    root = CFG.repo_checkout(host)
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+    d = CFG.partition_dir(CFG.inputs[name]["partition"], mod)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 def _git(*a, cwd):
     return subprocess.run(["git", *a], cwd=str(cwd), check=True, capture_output=True, text=True)
@@ -83,8 +81,9 @@ def test_stage_awaits_operator_then_completes(orch_root, mod):
     assert brief.exists() and "# ENGINE" in brief.read_text() and "<<<INPUT: domain-profile>>>" in brief.read_text()
     fx.write_stage("P-1", mod)
     assert gov.run_stage("P-1", mod, 1, complete=True, no_commit=False) == OK
-    log = _git("log", "--oneline", cwd=orch_root).stdout
+    log = _git("log", "--oneline", cwd=CFG.project_checkout()).stdout          # committed in the PROJECT repo
     assert CFG.commit_msg("stage", stage="P-1", mod=mod, version=1, summary="Registry & Steering Builder") in log
+    assert "P-1" not in _git("log", "--oneline", cwd=orch_root).stdout          # the tool repo did not move
 
 
 def test_missing_input_blocks(orch_root, mod):
@@ -151,7 +150,8 @@ def test_full_dry_run_both_passes_split_tag(orch_root, mod, tmp_path, monkeypatc
     assert gov.main(["split", "--track", "backend", "-m", mod, "-v", "1"]) == OK
     pkg = CFG.packages_dir(mod, "backend", "exec", 1)
     assert (pkg / "index.md").exists() and any(pkg.rglob("*.md"))
-    assert pkg.is_relative_to(CFG.repo_checkout(CFG.external["repo"])), "packages must land in the shared repo"
+    assert pkg.is_relative_to(CFG.project_checkout()), "packages must land in the project repo"
+    assert pkg.is_relative_to(CFG.partition_dir(CFG.track_delivery("backend"), mod)), "in the track's delivery partition"
     # the gate verdict lives in its own tracked record, which nothing overwrites
     gate = CFG.state_dir(mod, 1) / CFG.fmt(CFG.paths["module"]["gate_record"], **{"pass": "1"}).split("/")[-1]
     assert gate.exists() and "APPROVE" in gate.read_text(encoding="utf-8")
@@ -159,18 +159,19 @@ def test_full_dry_run_both_passes_split_tag(orch_root, mod, tmp_path, monkeypatc
     assert not list(backend.rglob("backend-execution*")), "something was copied into the consumer repo"
     # pass 2 needs the api-docs input back from the backend repo
     assert gov.run_pass("2", mod, 1, new=False, complete=False, no_commit=False) == BLOCKED
-    pub = _publish_root() / CFG.fmt(CFG.repos["backend"]["publishes"]["api-docs"], mod=mod)
-    pub.mkdir(parents=True, exist_ok=True); (pub / "index.md").write_text(fx.api_docs(mod))
+    pub = _publish_dir("api-docs", mod)
+    (pub / "index.md").write_text(fx.api_docs(mod))
     assert gov.cmd_fetch_inputs(mod, 1, pull=False) == OK
     assert gov.run_pass("2", mod, 1, new=False, complete=False, no_commit=False) == AWAITING
     fx.write_stage("P3.2", mod)
     assert gov.run_stage("P3.2", mod, 1, complete=True, no_commit=False) == OK
     assert gov.gate("2", mod, 1, complete=True, result=_approve_result(tmp_path), no_commit=False) == OK
     assert gov.main(["split", "--track", "frontend", "-m", mod, "-v", "1"]) == OK
-    assert CFG.packages_dir(mod, "frontend", "exec", 1).is_relative_to(CFG.repo_checkout(CFG.external["repo"]))
+    assert CFG.packages_dir(mod, "frontend", "exec", 1).is_relative_to(CFG.partition_dir(CFG.track_delivery("frontend"), mod))
     assert not list(frontend.rglob("frontend-execution*")), "something was copied into the consumer repo"
     assert gov.cmd_tag(mod, 1) == OK
-    assert CFG.tag_name(mod, 1) in _git("tag", "-l", cwd=orch_root).stdout
+    assert CFG.tag_name(mod, 1) in _git("tag", "-l", cwd=CFG.project_checkout()).stdout      # the tag is project content
+    assert CFG.tag_name(mod, 1) not in _git("tag", "-l", cwd=orch_root).stdout                # never the tool's
     # whole-module analyze is clean
     rep = an.run(mod, 1, scope="all")
     assert rep.clean, [str(f) for f in rep.findings]
@@ -292,7 +293,7 @@ def test_fake_runner_dialogue_converges_and_ingests_files(orch_root, mod, monkey
         out = []
         if round_no >= 2:
             for a in CFG.stage("P0").produces:
-                rel = CFG.artifact_path(mod, "P0", a.artifact, 1).relative_to(CFG.root)
+                rel = CFG.artifact_path(mod, "P0", a.artifact, 1)          # absolute: the artifact is in the project repo
                 body = {"platform-summary": fx.platform_summary(mod), "module-registry": fx.module_registry(mod),
                         "business-policies": fx.business_policies(mod)}[a.artifact]
                 out.append(f"<<<FILE: {rel}>>>\n{body}\n<<<END FILE>>>")
@@ -312,9 +313,13 @@ def test_fake_runner_dialogue_converges_and_ingests_files(orch_root, mod, monkey
 
 
 def test_render_and_lint_are_clean_in_the_real_repo():
-    """The real repo must be lint-clean and fully rendered (C1)."""
-    import subprocess, sys
-    r = subprocess.run([sys.executable, str(REAL_ROOT / "governance-tools" / "gov.py"), "lint"], capture_output=True, text=True, cwd=str(REAL_ROOT))
+    """The real repo must be lint-clean and fully rendered (C1) — driven against
+    the tests' own fixture project, since the tool carries none."""
+    import os, subprocess, sys
+    from conftest import FIXTURE_PROJECT
+    env = dict(os.environ, **{CFG.project["checkout_env"]: str(FIXTURE_PROJECT)})
+    env.pop("GOV_FACTORY_ROOT", None); env.pop("GOV_PROFILE", None)
+    r = subprocess.run([sys.executable, str(REAL_ROOT / "governance-tools" / "gov.py"), "lint"], capture_output=True, text=True, cwd=str(REAL_ROOT), env=env)
     assert r.returncode == 0, r.stdout[-2000:]
     assert "0 critical · 0 major" in r.stdout
 
@@ -326,7 +331,7 @@ def test_toy_profile_runs_the_whole_line(orch_root, tmp_path, monkeypatch):
     split and packaging all follow the profile — no ERP assumption survives."""
     import yaml
     from test_agnostic import TOY
-    (orch_root / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    (CFG.profiles_dir() / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
     monkeypatch.setenv("GOV_PROFILE", "toy")
     CFG.reload(profile_id="toy")
     mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
@@ -346,9 +351,9 @@ def test_toy_profile_runs_the_whole_line(orch_root, tmp_path, monkeypatch):
 
 
 def test_new_domain_scaffold_then_lint_reports_todos(orch_root):
-    # new-domain now resets stale content and continues straight into the first stage —
-    # see test_new_domain.py for the reset/confirmation/instance-value coverage.
-    assert gov.cmd_new_domain("shop", yes=True) == AWAITING
+    # new-domain adds a profile to the current project; new-project scaffolds a whole
+    # project repo — see test_new_domain.py for both.
+    assert gov.cmd_new_domain("shop") == OK
     p = CFG.profiles_dir() / "shop.yaml"
     text = p.read_text()
     assert "id: shop" in text and "TODO" in text

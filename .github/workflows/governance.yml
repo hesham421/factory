@@ -1,11 +1,11 @@
 name: governance
 
-# The factory's own checks, plus the one thing the shared repo made possible to
-# get silently wrong: a checkout whose submodule was never initialised. Nothing
-# here builds a product — it verifies that the governance is internally
-# consistent, that its generated files are what `gov.py render` would write,
-# and that its inputs resolve. Lint is never weakened here: a check that fails
-# in CI is answered in factory.yaml or the profile, not in this file.
+# The tool's own checks. The factory is a pure tool: it carries no project, so
+# CI drives it against the tests' own fixture project (the same one every test
+# builds a temp copy of). Because tool-rendered output is project-neutral, a
+# render under that project must leave the committed tree unchanged. Lint is
+# never weakened here: a check that fails in CI is answered in factory.yaml or
+# the profile, not in this file.
 on:
   push:
     branches: [main, master, 'feat/**']
@@ -14,24 +14,15 @@ on:
   schedule:
     - cron: '17 2 * * *'         # nightly — the whole pipeline, dry-run, no operator
 
+env:
+  GOV_PROJECT_CHECKOUT: governance-tools/tests/fixtures/project
+
 jobs:
   governance:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive      # without this the shared repo is an empty
-                                     # directory and every input silently vanishes
-          fetch-depth: 0
-
-      - name: The shared submodule is actually there
-        run: |
-          test -n "$(ls -A governance-shared 2>/dev/null)" || {
-            echo "::error::governance-shared is empty — the checkout did not init submodules"
-            exit 1
-          }
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -40,7 +31,7 @@ jobs:
       - name: Lint — the constitution
         run: python governance-tools/gov.py lint
 
-      - name: Render is a no-op on a committed tree
+      - name: Render is a no-op on a committed tree (and project-neutral)
         run: |
           python governance-tools/gov.py render
           git diff --exit-code
@@ -49,22 +40,19 @@ jobs:
         run: python -m pytest governance-tools/tests -q
 
   nightly:
-    # The full pipeline, end to end, with no operator: every stage dispatched to
-    # the fake runner, both gates auto-reviewed, split, inputs fetched back with
-    # their commit recorded, tagged — under a NON-ERP toy profile, so no domain
-    # assumption survives into the orchestrator (test_e2e_fake.py).
+    # The full pipeline, end to end, with no operator: a project repo scaffolded
+    # on the fly with the NON-ERP toy profile, every stage dispatched to the fake
+    # runner, both gates auto-reviewed, split, inputs fetched back with their
+    # commit recorded, tagged in the project repo (test_e2e_fake.py).
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       GOV_RUNNER: fake
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install pyyaml jinja2 pytest
-      - name: Full pipeline dry-run — toy profile, fake runner, no operator step
+      - name: Full pipeline dry-run — toy project, fake runner, no operator step
         run: python -m pytest governance-tools/tests/test_e2e_fake.py -q

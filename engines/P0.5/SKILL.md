@@ -24,4 +24,4 @@ description: PRD — governed analysis stage, pass 1 of the governance-factory. 
 3. Artifacts are written to the module version folder; `gov.py analyze` runs the contracts; the stage commits (`{stage}: [{MOD}] v{version} — {summary}`).
 4. Questions are allowed here and closed inside the dialogue with a recommended, researched answer; nothing is written to an external open-questions file.
 ## Load order
-`profiles/erp.yaml` (active profile) → `shared/ARTIFACT-CONTRACTS.md` → `shared/CONSTITUTION.md` → `shared/GOVERNANCE-CORE.md` → `shared/MARKER-PROTOCOL.md` → `shared/QUALITY-RUBRIC.md` → `shared/REGISTRY-SCHEMA.md` → `shared/VERSIONING.md` → `shared/XM-PROTOCOL.md` → `references/ENGINE.md`.
+the active project's profile (`profiles/<id>.yaml` in the project repo, named by its `project.yaml`) → `shared/ARTIFACT-CONTRACTS.md` → `shared/CONSTITUTION.md` → `shared/GOVERNANCE-CORE.md` → `shared/MARKER-PROTOCOL.md` → `shared/QUALITY-RUBRIC.md` → `shared/REGISTRY-SCHEMA.md` → `shared/VERSIONING.md` → `shared/XM-PROTOCOL.md` → `references/ENGINE.md`.

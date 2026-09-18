@@ -379,8 +379,8 @@ def test_a_module_resolves_from_wherever_the_shared_repo_is_mounted(orch_root, m
 
     # a second mount, at a different absolute path
     elsewhere = tmp_path / "another-consumer" / "governance" / "shared"
-    shutil.copytree(CFG.repo_checkout("shared"), elsewhere)
-    there = elsewhere / CFG.module_root(mod).relative_to(CFG.repo_checkout("shared"))
+    shutil.copytree(CFG.project_checkout(), elsewhere)
+    there = elsewhere / CFG.module_root(mod).relative_to(CFG.project_checkout())
 
     dangling = [f"{k} = {v}" for k, v in emitted.items() if not (there / v).exists()]
     assert dangling == [], f"paths that resolve only where they were written: {dangling}"

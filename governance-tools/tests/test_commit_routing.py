@@ -1,10 +1,11 @@
 """`_commit` writes into the repository that OWNS each path.
 
-Governance artifacts live in the shared repo (`paths.external`), which reaches
-the factory as a submodule. Two ways that goes wrong silently, both guarded here:
+Governance artifacts live in the project repo (`paths.external`), a checkout
+of its own beside the tool. Two ways that goes wrong silently, both guarded
+here:
 
-  * `git add` run in the factory root over a submodule path stages the POINTER,
-    not the content — it commits cleanly and saves nothing.
+  * `git add` run in the wrong root stages nothing, or a pointer — it commits
+    cleanly and saves nothing.
   * `git commit` without a pathspec takes the whole index, so anything staged
     out of band rides along under this commit's message.
 """
@@ -36,13 +37,11 @@ def _files_in_head(repo):
 
 @pytest.fixture
 def two_repos(factory_root, monkeypatch):
-    """A factory checkout with the shared repo nested inside it, as in the real
-    layout — the arrangement `dispatch.ingest()` depends on."""
+    """The tool checkout as a repo of its own, beside the project repo the
+    conftest already initialised — the real layout."""
     import gov
     _init(factory_root)
-    shared = _init(factory_root / CFG.repos[CFG.external["repo"]]["checkout_default"])
-    monkeypatch.setenv(CFG.repos[CFG.external["repo"]]["checkout_env"], str(shared))
-    CFG.reload()
+    shared = CFG.project_checkout()
     return gov, factory_root, shared
 
 
@@ -51,15 +50,15 @@ def test_an_artifact_is_committed_in_the_repo_that_owns_it(two_repos, mod):
     art = CFG.state_dir(mod)
     art.mkdir(parents=True, exist_ok=True)
     (art / "note.md").write_text("content\n", encoding="utf-8")
+    before = _git("rev-parse", "HEAD", cwd=factory).stdout
 
     sha = gov._commit([art / "note.md"], "artifact")
     assert sha, "nothing was committed"
 
-    # the CONTENT landed in the shared repo, not a pointer in the factory
-    assert "erp/modules" in " ".join(_files_in_head(shared)) or _files_in_head(shared)
+    # the CONTENT landed in the project repo; the tool repo did not move
     assert any("note.md" in f for f in _files_in_head(shared))
-    # and the factory recorded WHICH shared commit it was
-    assert _files_in_head(factory) == [shared.name]
+    assert CFG.paths["modules"] in " ".join(_files_in_head(shared))
+    assert _git("rev-parse", "HEAD", cwd=factory).stdout == before
 
 
 def test_a_factory_owned_path_stays_in_the_factory(two_repos):
@@ -90,16 +89,16 @@ def test_an_unrelated_staged_change_does_not_ride_along(two_repos, mod):
 
 
 def test_owning_checkout_prefers_the_innermost_repo(two_repos, mod):
-    """The shared repo sits INSIDE the factory root, so both contain the path.
-    The submodule must win, or every artifact commit goes to the wrong repo."""
+    """Every declared root is a candidate; the innermost containing the path
+    wins, so a nested checkout beats the parent that contains it."""
     gov, factory, shared = two_repos
     assert gov._owning_checkout(CFG.module_root(mod)) == shared
     assert gov._owning_checkout(CFG.dir("engines")) == factory
     assert gov._owning_checkout(factory / "factory.yaml") == factory
 
 
-def test_a_detached_submodule_refuses_the_write(two_repos, mod):
-    """`git submodule update` leaves the submodule on a commit, not a branch. A
+def test_a_detached_project_checkout_refuses_the_write(two_repos, mod):
+    """`git submodule update` leaves a checkout on a commit, not a branch. A
     commit made there is referenced by nothing and the next update walks away
     from it, while the push that should publish it succeeds publishing nothing.
     The failure is entirely silent, so this refuses rather than warns (F-28)."""
@@ -139,9 +138,9 @@ def test_ingest_resolves_a_content_path_against_an_external_checkout(factory_roo
     folder lands there, and an absolute path inside it is accepted — before,
     every such write was refused as an escape and every automated stage failed."""
     import dispatch as dp
-    elsewhere = tmp_path / "elsewhere-shared"
+    elsewhere = tmp_path / "elsewhere-project"
     elsewhere.mkdir()
-    monkeypatch.setenv(CFG.repos[CFG.external["repo"]]["checkout_env"], str(elsewhere))
+    monkeypatch.setenv(CFG.project["checkout_env"], str(elsewhere))
     CFG.reload()
     assert dp.write_roots() == [CFG.root.resolve(), elsewhere.resolve()]
 
@@ -177,8 +176,8 @@ def test_fetch_inputs_records_the_shared_commit_it_read(two_repos, mod, tmp_path
     import json
     gov, factory, shared = two_repos
     name, spec = next(iter(CFG.inputs.items()))
-    host = CFG.repos[spec["from_repo"]].get("reads_from", spec["from_repo"])
-    src = CFG.repo_checkout(host) / CFG.fmt(CFG.repos[spec["from_repo"]]["publishes"][name], mod=mod)
+    host = CFG.partition_writer(spec["partition"])
+    src = CFG.partition_dir(spec["partition"], mod)
     src.mkdir(parents=True, exist_ok=True)
     (src / "index.md").write_text("# published\n", encoding="utf-8")
     _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=shared)

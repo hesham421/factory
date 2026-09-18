@@ -17,8 +17,11 @@ Usage
 
 Environment overrides
 ---------------------
-    GOV_FACTORY_ROOT   repo root (tests / CI against an isolated checkout)
-    GOV_PROFILE        active profile id (default: factory.yaml → factory.active_profile)
+    GOV_FACTORY_ROOT        the tool's own root (tests / CI against an isolated checkout)
+    GOV_PROJECT_CHECKOUT    the PROJECT repo (factory.yaml → project.checkout_env); everything
+                            generated or project-variable lives there — switching projects is
+                            pointing this at another checkout
+    GOV_PROFILE             active profile id (default: the project's project.yaml → profile)
 """
 from __future__ import annotations
 
@@ -32,7 +35,7 @@ from typing import Any, Iterator
 import yaml
 
 _FACTORY_FILE = "factory.yaml"          # the one filename this loader must know
-_PROFILE_SCHEMA = "_schema.yaml"        # and the schema's, inside paths.profiles
+_PROFILE_SCHEMA = "_schema.yaml"        # and the schema's, inside paths.schema (a tool path)
 
 
 # ── small helpers ────────────────────────────────────────────────────────────
@@ -208,7 +211,7 @@ class FactoryConfig:
     def __init__(self, root: Path | None = None, profile_id: str | None = None):
         self.root = Path(os.environ.get("GOV_FACTORY_ROOT") or root or self._discover_root()).resolve()
         self.data = _load_yaml(self.root / _FACTORY_FILE)
-        self._profile_id = profile_id or os.environ.get("GOV_PROFILE") or self.data["factory"]["active_profile"]
+        self._profile_override = profile_id or os.environ.get("GOV_PROFILE")
 
     @staticmethod
     def _discover_root() -> Path:
@@ -223,10 +226,12 @@ class FactoryConfig:
     def factory(self) -> dict:      return self.data["factory"]
     @property
     def paths(self) -> dict:
-        """Raw `paths:` with every project-scoped value's `{profile_id}` token resolved
-        against the active profile's own identity — the one place that consolidates
-        `domain`/`platform`/`modules`/`decisions` under one live-profile-named folder."""
+        """Raw `paths:`. A value may still carry `{profile_id}`; it is resolved
+        against the active profile only when present, so a project-less run
+        (scaffolding a new project) never has to load a profile to name a path."""
         raw = self.data["paths"]
+        if not any(isinstance(v, str) and "{profile_id}" in v for v in raw.values()):
+            return dict(raw)
         pid = self.profile.id
         return {k: (v.replace("{profile_id}", pid) if isinstance(v, str) else v) for k, v in raw.items()}
     @property
@@ -242,7 +247,12 @@ class FactoryConfig:
     @property
     def tracks(self) -> dict:       return self.data["tracks"]
     @property
-    def repos(self) -> dict:        return self.data["repos"]
+    def repos(self) -> dict:
+        """The consumer repos of the ACTIVE PROJECT (`project.yaml → repos`) —
+        per-project facts, never in factory.yaml."""
+        return dict(self.project_data.get("repos") or {})
+    @property
+    def project(self) -> dict:      return self.data["project"]
     @property
     def lanes(self) -> dict:        return self.data["lanes"]
     @property
@@ -266,23 +276,46 @@ class FactoryConfig:
     @property
     def commands(self) -> list[dict]: return self.data.get("commands", [])
 
+    # project -----------------------------------------------------------------
+    def project_checkout(self) -> Path:
+        """The project repo: `$<project.checkout_env>`, else `project.checkout_default`
+        relative to this tool's root. The content root for every external path key."""
+        p = self.project
+        return Path(os.environ.get(p["checkout_env"]) or (self.root / p["checkout_default"])).resolve()
+
+    def project_file(self) -> Path:
+        return self.project_checkout() / self.project["file"]
+
+    @cached_property
+    def project_data(self) -> dict:
+        """`project.yaml` of the active project — user-edited, read here, never
+        written by the factory. Empty when the checkout has none (a project being
+        scaffolded, or the factory run without a project)."""
+        f = self.project_file()
+        return _load_yaml(f) if f.exists() else {}
+
     # profile -----------------------------------------------------------------
     @property
     def profile_id(self) -> str:
-        return self._profile_id
+        pid = self._profile_override or self.project_data.get("profile")
+        if not pid:
+            raise FileNotFoundError(
+                f"no active profile: {self.project_file()} names none (or does not exist) and "
+                f"GOV_PROFILE is unset — point {self.project['checkout_env']} at a project repo, "
+                f"or scaffold one with `gov.py new-project`")
+        return str(pid)
 
     @cached_property
     def profile(self) -> Profile:
-        return self.load_profile(self._profile_id)
+        return self.load_profile(self.profile_id)
 
     def profiles_dir(self) -> Path:
-        # raw, not self.paths: resolving self.paths loads self.profile, which loads
-        # via this method — "profiles" never carries {profile_id} so this is safe either
-        # way, but reading raw here breaks the cycle explicitly rather than by luck.
-        return self.root / self.data["paths"]["profiles"]
+        """The project's profiles — an external path key, resolved on the project checkout."""
+        return self.dir("profiles")
 
     def profile_schema(self) -> dict:
-        return _load_yaml(self.profiles_dir() / _PROFILE_SCHEMA)
+        # validation logic, not data: the schema stays in the tool (paths.schema)
+        return _load_yaml(self.root / self.data["paths"]["schema"] / _PROFILE_SCHEMA)
 
     def load_profile(self, profile_id: str) -> Profile:
         path = self.profiles_dir() / f"{profile_id}.yaml"
@@ -373,22 +406,20 @@ class FactoryConfig:
     # paths ---------------------------------------------------------------------
     @property
     def external(self) -> dict:
-        """Which `paths` keys resolve against another repository's checkout.
-
-        Read from the RAW paths block, not `self.paths`: resolving `{profile_id}`
-        loads the profile, and the profile is loaded through `profiles_dir()`,
-        which is itself a path. Reading raw here breaks that cycle explicitly."""
+        """Which `paths` keys resolve against the PROJECT checkout (read raw — no
+        profile is needed to answer this)."""
         return self.data["paths"].get("external") or {}
 
     def dir(self, key: str) -> Path:
         """Path for a declared key, against whichever repo owns it.
 
-        Governance output lives in the shared repo so every consumer reads the
-        artifact where it was written instead of a copy; the factory's own
-        machinery stays here. Which is which is declared in `paths.external`,
+        Everything generated or project-variable lives in the project repo —
+        the profile, the analysis, the decisions, the delivered packages — so
+        every consumer reads the artifact where it was written. The factory's
+        own machinery stays here. Which is which is declared in `paths.external`,
         never decided in this function."""
         ext = self.external
-        base = self.repo_checkout(ext["repo"]) if key in (ext.get("keys") or ()) else self.root
+        base = self.project_checkout() if key in (ext.get("keys") or ()) else self.root
         rel = self.paths[key]
         if not isinstance(rel, str):
             raise KeyError(f"paths.{key} is not a path")
@@ -460,8 +491,16 @@ class FactoryConfig:
         raise KeyError(f"no plan '{plan}' for track '{track}'")
 
     def packages_dir(self, mod: str, track: str, plan: str, version: int | None = None) -> Path:
+        """Where a track's split packages are DELIVERED: the track's delivery
+        partition of the project repo (`tracks.<t>.delivery`), the version folder
+        for a delta (v1 = the partition itself, as for the module base), then the
+        package. The consumer reads it there; nothing is copied anywhere."""
         pkg = self.tracks[track]["packages"][plan]
-        return self.version_root(mod, version) / self.paths["module"]["packages_dir"] / pkg
+        version = self.current_version(mod) if version is None else int(version)
+        base = self.partition_dir(self.tracks[track]["delivery"], mod)
+        if version > 1:
+            base = base / self.fmt(self.naming["version_folder"], version=version)
+        return base / pkg
 
     def state_dir(self, mod: str, version: int | None = None) -> Path:
         return self.version_root(mod, version) / self.paths["module"]["state_dir"]
@@ -472,29 +511,30 @@ class FactoryConfig:
     def decisions_dir(self, mod: str) -> Path:
         return self.dir("decisions") / mod.upper()
 
-    def repo_receives(self, repo: str, publication: str) -> Path | None:
-        """Where `repo` keeps its own copy of a factory publication — INSIDE that
-        checkout, always. None when this repo does not receive that publication."""
-        rel = self.repos[repo].get("receives", {}).get(publication)
-        return (self.repo_checkout(repo) / rel) if rel else None
+    def project_receives(self, publication: str) -> Path | None:
+        """Where the project repo keeps a factory publication (`project.receives`)
+        — inside the one checkout every consumer mounts. None when undeclared."""
+        rel = (self.project.get("receives") or {}).get(publication)
+        return (self.project_checkout() / rel) if rel else None
 
     def track_repo(self, track: str) -> str:
-        """The consumer repo key for a track (`tracks.<t>.repo`, default `<t>`).
-
-        `tracks` and `repos` are different tables — `repos.shared` is in one and
-        not the other — so a track's repo is named, not inferred (F-12)."""
+        """The consumer repo key for a track (`tracks.<t>.repo`, default `<t>`) —
+        a key of the project's `repos`, named rather than inferred (F-12)."""
         return self.tracks[track].get("repo", track)
 
-    # ── the shared governance repo ────────────────────────────────────────
-    def shared_repo(self) -> str:
-        """The repo key governance is written to — `paths.external.repo`, so the
-        name is never typed in code."""
-        return self.external["repo"]
+    def track_partition(self, track: str) -> str:
+        """The partition a track WRITES (its execution state, its own outputs)."""
+        return self.tracks[track]["partition"]
 
-    FACTORY_WRITER = "factory"      # the one writer name that means "this repo"
+    def track_delivery(self, track: str) -> str:
+        """The partition the factory delivers a track's packages into."""
+        return self.tracks[track]["delivery"]
+
+    # ── the project repo's partitions ─────────────────────────────────────
+    FACTORY_WRITER = "factory"      # the one writer name that means "this tool"
 
     def _partition_specs(self) -> dict:
-        return self.repos[self.shared_repo()].get("partitions", {})
+        return self.project.get("partitions", {})
 
     def partitions(self) -> dict:
         """Partition name → path template. GOVERNANCE-SHARED-DESIGN.md §3's
@@ -528,12 +568,26 @@ class FactoryConfig:
         return "{MOD}" in self.partitions()[part]
 
     def partition_dir(self, part: str, mod: str | None = None) -> Path:
-        return self.repo_checkout(self.shared_repo()) / self.fmt(
-            self.partitions()[part], **({"mod": mod} if mod else {}))
+        return self.project_checkout() / self.fmt(self.partitions()[part], **({"mod": mod} if mod else {}))
+
+    def partition_of(self, path: Path, mod: str) -> str | None:
+        """The partition a path falls in — the DEEPEST one, since a factory-written
+        delivery partition sits inside a track's own partition (most specific
+        wins, exactly as CODEOWNERS reads it). None outside every partition."""
+        p = Path(path).resolve()
+        best: tuple[int, str] | None = None
+        for part in self._partition_specs():
+            d = self.partition_dir(part, mod if self.partition_is_per_module(part) else None).resolve()
+            if d == p or d in p.parents:
+                if best is None or len(d.parts) > best[0]:
+                    best = (len(d.parts), part)
+        return best[1] if best else None
 
     def repo_checkout(self, repo: str) -> Path:
+        """A CONSUMER checkout of the active project (`project.yaml → repos`):
+        its env var, else its `checkout_default` relative to the project checkout."""
         r = self.repos[repo]
-        return Path(os.environ.get(r["checkout_env"]) or (self.root / r["checkout_default"])).resolve()
+        return Path(os.environ.get(r["checkout_env"]) or (self.project_checkout() / r["checkout_default"])).resolve()
 
     # naming ---------------------------------------------------------------------
     def fmt(self, template: str, **kw: Any) -> str:

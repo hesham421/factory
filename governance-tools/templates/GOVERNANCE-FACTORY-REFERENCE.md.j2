@@ -1,0 +1,135 @@
+{{ marker }}
+# {{ factory.factory.name }} — the tool reference (v{{ factory.schema_version }})
+
+> One page that describes the tool as it is — for whoever continues it from a
+> separate conversation and hands prompts down to this repo. Every table below
+> is rendered from `factory.yaml` by `gov.py render`, so this file cannot say
+> something the tool does not do; `gov.py lint` refuses a stale copy. What is
+> project-variable is deliberately absent: it lives in the project repo.
+
+## 1. What it is
+
+A **pure, project-agnostic analysis factory**: this checkout is a stateless tool. It reads
+one **project repo** — named by `${{ factory.project.checkout_env }}` (default
+`{{ factory.project.checkout_default }}`) — and writes only there: the project's `{{ factory.project.file }}`
+names the active domain profile; the profile is data (`{{ factory.paths.profiles }}/<id>.yaml`, validated
+against this tool's `profiles/_schema.yaml`); the analysis, the decisions, the split packages and the
+tracks' own partitions are all in that repo, one writer per path. Switching projects is pointing the
+variable at another checkout. Boundary: **{{ factory.factory.boundary }}** — it never implements, never
+audits an implementation, never runs tests inside the line.
+
+The binding rules are `shared/CONSTITUTION.md` (C1–C6). The single source of every stage, pass,
+gate, lane, naming, id-grammar and marker fact is `factory.yaml`; every generated file
+(`SKILL.md`, `.claude/commands/`, `README.md`, `shared/START-HERE.md`, this page, the project's
+`{{ factory.paths.overview }}`) is produced by `gov.py render` and kept fresh by `gov.py lint`.
+
+## 2. The project repo
+
+<!-- RENDER:project-layout -->
+<!-- /RENDER:project-layout -->
+
+Ownership is enforced, not conventional: the project's `CODEOWNERS` is derived from this table,
+most specific wins, and a factory regeneration may delete only what the deepest matching partition
+says is the factory's (`gov.py run-pass --regenerate`).
+
+<!-- RENDER:partitions -->
+<!-- /RENDER:partitions -->
+
+Every consumer mounts the project repo as a submodule and **pins a commit**: a delivered version
+does not move under a consumer, an upgrade is a reviewed pointer bump, and `gov.py fetch-inputs`
+records the project commit it read a track's publication at (`{{ factory.paths.module.input_meta }}`,
+`{{ factory.paths.module.manifest_file }} → status.inputs`). `gov.py sparse --track <t>` narrows what a
+consumer sees to what it may read; `gov.py sync` reports where the project repo stands and which
+consumer is behind it.
+
+## 3. The pipeline
+
+<!-- RENDER:stages -->
+<!-- /RENDER:stages -->
+
+Passes: {% for k, p in factory.passes.items() %}**pass {{ k }}** = {{ p.stages | join(' → ') }} → {{ p.then | join(' → ') }} (track `{{ p.track }}`{% if p.required_inputs %}, requires {{ p.required_inputs | join(', ') }} fetched back{% endif %}){% if not loop.last %}; {% endif %}{% endfor %}.
+A stage runs one protocol — state → brief → dispatch → write → analyze → commit — owned by `gov.py`
+(`shared/GOVERNANCE-CORE.md` §6). Questions are allowed only where `stages[*].questions` says so and
+are closed inside the lane's dialogue; after that, ambiguity is an ADR (`factory.ambiguity`), and
+every decision a dialogue settles is persisted as an ADR too (`factory.dialogue`, status
+`{{ factory.dialogue.adr_status }}`).
+
+Standalone, outside the line, never a gate:
+<!-- RENDER:standalone -->
+<!-- /RENDER:standalone -->
+
+## 4. Gates and the analyze policy
+
+<!-- RENDER:gates -->
+<!-- /RENDER:gates -->
+
+`gov.py analyze` implements every clause of `shared/ARTIFACT-CONTRACTS.md` against the module's
+generated current state; a gate opens only with no finding at {{ factory.analyze.blocking | join('/') }}
+(`analyze.blocking`). The **maturity** clauses (ambiguity, measurable criteria, lifecycle coverage,
+unwanted paths, screen states, glossary) fire at `analyze.maturity_severity` = `{{ factory.analyze.maturity_severity }}`
+— recorded for the reviewer, never closing a gate on their own. Every report, gate record and the
+module's execution state carry the coverage ratios of `analyze.coverage`
+({% for c in factory.analyze.coverage %}`{{ c.id }}`{{ ', ' if not loop.last }}{% endfor %}).
+
+The review is one brief (`reviewers/pass-review.md`) — the analyze report, an adversarial reading
+(§3.5), a scorecard on {{ factory.review.rubric | join(', ') }} ({{ factory.review.scale.min }}–{{ factory.review.scale.max }},
+threshold {{ factory.review.pass_threshold }}) and one JSON verdict in {{ factory.review.verdicts | join(' / ') }}.
+A REVISE is applied by the gate's `on_revise` lane, re-analyzed and re-gated at most
+{{ factory.review.revise_max }} time(s), then ESCALATES to a human.
+
+<!-- RENDER:review-rubric -->
+<!-- /RENDER:review-rubric -->
+
+## 5. Lanes and the runner
+
+<!-- RENDER:lanes -->
+<!-- /RENDER:lanes -->
+
+Every reasoning step is a brief on a lane; every mechanical step (state, analyze, split, tag,
+publish, sync) is a direct `gov.py` operation. `${{ factory.runner.env }}` chooses the runner: `cmd`
+runs `${{ factory.runner.cmd_env }}` once per round — the shipped template is
+`{{ factory.runner.adapter }} {{ factory.runner.adapter_args }}`, which drives the claude-delegate
+relay and hands the final response back; `{% for p in factory.runner.required %}{{ '{' ~ p ~ '}' }}{{ ' ' if not loop.last }}{% endfor %}` is
+mandatory because a dialogue lane alternates implementers. `manual` writes the brief and waits for the
+operator (exit 2); `fake` is the test hook. In `cmd` mode nothing waits: `gov.py next -m MOD --run`
+executes the single next protocol step until the version is complete, stopping only at the human
+decision points, a `[QUESTION]` in a questions-forbidden stage, a BLOCKED ADR, a blocking finding or
+an ESCALATE.
+
+## 6. Identity, markers, versions
+
+<!-- RENDER:ids -->
+<!-- /RENDER:ids -->
+
+Requirements follow EARS (`factory.ids.ears`):
+<!-- RENDER:ears -->
+<!-- /RENDER:ears -->
+
+Execution plans carry the marker grammar the split reads (`shared/MARKER-PROTOCOL.md`); the phase
+keys are the project profile's and appear in its `{{ factory.paths.overview }}`:
+<!-- RENDER:markers -->
+<!-- /RENDER:markers -->
+
+Versions: `{{ factory.naming.version_folder }}` folders in the project repo are the authority
+(`versioning.authority`); v1 is the module's base folder, vN holds only what changed plus a change
+manifest, and `gov.py state` folds them into `{{ factory.paths.module.state_dir }}/` — the only thing
+an engine reads. A frozen version is tagged `{{ factory.naming.tag }}` **in the project repo**.
+
+## 7. Commands
+
+<!-- RENDER:commands -->
+<!-- /RENDER:commands -->
+
+## 8. Contracts
+
+<!-- RENDER:contracts-index -->
+<!-- /RENDER:contracts-index -->
+
+## 9. Constitution enforcement
+
+`gov.py lint` refuses: a profile that does not validate against the schema (C5); a removed concept
+or a profile's own vocabulary typed into the tool (C2); a stage id, phase key or id prefix as a
+Python literal (C2); a generated file that differs from a fresh render (C1); a command file the
+tool did not generate; and — because the tool is project-neutral — the active project's identity
+anywhere in the tool's docs. Tests build a temporary project repo of their own (`{{ factory.paths.tools }}/tests`);
+none depends on a committed project.

@@ -221,7 +221,7 @@ Every row is something the user named explicitly.
 Codes are taken from `profile.vocabulary.module_prefixes` where they already exist.
 A module the profile does not list is recorded as PROPOSED here and needs no manual
 profile edit to proceed: `{{ stage.next }}` registers it as RESERVED and the pipeline
-continues normally. Adding the code to `profiles/erp.yaml` (or the active profile) is
+continues normally. Adding the code to the active project's profile is
 optional bookkeeping the user can do whenever convenient — never a gate. Engines never
 invent codes; they only carry forward what the user named.
 

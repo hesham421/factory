@@ -1,0 +1,9 @@
+# project.yaml — the tests' own project. Edited by people; the factory READS it and never writes it.
+project:
+  id: acme
+  name: Acme Platform
+  url: ""
+profile: acme                      # profiles/<profile>.yaml in this repo ($GOV_PROFILE overrides)
+repos:                             # the consumer repos, resolved relative to this checkout unless the env var is set
+  backend: {url: "", checkout_env: GOV_BACKEND_CHECKOUT, checkout_default: "../backend"}
+  frontend: {url: "", checkout_env: GOV_FRONTEND_CHECKOUT, checkout_default: "../frontend"}

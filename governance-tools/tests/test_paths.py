@@ -1,208 +1,212 @@
-"""Project-specific generated content (`domain-profile.md`, `project-registry.md`,
-`modules/`, `decisions/`) consolidates under ONE folder named after the active
-profile's own identity (`profile.identity.id`) — never a fixed literal like
-`project/`. `factory.yaml -> paths.*` carries this as a `{profile_id}` token,
-resolved at runtime by `FactoryConfig.paths` (config.py); nothing here pins a name
-to either profile — both are read back from `CFG.profile.id`.
-
-That folder lives in the SHARED repo, not this one: governance is read by every
-repo that builds from it, so it is written where all of them can read it instead
-of copied to each. Which path keys move is declared in `paths.external` and
-resolved by `config.dir()` — so these tests assert against the root that owns
-the key, never against `CFG.root` directly.
+"""Two roots. Tool paths resolve against the factory checkout; every key in
+`paths.external.keys` — the profiles, the analysis, the decisions, the
+overview — resolves against the PROJECT checkout named by
+`GOV_PROJECT_CHECKOUT`. Which is which is declared in factory.yaml and read by
+`config.dir()`; nothing here pins a name to either root. Switching projects is
+one variable.
 """
 from __future__ import annotations
 
 import pathlib
+import shutil
 
 import yaml
 
 from config import CFG
-
+from conftest import FIXTURE_PROJECT, git_init
 from test_agnostic import TOY
 
 
-def test_project_paths_nest_under_the_active_profile_id(factory_root, mod):
-    root = CFG.dir("domain")
-    assert root == CFG.repo_checkout(CFG.external["repo"]) / CFG.profile.id
-    assert root.name == CFG.profile.id          # the folder is named by the profile
-    assert CFG.root not in (root, *root.parents) or root.is_relative_to(CFG.root)
-    # platform shares the same root as domain (both are the entry-gate + bootstrap
-    # artifacts of ONE project instance)
-    assert CFG.dir("platform") == root
-    # modules/ and decisions/ nest inside it, not beside it
-    assert CFG.dir("modules") == root / "modules"
-    assert CFG.dir("decisions") == root / "decisions"
-    assert CFG.modules_root() == root / "modules"
-    assert CFG.module_root(mod) == root / "modules" / mod.upper()
-    assert CFG.decisions_dir(mod) == root / "decisions" / mod.upper()
+def test_project_paths_resolve_on_the_project_checkout(factory_root, project_root, mod):
+    for key in CFG.external["keys"]:
+        assert CFG.dir(key) == project_root / CFG.paths[key], key
+        assert not CFG.dir(key).is_relative_to(CFG.root)
+    assert CFG.modules_root() == project_root / CFG.paths["modules"]
+    assert CFG.module_root(mod) == CFG.modules_root() / mod.upper()
+    assert CFG.decisions_dir(mod) == project_root / CFG.paths["decisions"] / mod.upper()
+    assert CFG.profiles_dir() == project_root / CFG.paths["profiles"]
+    # tool paths stay in the tool
+    for key in ("engines", "shared", "reviewers", "commands", "tools", "templates", "schema"):
+        assert CFG.dir(key) == CFG.root / CFG.paths[key]
     # no unresolved template token leaked through
-    assert all("{profile_id}" not in v for v in CFG.paths.values() if isinstance(v, str))
+    assert all("{" not in v for v in CFG.paths.values() if isinstance(v, str))
 
 
-def test_a_differently_identified_profile_gets_a_differently_named_root(factory_root):
-    erp_root = CFG.dir("domain")
-    assert erp_root.name == "erp"
+def test_switching_the_project_is_one_variable(factory_root, tmp_path, monkeypatch):
+    """The same tool checkout drives another project repo when the variable
+    points at it: a different profile, a different content root, nothing in
+    the tool changed."""
+    first = CFG.project_checkout()
+    first_id = CFG.profile_id
+    other = tmp_path / "other-project"
+    shutil.copytree(FIXTURE_PROJECT, other)
+    (other / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    pj = other / CFG.project["file"]
+    pj.write_text(pj.read_text(encoding="utf-8").replace(f"profile: {first_id}", "profile: toy"), encoding="utf-8")
+    git_init(other)
 
-    (factory_root / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
-    CFG.reload(profile_id="toy")
-    toy_root = CFG.dir("domain")
+    monkeypatch.setenv(CFG.project["checkout_env"], str(other))
+    cfg = CFG.reload()
+    assert cfg.project_checkout() == other.resolve() and cfg.project_checkout() != first
+    assert cfg.profile_id == "toy" and cfg.profile.id == "toy"
+    assert cfg.dir("modules") == other.resolve() / cfg.paths["modules"]
+    assert cfg.root == factory_root.resolve()          # the tool did not move
+    monkeypatch.setenv(CFG.project["checkout_env"], str(first))
+    assert CFG.reload().profile_id == first_id
 
-    assert toy_root.name == "toy"
-    assert toy_root != erp_root
-    assert CFG.dir("modules") == toy_root / "modules"
-    assert CFG.dir("decisions") == toy_root / "decisions"
-    CFG.reload()
 
-
-def test_generated_content_actually_lands_under_the_named_root(factory_root, mod):
-    """Not just path arithmetic — files written through the real artifact/module
-    helpers land on disk under the profile-named folder, for whichever profile
-    is active."""
-    root = CFG.dir("domain")
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "domain-profile.md").write_text("stub\n", encoding="utf-8")
+def test_generated_content_actually_lands_in_the_project_repo(factory_root, project_root, mod):
+    """Not just path arithmetic — files written through the real helpers land
+    in the project checkout, and nothing spills into the tool tree."""
+    (CFG.dir("domain")).mkdir(parents=True, exist_ok=True)
+    (CFG.dir("domain") / "domain-profile.md").write_text("stub\n", encoding="utf-8")
     CFG.decisions_dir(mod).mkdir(parents=True, exist_ok=True)
     (CFG.decisions_dir(mod) / "ADR-X-001.md").write_text("Status: OPEN\n", encoding="utf-8")
     CFG.module_root(mod).mkdir(parents=True, exist_ok=True)
+    assert (project_root / CFG.paths["domain"] / "domain-profile.md").exists()
+    assert (project_root / CFG.paths["decisions"] / mod.upper() / "ADR-X-001.md").exists()
+    assert (project_root / CFG.paths["modules"] / mod.upper()).is_dir()
+    for key in CFG.external["keys"]:
+        if key != "profiles":                          # the tool keeps the SCHEMA under the same folder name
+            assert not (CFG.root / CFG.paths[key]).exists(), key
+    assert not (CFG.root / "analysis").exists()
 
-    assert (root / "domain-profile.md").exists()
-    assert (root / "decisions" / mod.upper() / "ADR-X-001.md").exists()
-    assert (root / "modules" / mod.upper()).is_dir()
-    # nothing spilled back out to the old fixed top-level names
-    assert not (CFG.root / "project").exists()
-    assert not (CFG.root / "modules").exists()
-    assert not (CFG.root / "decisions").exists()
-    # nor back into this repo under the profile's own name: the factory writes
-    # governance, it does not keep a copy of it
-    assert not (CFG.root / CFG.profile.id).exists()
+
+def test_the_project_file_names_the_profile_and_the_env_overrides_it(factory_root, monkeypatch):
+    assert CFG.profile_id == CFG.project_data["profile"]
+    (CFG.profiles_dir() / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    monkeypatch.setenv("GOV_PROFILE", "toy")
+    assert CFG.reload().profile_id == "toy"
+    monkeypatch.delenv("GOV_PROFILE")
+    assert CFG.reload().profile_id == CFG.project_data["profile"]
+
+
+def test_a_project_without_a_profile_says_so(factory_root, tmp_path, monkeypatch):
+    import pytest
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setenv(CFG.project["checkout_env"], str(empty))
+    cfg = CFG.reload()
+    assert cfg.project_data == {}
+    with pytest.raises(FileNotFoundError, match="no active profile"):
+        _ = cfg.profile_id
+    # paths that need no profile still resolve — a project can be scaffolded there
+    assert cfg.dir("modules") == empty.resolve() / cfg.paths["modules"]
 
 
 # ── which repository owns a path (paths.external) ────────────────────────────
 
-def test_dir_routes_an_external_key_to_the_owning_repo(factory_root):
-    """`paths.external` is the ONE statement of the factory/shared boundary:
-    a key listed there resolves against the shared checkout, every other key
-    against this repo. Neither root is decided in code."""
-    import yaml
+def test_dir_routes_an_external_key_to_the_project_and_the_rest_here(factory_root):
+    """`paths.external.keys` is the ONE statement of the tool/project boundary."""
     fac = factory_root / "factory.yaml"
     data = yaml.safe_load(fac.read_text(encoding="utf-8"))
-    data["paths"]["external"] = {"repo": "shared", "keys": ["modules"]}
+    data["paths"]["external"] = {"keys": ["modules", "profiles"]}
     fac.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     cfg = CFG.reload()
-
-    shared = cfg.repo_checkout("shared")
-    assert cfg.dir("modules") == shared / cfg.paths["modules"]
+    assert cfg.dir("modules") == cfg.project_checkout() / cfg.paths["modules"]
     assert cfg.dir("engines") == cfg.root / cfg.paths["engines"]
-    # everything built on modules_root follows, with no further wiring
-    assert cfg.modules_root() == shared / cfg.paths["modules"]
-    assert cfg.module_root("ORG").parent == shared / cfg.paths["modules"]
-    CFG.reload()
-
-
-def test_an_empty_external_list_leaves_every_path_here(factory_root):
-    import yaml
-    fac = factory_root / "factory.yaml"
-    data = yaml.safe_load(fac.read_text(encoding="utf-8"))
-    data["paths"]["external"] = {"repo": "shared", "keys": []}
-    fac.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-    cfg = CFG.reload()
-    for key, rel in cfg.paths.items():
-        if isinstance(rel, str):
-            assert cfg.dir(key) == cfg.root / rel
+    assert cfg.dir("decisions") == cfg.root / cfg.paths["decisions"]      # moved back by the declaration alone
+    assert cfg.modules_root() == cfg.project_checkout() / cfg.paths["modules"]
     CFG.reload()
 
 
 # ── factory.yaml's own cross-table invariants (F-12) ─────────────────────────
 
 def test_a_track_naming_an_undeclared_repo_is_a_finding(factory_root):
-    """`tracks` and `repos` are different tables — `repos.shared` is in one and
-    not the other. A track's repo is therefore named, and the name is checked,
-    instead of the two keys being assumed identical and failing as a KeyError."""
+    """A track's repo is a key of the PROJECT's repos — named, checked, never
+    assumed to equal the track's own key."""
     import lint
     cfg = CFG.reload()
     assert lint.scan_config(cfg) == []
-
     cfg.data["tracks"][next(iter(cfg.tracks))]["repo"] = "no-such-repo"
     found = lint.scan_config(cfg)
     assert len(found) == 1
     assert "no-such-repo" in found[0].message
-    assert all(r in found[0].message for r in cfg.repos)   # names both tables
+    assert all(r in found[0].message for r in cfg.repos)   # names the project's table
+    CFG.reload()
+
+
+def test_a_track_or_input_naming_an_undeclared_partition_is_a_finding(factory_root):
+    import lint
+    cfg = CFG.reload()
+    track = next(iter(cfg.tracks))
+    cfg.data["tracks"][track]["delivery"] = "nowhere"
+    assert any("nowhere" in f.message for f in lint.scan_config(cfg))
+    cfg = CFG.reload()
+    cfg.data["inputs"][next(iter(cfg.inputs))]["partition"] = "nowhere"
+    assert any("nowhere" in f.message for f in lint.scan_config(cfg))
+    cfg = CFG.reload()
+    # a delivery partition a track writes is a contradiction: split writes there
+    cfg.data["tracks"][track]["delivery"] = cfg.tracks[track]["partition"]
+    assert any("delivery" in f.path for f in lint.scan_config(cfg))
     CFG.reload()
 
 
 def test_an_external_key_that_is_not_a_path_is_a_finding(factory_root):
     import lint
     cfg = CFG.reload()
-    cfg.data["paths"]["external"] = {"repo": "shared", "keys": ["module"]}
+    cfg.data["paths"]["external"] = {"keys": ["module"]}
     found = lint.scan_config(cfg)
     assert len(found) == 1 and "not a path" in found[0].message
-
     cfg.data["paths"]["external"]["keys"] = ["not-a-key-at-all"]
     found = lint.scan_config(cfg)
     assert len(found) == 1 and "not a declared path key" in found[0].message
-
-    cfg.data["paths"]["external"] = {"repo": "not-a-repo", "keys": []}
-    found = lint.scan_config(cfg)
-    assert len(found) == 1 and "not-a-repo" in found[0].message
     CFG.reload()
 
 
-# ── which partition is per-module (gov.py sync) ──────────────────────────────
+# ── partitions of the project repo ───────────────────────────────────────────
 
 def test_a_partition_is_per_module_by_its_template_not_its_name(factory_root):
-    """`gov.py sync` reports each partition of the shared repo. Whether one has
-    a directory per module is read off its template — an entry carrying `{MOD}`
-    is per-module — never off its name. Recognising a partition by name would
-    put the ownership table's vocabulary back into the code C1 keeps it out of."""
     import gov
     parts = gov._partitions()
-    assert parts, "the shared repo declares no partitions"
+    assert parts, "the project declares no partitions"
     for name, template in parts.items():
         assert gov._per_module(name) == ("{MOD}" in template)
-    # and the resolved path carries no unexpanded token
     for name in parts:
         p = gov._shared_dir(name, "ORG" if gov._per_module(name) else None)
         assert "{" not in str(p), f"{name} resolved to {p}"
-        assert p.is_relative_to(CFG.repo_checkout(CFG.external["repo"]))
+        assert p.is_relative_to(CFG.project_checkout())
 
 
-def test_the_shared_repo_is_never_named_in_code(factory_root):
-    """Which repo governance goes to is `paths.external.repo` and nothing else,
-    so renaming it in config renames it everywhere."""
-    import gov
-    assert gov._shared_repo() == CFG.external["repo"]
-    src = pathlib.Path(gov.__file__).read_text(encoding="utf-8")
-    assert f'"{CFG.external["repo"]}"' not in src, "the repo key is typed in gov.py"
-
-
-def test_fmt_resolves_the_profile_token_wherever_it_appears(factory_root):
-    """`{profile_id}` is resolved in one place, so any declared value may carry
-    it. A value that reached the filesystem with the token still in it is how
-    `fetch-inputs` reported a closed gate over a directory that was there."""
-    assert CFG.fmt("{profile_id}/modules/{MOD}/api-docs", mod="sec") == \
-        f"{CFG.profile.id}/modules/SEC/api-docs"
-    # an explicit value still wins — the resolver fills in, it does not override
-    assert CFG.fmt("{profile_id}/x", profile_id="other") == "other/x"
-    # and no declared repo path escapes with the token intact
-    for repo, spec in CFG.repos.items():
-        for name, template in (spec.get("publishes") or {}).items():
-            assert "{profile_id}" not in CFG.fmt(template, mod="SEC"), f"{repo}.publishes.{name}"
-    for part in CFG.partitions().values():
-        assert "{profile_id}" not in CFG.fmt(part, mod="SEC")
+def test_the_project_checkout_is_never_named_in_code(factory_root):
+    """Where the project lives is `project.checkout_env`/`checkout_default` and
+    nothing else, so any project repo is driven by the same tool."""
+    import gov, dispatch, config
+    for m in (gov, dispatch, config):
+        src = pathlib.Path(m.__file__).read_text(encoding="utf-8")
+        assert CFG.project["checkout_default"].strip("./") not in src, f"the project checkout is typed in {m.__name__}"
 
 
 def test_a_partition_declares_who_writes_it(factory_root):
     """The ownership table is read, not merely documented: `writer` is what stops
-    a factory regeneration from clearing a path a track wrote."""
+    a factory regeneration from clearing a path a track wrote — and the DEEPEST
+    partition decides, so a delivery partition nested in a track's is the factory's."""
     for part in CFG.partitions():
         w = CFG.partition_writer(part)
         assert w == CFG.FACTORY_WRITER or w in CFG.tracks, \
             f"{part} names writer '{w}', which is neither this factory nor a track"
-    foreign = {d.name for d in CFG.foreign_partitions("SEC")}
+    foreign = set(CFG.foreign_partitions("SEC"))
     assert foreign, "no partition is protected from the factory — the table says nothing"
-    assert all(CFG.partition_writer(p) != CFG.FACTORY_WRITER
-               for p in CFG.partitions() if CFG.partition_dir(p, "SEC").name in foreign)
+    for part in CFG.partitions():
+        d = CFG.partition_dir(part, "SEC" if CFG.partition_is_per_module(part) else None)
+        assert (d in foreign) == (CFG.partition_writer(part) != CFG.FACTORY_WRITER and CFG.partition_is_per_module(part)), part
+    for track in CFG.tracks:
+        delivery = CFG.partition_dir(CFG.track_delivery(track), "SEC")
+        own = CFG.partition_dir(CFG.track_partition(track), "SEC")
+        assert CFG.partition_of(delivery / "x.md", "SEC") == CFG.track_delivery(track)
+        assert CFG.partition_of(own / "execution-state.json", "SEC") == CFG.track_partition(track)
+    assert CFG.partition_of(CFG.root / "engines" / "x.md", "SEC") is None
+
+
+def test_packages_are_delivered_into_the_track_partition(factory_root, mod):
+    """The split writes where the consumer reads: the track's delivery
+    partition, versioned like the module (v1 = the partition, vN = its version
+    folder) — never a copy in the consumer's own tree."""
+    for track in CFG.tracks:
+        for plan, pkg in CFG.tracks[track]["packages"].items():
+            base = CFG.partition_dir(CFG.track_delivery(track), mod)
+            assert CFG.packages_dir(mod, track, plan, 1) == base / pkg
+            assert CFG.packages_dir(mod, track, plan, 2) == base / CFG.fmt(CFG.naming["version_folder"], version=2) / pkg
 
 
 # ── who may SEE what (sparse checkout) ───────────────────────────────────────
@@ -234,6 +238,9 @@ def test_a_stage_that_names_a_track_is_hidden_from_the_other(factory_root):
         for other in CFG.tracks:
             if other != s.track:
                 assert pat not in per_track[other], f"{other} can see {s.id}"
+    # and the analysis partition as a whole is not handed to anyone: it is read stage by stage
+    whole = CFG.fmt(CFG.partitions()["analysis"], mod="*") + "/**"
+    assert all(whole not in p for p in per_track.values())
 
 
 def test_shared_analysis_stays_visible_to_everyone(factory_root):
@@ -245,3 +252,4 @@ def test_shared_analysis_stays_visible_to_everyone(factory_root):
         if s.track is None:
             pat = f"{CFG.paths['modules']}/*/{s.folder}/**"
             assert all(pat in p for p in per_track.values()), f"{s.id} hidden from someone"
+    assert all(CFG.project["file"] in p for p in per_track.values())

@@ -159,8 +159,8 @@ def validate_profile(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
     except Exception as e:   # a malformed tracks block (e.g. an unfilled scaffold) is a finding, never a crash
         out.append(Finding(sev(0), "C5-profile", f"{profile.id}.tracks", 0, f"tracks block is not well-formed: {e}"))
     for f in profile.knowledge_files:
-        if not (cfg.root / f).exists():
-            out.append(Finding(sev(1), "C5-profile", f, 0, "knowledge file does not exist"))
+        if not (cfg.project_checkout() / f).exists():
+            out.append(Finding(sev(1), "C5-profile", f, 0, "knowledge file does not exist in the project checkout"))
     # F5a: a stated choice must be a choice among what the profile itself declares —
     # a target dialect nobody kept syntax rows for is as silent as no target at all.
     dialects = profile.get("stack.db.dialects") or []
@@ -344,14 +344,26 @@ def scan_config(cfg: FactoryConfig) -> list[Finding]:
     Only invariants BETWEEN tables belong here — a value's own shape is the
     reader's business."""
     out: list[Finding] = []
-    repos = cfg.repos
+    repos = cfg.repos            # the PROJECT's consumer repos — checked only where the project declares any
+    parts = cfg.partitions()
 
     for track, spec in cfg.tracks.items():
         repo = cfg.track_repo(track)
-        if repo not in repos:
+        if repos and repo not in repos:
             out.append(Finding(sev(0), "C2-config", f"tracks.{track}.repo", 0,
-                               f"names repo '{repo}', which repos does not declare "
+                               f"names repo '{repo}', which the project's {cfg.project['file']} does not declare "
                                f"(declared: {', '.join(sorted(repos))})"))
+        for key in ("partition", "delivery"):
+            if spec.get(key) not in parts:
+                out.append(Finding(sev(0), "C2-config", f"tracks.{track}.{key}", 0,
+                                   f"names partition '{spec.get(key)}', which project.partitions does not declare"))
+        if spec.get("delivery") in parts and cfg.partition_writer(spec["delivery"]) != cfg.FACTORY_WRITER:
+            out.append(Finding(sev(0), "C2-config", f"tracks.{track}.delivery", 0,
+                               "the delivery partition must be written by the factory — split writes there"))
+    for name, spec in cfg.inputs.items():
+        if spec.get("partition") not in parts:
+            out.append(Finding(sev(0), "C2-config", f"inputs.{name}.partition", 0,
+                               f"names partition '{spec.get('partition')}', which project.partitions does not declare"))
 
     import publications   # the builder registry, split out of gov so this is not a cycle
     for pub, spec in cfg.publications.items():
@@ -371,10 +383,6 @@ def scan_config(cfg: FactoryConfig) -> list[Finding]:
 
     ext = cfg.external
     if ext:
-        repo = ext.get("repo")
-        if repo not in repos:
-            out.append(Finding(sev(0), "C2-config", "paths.external.repo", 0,
-                               f"names repo '{repo}', which repos does not declare"))
         raw = cfg.data["paths"]
         for key in (ext.get("keys") or ()):
             if key not in raw:
@@ -383,6 +391,36 @@ def scan_config(cfg: FactoryConfig) -> list[Finding]:
             elif not isinstance(raw[key], str):
                 out.append(Finding(sev(0), "C2-config", f"paths.external.keys[{key}]", 0,
                                    f"paths.{key} is not a path (it is {type(raw[key]).__name__})"))
+    return out
+
+
+def scan_neutrality(cfg: FactoryConfig, profile: Profile) -> list[Finding]:
+    """The tool repo is project-neutral: nothing under `lint.neutral_paths`
+    (its rendered docs, its hand-written docs) names the active project's
+    profile — its id as a word, its display name verbatim. A rendered file
+    that carried them would change with the project, so the same checkout
+    could not drive two projects with a clean tree."""
+    out: list[Finding] = []
+    lint = cfg.data["lint"]
+    ident = profile.data.get("identity") or {}
+    pid, display = str(ident.get("id") or ""), str(ident.get("display") or "")
+    checks = []
+    if pid:
+        checks.append((re.compile(r"(?<![A-Za-z0-9_-])" + re.escape(pid) + r"(?![A-Za-z0-9_-])", re.I), f"profile id {pid!r}"))
+    if display:
+        checks.append((re.compile(re.escape(display)), f"profile display {display!r}"))
+    for f in _iter_files(cfg, lint.get("neutral_paths") or []):
+        rel = f.relative_to(cfg.root)
+        try:
+            text = f.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for n, line in enumerate(text.splitlines(), 1):
+            for rx, what in checks:
+                if rx.search(line):
+                    out.append(Finding(sev(1), "C2-project-literal", str(rel), n,
+                                       f"{what} named in the tool repo — a project fact belongs in the project repo (its PROJECT-OVERVIEW.md), never in tool output"))
+                    break
     return out
 
 
@@ -396,6 +434,7 @@ def run(cfg: FactoryConfig | None = None, profile_id: str | None = None, render_
     active = cfg.profile
     findings += scan_literals(cfg, active)
     findings += scan_code_literals(cfg, active)
+    findings += scan_neutrality(cfg, active)
     findings += scan_structure(cfg)
     findings += scan_config(cfg)
     if render_check:

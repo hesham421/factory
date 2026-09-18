@@ -2,10 +2,11 @@
 # START HERE — the governance-factory in one page
 
 **What it is.** An analysis factory: a raw idea goes in, reviewed and traceable analysis comes out — up to backend and frontend
-execution plans written into the shared governance repo the consumers read. It **stops there** (analysis-only). The domain is data
-(`profiles/<id>.yaml`); the active one is `erp`.
+execution plans written into the **project repo** every consumer mounts. It **stops there** (analysis-only). The domain is data
+(`profiles/<id>.yaml` in the project repo); the active one is named by the project's `project.yaml`, and the
+tool itself carries no project — `$GOV_PROJECT_CHECKOUT` says which one it drives.
 
-**Where the truth lives.** `factory.yaml` (factory facts) + the profile (domain facts). Every table in the docs, every
+**Where the truth lives.** `factory.yaml` (factory facts) + the project's profile (domain facts). Every table in the docs, every
 `SKILL.md`, every command and this page are generated from them (`gov.py render`); `gov.py lint` refuses drift.
 
 **How a module moves.**
@@ -21,7 +22,7 @@ execution plans written into the shared governance repo the consumers read. It *
 Then split (marker protocol) → tag. Outside the line, on demand: `test-gen`, `api-verify`.
 
 **What a human decides.** `prd-approval` (human-approval after `P0.5`); `pass-1` (review after `P3.1`); `pass-2` (review after `P3.2`). Nothing else asks.
-After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`erp/decisions/<MOD>/`) and continues; a breaking one stops.
+After the last question-allowed stage, an engine that meets ambiguity writes an ADR (`analysis/decisions/<MOD>/`) and continues; a breaking one stops.
 
 **Versions.** v1 is the module's base folder; vN holds only what changed plus a change manifest; `gov.py state` folds them
 into `_state/`, the only thing engines read.

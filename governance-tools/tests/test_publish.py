@@ -25,11 +25,8 @@ from config import CFG
 
 @pytest.fixture
 def linked(factory_root, mod, monkeypatch):
-    """A factory with one module on disk and every consumer repo checked out.
-
-    The checkouts are pointed at BEFORE the module is created: modules live in
-    the shared repo now (`paths.external`), so `CFG.module_root()` has no
-    answer until that checkout is settled."""
+    """A project with one module on disk, and every consumer repo checked out
+    somewhere else — so a copy landing in a consumer's tree would be visible."""
     import gov
 
     checkouts = {}
@@ -48,30 +45,24 @@ def _read(path):
 
 
 def _receivers(pub):
-    """The repos that declare a home for this publication. Derived, never listed:
-    which repos receive is a config decision, and this suite must follow it."""
-    return {r: CFG.repo_receives(r, pub) for r in CFG.repos if CFG.repo_receives(r, pub)}
+    """Where the publication lands — the project repo, when it declares a home.
+    Derived, never listed: the home is a config decision this suite follows."""
+    p = CFG.project_receives(pub)
+    return {"project": p} if p else {}
 
 
-def test_publishes_into_the_repos_that_declare_a_home_and_no_others(linked):
+def test_publishes_into_the_project_repo_and_nowhere_else(linked):
     gov, mod, checkouts = linked
     for pub in CFG.publications:
         targets = _receivers(pub)
         assert targets, f"nothing receives {pub} — the publication has no reader"
         assert gov.cmd_publish(pub) == 0
-        for repo, target in targets.items():
-            assert target.exists(), f"{repo} never received {pub}"
-            # the whole point of the move: no path above the repo root
-            assert checkouts[repo] in target.parents
-        bodies = {t.read_text(encoding="utf-8") for t in targets.values()}
-        assert len(bodies) == 1, "consumer copies diverged"
-        # a repo that declares no home gets no copy: it reads the shared one
+        target = targets["project"]
+        assert target.exists(), f"the project never received {pub}"
+        assert CFG.project_checkout() in target.parents         # inside the one repo every consumer mounts
         for repo, checkout in checkouts.items():
-            if repo in targets:
-                continue
-            assert not list(checkout.rglob(next(iter(targets.values())).name)), \
-                f"{repo} declares no `receives` for {pub} yet a copy appeared in it"
-    assert mod in _read(next(iter(_receivers("modules-registry").values())))["modules"]
+            assert not list(checkout.rglob(target.name)), f"a copy of {pub} appeared in {repo}'s own tree"
+    assert mod in _read(_receivers("modules-registry")["project"])["modules"]
 
 
 def test_keeps_a_module_the_factory_does_not_know(linked):
@@ -163,7 +154,7 @@ def test_a_publication_whose_builder_is_not_registered_is_a_lint_finding(factory
 
 def _write_state(track, mod, items):
     import gov, json as _j
-    d = gov._shared_dir(track, mod)
+    d = gov._shared_dir(CFG.track_partition(track), mod)
     d.mkdir(parents=True, exist_ok=True)
     (d / CFG.feedback["file"]).write_text(_j.dumps({"module": mod, **items}), encoding="utf-8")
 

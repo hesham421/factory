@@ -54,7 +54,8 @@ def test_split_exec_plan_layout(factory_root, mod):
     assert v["checked"] == len(res.atoms()) + sum(len(res.subs_of(p)) or 1 for p in res.phases())
     st = json.loads((container / STATE_FILE).read_text(encoding="utf-8"))
     assert st["markers_schema_version"] == CFG.markers["schema_version"] and st["verified"] is True
-    assert set(st["files"]) == {str(p.relative_to(factory_root)) for p in rep.written}
+    from toolkit.common import rel
+    assert set(st["files"]) == {rel(p) for p in rep.written}       # the container is in the project repo
     assert load_manifest(mod, 1)["status"]["split"][plan_key("backend", "exec")] is True
 
 
@@ -197,7 +198,7 @@ def test_split_version_none_uses_current_version(factory_root, mod):
     _put_plan(mod, "backend", "exec", fx.exec_plan(mod), version=2)
     rep = split(mod, "backend", "exec")
     assert rep.version == 2 and rep.ok
-    assert CFG.packages_dir(mod, "backend", "exec", 2).is_relative_to(CFG.version_root(mod, 2))
+    assert CFG.fmt(CFG.naming["version_folder"], version=2) in CFG.packages_dir(mod, "backend", "exec", 2).parts
     assert _md(CFG.packages_dir(mod, "backend", "exec", 1), recursive=True) == set()
 
 

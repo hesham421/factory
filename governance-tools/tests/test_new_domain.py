@@ -1,149 +1,98 @@
-"""`gov.py new-domain` — reset stale project content, then start the new domain.
-
-Exercises the full flow against an isolated git-backed root (reusing
-`orch_root` from test_orchestrator.py, the same fixture the end-to-end
-orchestrator dry run uses): a populated project (profiles, modules,
-decisions, generated project docs, a dirtied `repos:` block) is reset down
-to exactly the scoped set, `factory.yaml` instance values are restored, a
-fresh profile is scaffolded, and the pipeline's first stage is dispatched —
-all in one call. Nothing here pins today's stage/profile names: the target
-stage is read from `CFG.stages[0]` and the module code from the `mod`
-fixture / a derived code, per the active profile.
-"""
+"""`gov.py new-project` scaffolds a project repo — project.yaml, a profile
+from the schema, the empty partitions, git — and `gov.py new-domain` adds a
+second profile to the current one. Neither touches factory.yaml: the tool
+carries no project fact, so nothing has to be reset between projects. The
+same tool checkout then drives the new project the moment the variable
+points at it, and its tool-side render is byte-identical under either."""
 from __future__ import annotations
 
-import re
+import json
 
-import pytest
+import yaml
 
 from config import CFG
 import gov
-from test_orchestrator import orch_root, _git  # noqa: F401 (fixture + helper reuse)
+from test_agnostic import TOY
 
-OK, BLOCKED, AWAITING = gov.OK, gov.BLOCKED, gov.AWAITING
-
-
-def _dirty_repos_block(root) -> None:
-    """Simulate a previously-linked repo (via /link-repos) so the reset has something real to undo."""
-    p = root / "factory.yaml"
-    text = p.read_text(encoding="utf-8")
-    text = re.sub(r'(?m)^(    url:\s*)"[^"]*"', r'\1"git@example.com:org/backend.git"', text, count=1)
-    text = re.sub(r'(?m)^(    checkout_default:\s*)"[^"]*"', r'\1"/abs/custom/backend"', text, count=1)
-    p.write_text(text, encoding="utf-8")
+OK, BLOCKED = gov.OK, gov.BLOCKED
 
 
-def _populate(root, mod: str) -> None:
-    """A populated project: modules, decisions, generated project docs, a static project doc."""
-    (CFG.module_root(mod)).mkdir(parents=True, exist_ok=True)
-    (CFG.module_root(mod) / "stray.txt").write_text("x\n", encoding="utf-8")
-    (CFG.dir("decisions") / mod).mkdir(parents=True, exist_ok=True)
-    (CFG.dir("decisions") / mod / "ADR-X-001.md").write_text("Status: OPEN\n", encoding="utf-8")
-    (CFG.dir("domain")).mkdir(parents=True, exist_ok=True)
-    (CFG.dir("domain") / "domain-profile.md").write_text("stub domain profile\n", encoding="utf-8")
-    (CFG.dir("platform") / "project-registry.md").write_text("stub project registry\n", encoding="utf-8")
-    (CFG.dir("domain") / "README.md").write_text("static project readme — never generated\n", encoding="utf-8")
-    (root / "_archive-v5").mkdir(parents=True, exist_ok=True)
-    (root / "_archive-v5" / "marker.txt").write_text("keep\n", encoding="utf-8")
-    (root / "history").mkdir(parents=True, exist_ok=True)
-    (root / "history" / "marker.txt").write_text("keep\n", encoding="utf-8")
+def test_new_project_scaffolds_a_project_repo(factory_root, tmp_path, monkeypatch, capsys):
+    target = tmp_path / "shop-governance"
+    assert gov.cmd_new_project(target, "shop", "Shop Platform", None) == OK
+    pj = yaml.safe_load((target / CFG.project["file"]).read_text(encoding="utf-8"))
+    assert pj["project"]["id"] == "shop" and pj["profile"] == "shop"
+    assert set(pj["repos"]) == {CFG.track_repo(t) for t in CFG.tracks}
+    for repo, spec in pj["repos"].items():
+        assert spec["checkout_env"] == CFG.fmt(CFG.project["consumer_env"], REPO=repo.upper())
+    prof = target / CFG.paths["profiles"] / "shop.yaml"
+    assert prof.exists() and "id: shop" in prof.read_text(encoding="utf-8") and "TODO" in prof.read_text(encoding="utf-8")
+    for key in CFG.external["keys"]:
+        rel = CFG.paths[key]
+        if key != "profiles" and "." not in rel.split("/")[-1]:
+            assert (target / rel).is_dir(), key
+    for spec in CFG.project["partitions"].values():
+        assert (target / spec["path"].split("{MOD}")[0].rstrip("/")).is_dir()
+    assert (target / ".git").is_dir() and (target / "CODEOWNERS").exists() and (target / ".gitignore").exists()
+    assert CFG.paths["module"]["state_dir"] in (target / ".gitignore").read_text(encoding="utf-8")
+    out = capsys.readouterr().out
+    assert CFG.project["checkout_env"] in out and "lint --profile shop" in out
+
+    # drive it: the variable is the switch; an unfilled scaffold does not pass lint
+    monkeypatch.setenv(CFG.project["checkout_env"], str(target))
+    cfg = CFG.reload()
+    assert cfg.profile_id == "shop" and cfg.project_checkout() == target.resolve()
+    import lint
+    fs = lint.validate_profile(cfg, cfg.load_profile("shop"))
+    assert any(f.severity in ("CRITICAL", "MAJOR") for f in fs)
 
 
-def test_new_domain_refuses_over_uncommitted_changes(orch_root, mod):
-    _populate(orch_root, mod)   # left uncommitted on purpose — never even `git add`ed
-    before = sorted(p.name for p in CFG.profiles_dir().glob("*.yaml"))
-
-    rc = gov.cmd_new_domain("shouldnot-run", yes=True)
-
-    assert rc == BLOCKED
-    assert sorted(p.name for p in CFG.profiles_dir().glob("*.yaml")) == before
-    assert not (CFG.profiles_dir() / "shouldnot-run.yaml").exists()
-    assert CFG.module_root(mod).exists()
-    assert (CFG.dir("decisions") / mod).exists()
-    assert (CFG.dir("domain") / "domain-profile.md").exists()
+def test_new_project_refuses_an_existing_project_or_a_full_directory(factory_root, tmp_path):
+    assert gov.cmd_new_project(CFG.project_checkout(), "again", None, None) == BLOCKED
+    full = tmp_path / "full"
+    full.mkdir()
+    (full / "something.txt").write_text("x", encoding="utf-8")
+    assert gov.cmd_new_project(full, "x", None, None) == BLOCKED
+    assert gov.cmd_new_project(full, "x", None, None, yes=True) == OK
 
 
-def test_new_domain_resets_exact_scope_and_starts_first_stage(orch_root, mod, monkeypatch):
-    _dirty_repos_block(orch_root)
-    _populate(orch_root, mod)
-    CFG.reload()
-    _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=orch_root)
-    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "populated project state", cwd=orch_root)
-
-    tools_marker = CFG.dir("tools") / "templates" / "README.md.j2"
-    project_readme = CFG.dir("domain") / "README.md"
-    assert tools_marker.exists() and project_readme.exists()
-
-    rc = gov.cmd_new_domain("notes", yes=True, module="NOTES")
-
-    assert rc == AWAITING   # manual runner: brief written, awaiting the operator
-
-    # deleted — exactly the scoped set
-    assert not (CFG.profiles_dir() / "erp.yaml").exists()
-    assert not (CFG.profiles_dir() / "erp").exists()
-    assert not CFG.module_root(mod).exists()
-    assert not (CFG.dir("decisions") / mod).exists()
-    assert not (CFG.dir("domain") / "domain-profile.md").exists()
-    assert not (CFG.dir("platform") / "project-registry.md").exists()
-
-    # kept — untouched by construction (different subtrees, never in the computed scope)
-    assert tools_marker.exists()
-    assert project_readme.exists() and "static project readme" in project_readme.read_text(encoding="utf-8")
-    assert (orch_root / "_archive-v5" / "marker.txt").exists()
-    assert (orch_root / "history" / "marker.txt").exists()
-
-    # scaffolded + factory.yaml instance values reset
+def test_new_domain_adds_a_profile_to_the_current_project(factory_root, capsys):
+    before = (CFG.project_file()).read_text(encoding="utf-8")
+    assert gov.cmd_new_domain("notes") == OK
     assert (CFG.profiles_dir() / "notes.yaml").exists()
-    factory_text = (orch_root / "factory.yaml").read_text(encoding="utf-8")
-    assert re.search(r"(?m)^  active_profile:\s*notes\b", factory_text)
-    assert 'url: ""' in factory_text
-    assert 'checkout_default: "../backend"' in factory_text
-    # factory.yaml's own mechanism (paths/lanes/commands/stages) untouched
-    assert "checkout_env: GOV_BACKEND_CHECKOUT" in factory_text
-
-    # continued straight into the pipeline's first stage for the given module
-    stage = gov.CFG.stages[0]
-    brief = CFG.state_dir("NOTES", 1) / "briefs" / f"{stage.id}.md"
-    assert brief.exists() and "# ENGINE" in brief.read_text(encoding="utf-8")
+    assert CFG.project_file().read_text(encoding="utf-8") == before, "the factory never writes project.yaml"
+    assert "profile: notes" in capsys.readouterr().out
+    assert gov.cmd_new_domain("notes") == BLOCKED       # exists
 
 
-def test_new_domain_regenerates_stale_profile_derived_docs(orch_root, mod):
-    """README.md, engines/*/SKILL.md, standalone/*/SKILL.md and shared/START-HERE.md
-    are whole files rendered from `factory.yaml` + the active profile (render.py) —
-    SKILL.md in particular is what a skill loader reads as the stage's definition.
-    A prior `gov.py render` bakes the OLD profile's id/display into these files;
-    the reset must re-render them for the new profile, or every one of them keeps
-    quoting the domain that was just supposedly wiped out — whatever that domain's
-    name happens to be, not just any one hardcoded id.
-    """
+def test_the_same_tool_drives_two_projects_with_one_render(factory_root, tmp_path, monkeypatch):
+    """Tool-rendered output is project-neutral: rendered under the fixture
+    project and under a scaffolded toy project, every file in the tool tree is
+    byte-identical; only the project's own overview differs."""
+    import shutil
     import render
+    from conftest import REAL_ROOT
+    for d in ("shared", "engines", "standalone", "reviewers"):
+        shutil.copytree(REAL_ROOT / d, factory_root / d)
+    shutil.copytree(REAL_ROOT / "governance-tools" / "templates", factory_root / "governance-tools" / "templates")
 
-    _populate(orch_root, mod)
-    CFG.reload()
-    old_id = CFG.profile_id
-    old_display = CFG.profile.data["identity"]["display"]
-    render.render_all(CFG)   # simulate: these docs were already generated for the prior domain, as in any real repo
+    def tool_render():
+        cfg = CFG.reload()
+        files = render.generated_files(cfg)
+        tool = {p: c for p, c in files.items() if p.is_relative_to(cfg.root)}
+        overview = files[cfg.dir("overview")]
+        return tool, overview
 
-    targets = [orch_root / "README.md", CFG.dir("shared") / "START-HERE.md",
-               *(CFG.dir("engines") / s.id / "SKILL.md" for s in CFG.stages),
-               *(CFG.dir("standalone") / s.id / "SKILL.md" for s in CFG.standalone)]
-    assert targets and all(p.exists() for p in targets)
-    old_marker = f"profiles/{old_id}.yaml"
-    assert any(old_marker in p.read_text(encoding="utf-8") for p in targets)   # sanity: reproduces pre-fix
-
-    _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=orch_root)
-    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "populated + rendered old domain", cwd=orch_root)
-
-    rc = gov.cmd_new_domain("notes", yes=True, module="NOTES")
-    assert rc == AWAITING
-
-    for p in targets:
-        assert p.exists()
-        text = p.read_text(encoding="utf-8")
-        assert old_marker not in text
-        assert old_display not in text
-
-    assert any("notes" in p.read_text(encoding="utf-8") for p in targets)   # confirms these were re-rendered, not just untouched-and-lucky
-    assert render.check_fresh(CFG) == []   # what `gov.py lint`'s C1-stale-render check enforces
+    first, first_overview = tool_render()
+    toy_dir = tmp_path / "toy-governance"
+    assert gov.cmd_new_project(toy_dir, "toy", "Clinic Suite", None) == OK
+    (toy_dir / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    monkeypatch.setenv(CFG.project["checkout_env"], str(toy_dir))
+    second, second_overview = tool_render()
+    assert first == second, [str(p) for p in first if first[p] != second.get(p)]
+    assert first_overview != second_overview
+    assert TOY["identity"]["display"] in second_overview and TOY["identity"]["display"] not in first_overview
+    assert not any(TOY["identity"]["id"] in c.split("`") for c in second.values())
 
 
 def test_sanitize_mod_derives_a_valid_module_code():

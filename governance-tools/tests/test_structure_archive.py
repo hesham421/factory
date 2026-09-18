@@ -96,10 +96,13 @@ def test_versions_v1_base_and_v2_subfolder(factory_root, mod):
     assert load_manifest(mod, 2)["version"] == 2 and load_manifest(mod, 1)["version"] == 1
     # helpers without an explicit version follow the CURRENT version
     assert CFG.version_root(mod) == v2
+    vf = CFG.fmt(CFG.naming["version_folder"], version=2)
     for track, plan in track_plans():
-        assert CFG.packages_dir(mod, track, plan).is_relative_to(v2)
-        assert CFG.packages_dir(mod, track, plan, 1).is_relative_to(CFG.module_root(mod))
-        assert not CFG.packages_dir(mod, track, plan, 1).is_relative_to(v2)
+        delivery = CFG.partition_dir(CFG.track_delivery(track), mod)
+        # packages are delivered into the track's partition, versioned like the module
+        assert CFG.packages_dir(mod, track, plan) == delivery / vf / CFG.tracks[track]["packages"][plan]
+        assert CFG.packages_dir(mod, track, plan, 1).is_relative_to(delivery)
+        assert vf not in CFG.packages_dir(mod, track, plan, 1).parts
 
 
 def test_module_code_case_insensitive(factory_root, mod):

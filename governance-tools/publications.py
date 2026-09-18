@@ -54,11 +54,13 @@ def pub_profile_summary(spec: dict, existing: list[dict]) -> dict:
         tracks[track] = {
             "repo": CFG.track_repo(track),
             "exec_stage": CFG.tracks[track]["exec_stage"],
-            "partition": CFG.fmt(CFG.partitions()[track]) if track in CFG.partitions() else None,
+            "partition": CFG.partitions()[CFG.track_partition(track)],
+            "delivery": CFG.partitions()[CFG.track_delivery(track)],
             "plans": plans,
         }
     return {
         "profile": prof.id,
+        "project_file": CFG.project["file"],
         "paths": {k: CFG.paths[k] for k in (CFG.external.get("keys") or ()) if isinstance(CFG.paths[k], str)},
         "module_dirs": dict(CFG.paths["module"]),
         "tracks": tracks,

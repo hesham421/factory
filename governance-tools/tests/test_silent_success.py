@@ -47,7 +47,7 @@ def _put_plan(mod, track, plan, text, version=1):
 def _run(root, *argv):
     """Run a governance-tools CLI against an isolated factory root."""
     return subprocess.run([sys.executable, *argv], cwd=TOOLS_DIR, capture_output=True, text=True,
-                          env={"PATH": "/usr/bin:/bin", "GOV_FACTORY_ROOT": str(root),
+                          env={"PATH": "/usr/bin:/bin", "GOV_FACTORY_ROOT": str(root), CFG.project["checkout_env"]: str(CFG.project_checkout()),
                                "PYTHONPATH": str(TOOLS_DIR)})
 
 
@@ -183,7 +183,7 @@ def test_gov_split_blocks_when_the_module_has_no_plan_at_all(factory_root, mod):
 
 def _add_phase_to_profile(root: Path, track: str, plan: str, key: str) -> None:
     """Declare a brand-new phase in the profile — a value no tool has seen."""
-    pf = root / "profiles" / f"{CFG.profile_id}.yaml"
+    pf = CFG.profiles_dir() / f"{CFG.profile_id}.yaml"
     data = yaml.safe_load(pf.read_text(encoding="utf-8"))
     data["tracks"][track]["plans"][plan]["phases"].append(
         {"key": key, "display": key, "never_split": True})

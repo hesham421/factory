@@ -219,7 +219,9 @@ def _latest_mtime(mod: str, version: int) -> float:
         if not root.exists():
             continue
         for p in root.rglob("*"):
-            if p.is_file() and CFG.paths["module"]["state_dir"] not in p.parts and CFG.paths["module"]["packages_dir"] not in p.parts:
+            # packages are delivered outside the version root now (the track's partition), so
+            # only the derived state is excluded from "the sources moved"
+            if p.is_file() and CFG.paths["module"]["state_dir"] not in p.parts:
                 latest = max(latest, p.stat().st_mtime)
     return latest
 

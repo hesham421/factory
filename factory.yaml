@@ -16,41 +16,40 @@ schema_version: 6
 factory:
   name: governance-factory
   boundary: analysis-only          # never implements, never audits code, never runs tests in the line
-  active_profile: erp              # profiles/<id>.yaml ; override with GOV_PROFILE
+  # No active profile here: the factory is a pure, stateless tool. The active
+  # project's `project.yaml` names its profile; GOV_PROFILE overrides it.
 
-# ── Paths (relative to the repo root) ──────────────────────────────────────
-# `{profile_id}` is resolved at runtime to the active profile's own `identity.id`
-# (config.py FactoryConfig.paths) — every project-specific generated path nests
-# under that one live-profile-named folder; no project path is a literal here.
+# ── Paths ───────────────────────────────────────────────────────────────────
+# Two roots. Tool paths resolve against this checkout; every key listed under
+# `external.keys` resolves against the PROJECT checkout (`project:` below) —
+# that is where everything generated or project-variable lives: the profiles,
+# the analysis, the decisions, the delivered packages. Switching projects is
+# pointing at another project repo; nothing here changes.
 paths:
-  profiles: profiles
-  domain: "{profile_id}"
-  platform: "{profile_id}"
+  schema: profiles                 # tool: profiles/_schema.yaml — validation logic, not data
+  profiles: profiles               # project: the domain profile(s) — <id>.yaml + <id>/knowledge/
+  domain: analysis/domain          # project: domain-profile.md (the entry gate)
+  platform: analysis/platform      # project: project-registry.md, system tests, PROJECT-OVERVIEW.md
+  modules: analysis/modules        # project: analysis/modules/{MOD}/[vN/]
+  decisions: analysis/decisions    # project: analysis/decisions/{MOD}/ADR-*
+  overview: analysis/platform/PROJECT-OVERVIEW.md   # project: the rendered profile summary + phase tables
   engines: engines
   standalone: standalone
   shared: shared
   reviewers: reviewers
-  decisions: "{profile_id}/decisions"
-  modules: "{profile_id}/modules"
   commands: .claude/commands
   tools: governance-tools
   templates: governance-tools/templates
-  # Which of the keys above live in ANOTHER repository. Governance output is read
-  # by every repo that builds from it, so it belongs in the one repo all three
-  # mount; the factory's own machinery (engines, profiles, tools, templates,
-  # reviewers, its own `shared/` docs) stays here. This block is the ONLY
-  # statement of that boundary — `config.dir()` reads it and nothing else does.
-  # `keys: []` means "the switch exists, nothing has moved yet".
+  # The ONLY statement of the tool/project boundary — `config.dir()` reads it
+  # and nothing else does.
   external:
-    repo: shared                 # repos.<this> supplies the checkout
-    keys: [domain, platform, modules, decisions]
+    keys: [profiles, domain, platform, modules, decisions, overview]
   module:
     state_dir: _state            # generated current-state files (read by engines)
     inputs_dir: _inputs          # inputs fetched back from consumer repos
     input_meta: "{file}.meta.json"   # beside each fetched input: the shared-repo commit it was
                                      # read at, its digest, when — so a pass-2 plan can prove
                                      # which published surface it was built against
-    packages_dir: packages       # split output
     manifest_file: manifest.json
     analyze_report: "_state/analyze-{stage}.md"
     gate_record: "_state/gate-pass-{pass}.md"
@@ -239,12 +238,13 @@ standalone:
       - {artifact: api-verify-report, file: "api-verify-report-{mod}.md"}
     owns_ids: []
 
-# ── Inputs that come back from consumer repos ───────────────────────────────
-# `from_repo` is a `repos.<name>` key (below) — cmd_fetch_inputs() resolves it through the
-# same generic CFG.repo_checkout() every other consumer-repo path uses; no hardcode here.
+# ── Inputs that come back from a track ──────────────────────────────────────
+# `partition` names the project partition the producing track publishes into
+# (project.partitions below) — cmd_fetch_inputs() reads it there, folds it, and
+# records the project commit it read it at.
 inputs:
   api-docs:
-    from_repo: backend
+    partition: api-docs
     file: "api-docs-{mod}.md"
     # The backend publishes api-docs as a FOLDER (an index plus one file per
     # endpoint group); this stage reads ONE file. `merge` is how the folder
@@ -309,82 +309,67 @@ markers:
     qualify_bare_sub: true
 
 # ── Tracks ──────────────────────────────────────────────────────────────────
-# `repo:` names this track's consumer repository. It used to be assumed equal to
-# the track's own key, by nothing but coincidence — until `repos.shared` arrived
-# and proved `repos` is not the same table as `tracks` (it is a superset). Stated
-# here, checked by lint, so a track whose repo is named differently is a config
-# edit and not a KeyError.
+# `repo:` names this track's consumer repository — a key of the PROJECT's
+# `project.yaml → repos` (named, not inferred: F-12). `partition` is the project
+# partition the track WRITES (its execution state); `delivery` is the partition
+# the factory splits its packages INTO, which the track reads.
 tracks:
   backend:
     repo: backend
+    partition: backend
+    delivery: backend-packages
     pass: "1"
     exec_stage: P3.1
     packages: {exec: backend-execution, test: backend-test}
   frontend:
     repo: frontend
+    partition: frontend
+    delivery: frontend-packages
     pass: "2"
     exec_stage: P3.2
     packages: {exec: frontend-execution, test: frontend-test}
 
-# ── Consumer repos — link by editing here (or /link-repos) ──────────────────
-repos:
-  backend:
-    url: ""                          # e.g. git@github.com:org/backend.git ; empty = not linked
-    checkout_env: GOV_BACKEND_CHECKOUT
-    checkout_default: "../backend"
-    # The backend AUTHORS api-docs (its generator reads the running app) and
-    # writes them straight into the shared repo, beside the plan that cites
-    # them. `reads_from` says whose checkout the path below is resolved
-    # against — the producer is still `backend`, the location is `shared`.
-    reads_from: shared
-    publishes:
-      api-docs: "{profile_id}/modules/{MOD}/api-docs"
-    receives: {}                     # reads the shared repo directly; nothing is copied here
-  frontend:
-    url: ""
-    checkout_env: GOV_FRONTEND_CHECKOUT
-    checkout_default: "../frontend"
-    reads_from: shared
-    publishes: {}
-    receives: {}                     # reads the shared repo directly; nothing is copied here
+# ── The project repo — one per product; the factory drives any of them ──────
+# Everything generated or project-variable lives in the project repo: its
+# `project.yaml` (user-edited: the active profile id, the consumer repos with
+# their urls and checkout hints — the factory never writes it), its profiles,
+# its analysis and decisions, the packages delivered to its tracks, and the
+# tracks' own partitions. Every consumer mounts it as a submodule and pins a
+# commit. This block holds only how the factory FINDS a project and how the
+# partitions are laid out — data, shared by every project.
+project:
+  file: project.yaml
+  checkout_env: GOV_PROJECT_CHECKOUT
+  checkout_default: "../governance-shared"      # a sibling checkout — never inside this tool
+  # One entry per WRITER — GOVERNANCE-SHARED-DESIGN.md §3's ownership table in
+  # the form the tools address. An entry carrying `{MOD}` is per-module; one
+  # without it is not, and that is how the tools tell them apart rather than by
+  # recognising a name. `writer` is read, not just documented: it is what stops
+  # a factory regeneration from clearing a path a track wrote, and a delivery
+  # partition nested inside a track's partition is the factory's because the
+  # DEEPEST match decides (CODEOWNERS reads it the same way). `readers` widens
+  # who may see it (`gov.py sparse`); the default is its own writer.
+  partitions:
+    platform:          {path: "platform",                        writer: factory, readers: all}
+    analysis:          {path: "analysis/modules/{MOD}",          writer: factory}   # what each track may SEE of it is
+                                                                                    # derived per stage (gov.py sparse)
+    api-docs:          {path: "backend/modules/{MOD}/api-docs",  writer: backend, readers: all}
+    backend-packages:  {path: "backend/modules/{MOD}/packages",  writer: factory, readers: [backend]}
+    frontend-packages: {path: "frontend/modules/{MOD}/packages", writer: factory, readers: [frontend]}
+    backend:           {path: "backend/modules/{MOD}",           writer: backend}
+    frontend:          {path: "frontend/modules/{MOD}",          writer: frontend}
+  # how `new-project` names a consumer repo's checkout hint (project.yaml → repos)
+  consumer_env: "GOV_{REPO}_CHECKOUT"
+  consumer_default: "../{repo}"
+  # factory publications and where the project keeps them (read by every consumer)
+  receives:
+    modules-registry: "platform/modules-registry.json"
+    profile-summary: "platform/profile-summary.json"
 
-  # The one copy of everything that crosses a repository boundary. Consumed as a
-  # submodule by all three, so each still reads only from inside its own checkout
-  # (the self-sufficiency rule below is kept, not bent). `partitions` is what lets
-  # this factory address a side without spelling a path twice — it is the only
-  # reader of both, because reconciling the two sides IS its job.
-  shared:
-    url: "https://github.com/hesham421/governance-shared.git"
-    checkout_env: GOV_SHARED_CHECKOUT
-    checkout_default: "governance-shared"   # submodule inside this checkout
-                                            # (NOT `shared/` — that is this repo's own docs)
-    # One entry per WRITER — GOVERNANCE-SHARED-DESIGN.md §3's ownership table in
-    # the form the tools address. An entry carrying `{MOD}` is per-module; one
-    # without it is not, and that is how the tools tell them apart rather than
-    # by recognising a name.
-    # `writer` is the ownership column of that table, and it is read, not just
-    # documented: it is what stops a factory regeneration from clearing a path
-    # a track wrote. `factory` names this repo; anything else names a track.
-    partitions:
-      platform: {path: "platform",                            writer: factory}
-      factory:  {path: "{profile_id}/modules/{MOD}",          writer: factory}
-      # `readers: all` — api-docs are the published contract: the backend writes
-      # them, the frontend builds against them, the factory binds to them. Every
-      # other partition is read by its own writer, which is the default.
-      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend, readers: all}
-      backend:  {path: "{profile_id}/modules/{MOD}/backend",  writer: backend}
-      frontend: {path: "{profile_id}/modules/{MOD}/frontend", writer: frontend}
-    publishes: {}
-    receives:
-      modules-registry: "platform/modules-registry.json"
-      profile-summary: "platform/profile-summary.json"
-
-# ── Cross-repo publications — written BY the factory INTO each consumer repo ─
-# A consumer repo must be self-sufficient: everything it reads lives inside its
-# own checkout, never at a path above it. `repos.<name>.receives.<publication>`
-# is where that repo keeps its copy; the content is identical in every repo and
-# is derived here, so no consumer hand-maintains it and no consumer reaches into
-# another repo's tree to read it.
+# ── Publications — DERIVED by the factory, written into the project repo ────
+# Every consumer reads the one copy inside the project repo it mounts; nothing is
+# copied into a consumer's own tree, and no consumer hand-maintains a fact the
+# factory can derive. `project.receives.<publication>` is the path.
 publications:
   modules-registry:
     builder: modules_registry      # gov.py::_PUBLICATION_BUILDERS — lint checks the name resolves
@@ -412,7 +397,7 @@ publications:
 # The consumer records into ITS OWN partition, so one writer per path still
 # holds; the factory READS and never writes here. `gov.py feedback` is the read.
 feedback:
-  file: execution-state.json         # inside repos.shared.partitions.<track>
+  file: execution-state.json         # inside project.partitions.<tracks.<t>.partition>
   channels:                          # each is a list of objects in that file
     api_doc_gaps: {label: "API gap",     key: endpoint}
     blocked:      {label: "blocked",     key: id}
@@ -602,8 +587,9 @@ commands:
   - {id: gate,          runs: "gate",                   args: "<1|2> MOD --version N [--model …] [--effort …]"}
   - {id: micro-feature, runs: "version --new + run-pass 1 + run-pass 2 (delta)", args: "MOD \"<free text>\""}
   - {id: verify-split,  runs: "verify-split",          args: "MOD --track T [--plan P] [--version N]"}   # re-run the split digest compare on demand
-  - {id: link-repos,    runs: "edit factory.yaml repos", args: ""}
-  - {id: new-domain,    runs: "new-domain",             args: "ID"}
+  - {id: link-repos,    runs: "edit the project's project.yaml repos", args: ""}
+  - {id: new-project,   runs: "new-project",            args: "DIR --id ID [--name NAME] [--profile PID]"}   # scaffold a project repo
+  - {id: new-domain,    runs: "new-domain",             args: "ID"}   # add a second profile to the current project
   - {id: render,        runs: "render",                 args: ""}
   - {id: lint,          runs: "lint",                   args: "[--profile ID]"}
   - {id: test-gen,      runs: "run-standalone test-gen",  args: "--module MOD (or --modules A,B,... or --scope project) [--version N]"}
@@ -613,7 +599,10 @@ commands:
 lint:
   generated_marker: "<!-- GENERATED by `gov.py render` from factory.yaml + profile — do not edit by hand -->"
   exempt_paths: [history, profiles, _archive-v5, modules, decisions, .git, node_modules, __pycache__]
-  scan_paths: [engines, standalone, shared, reviewers, governance-tools, .claude, README.md]
+  scan_paths: [engines, standalone, shared, reviewers, governance-tools, .claude, README.md, GOVERNANCE-FACTORY-REFERENCE.md]
+  neutral_paths: [engines, standalone, shared, reviewers, .claude, README.md, GOVERNANCE-FACTORY-REFERENCE.md]
+                                   # tool-repo RENDERED output must be project-neutral: the active
+                                   # profile's identity id/display may not appear (C2-project-literal)
   forbidden_terms:                 # concepts removed by blueprint v6 — must not appear outside history/
     - P4.1
     - P4.2

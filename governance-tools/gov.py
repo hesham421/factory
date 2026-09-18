@@ -17,9 +17,13 @@ and the active profile (`config.CFG`).
   state -m MOD [-v N]
   version -m MOD [--new] · tag -m MOD -v N · fetch-inputs -m MOD -v N
   status -m MOD · next -m MOD [-v N] [--run]                           # the single next protocol step, printed or executed
-  publish [name] [--dry-run]                                           # factory publications → into each consumer repo
+  publish [name] [--dry-run]                                           # factory publications → into the project repo
   structure/archive/split (toolkit) · render · lint [--profile ID]
-  new-domain ID [--yes|--force] [--module CODE]   # resets stale project content, then starts ID
+  new-project DIR --id ID [--name NAME] [--profile PID]                # scaffold a project repo (project.yaml, profile, partitions)
+  new-domain ID                                                        # add a second profile to the current project
+
+The factory is a pure tool: every path it writes is in the PROJECT repo named by
+$GOV_PROJECT_CHECKOUT (factory.yaml → project); this checkout carries no project.
 
 Exit codes: 0 ok · 1 blocked (findings / missing) · 2 awaiting the operator (manual runner)
 """
@@ -64,14 +68,13 @@ def _git(*args: str, cwd: Path | None = None, check: bool = True, capture: bool 
 def _owning_checkout(path: Path) -> Path:
     """The checkout that owns a path — the innermost declared root containing it.
 
-    Artifacts live in the shared repo now (`paths.external`), and that repo
-    reaches this one as a submodule. `git add` run in the factory root over a
-    submodule path stages the POINTER, not the content, and commits cleanly
-    while saving nothing — the worst shape a failure can take. So the repo is
-    derived from the declared checkouts rather than assumed to be this one, and
-    innermost wins so a submodule beats the parent that contains it."""
+    Content lives in the project repo (`paths.external`); a tool doc lives
+    here; a consumer's checkout is a third root. The repo is derived from the
+    declared checkouts rather than assumed to be this one — `git add` in the
+    wrong root stages nothing or a pointer and commits cleanly — and innermost
+    wins so a nested checkout beats the parent that contains it."""
     p = Path(path).resolve()
-    roots = {CFG.root, *(CFG.repo_checkout(r) for r in CFG.repos)}
+    roots = {CFG.root, CFG.project_checkout(), *(CFG.repo_checkout(r) for r in CFG.repos)}
     inside = [r for r in roots if p == r or r in p.parents]
     return max(inside, key=lambda r: len(r.parts)) if inside else CFG.root
 
@@ -306,21 +309,21 @@ def _complete_stage(stage, mod: str, version: int, no_commit: bool) -> int:
 
 
 def _factory_owned(p: Path, mod: str, version: int) -> bool:
-    """A path this factory may delete: inside the module's version root, and not
-    inside a partition another repo writes.
+    """A path this factory may delete: inside a partition the factory writes —
+    the DEEPEST partition containing the path decides, so a delivery partition
+    nested in a track's partition is the factory's while the track's own
+    execution state beside it is not — or, outside every partition, inside the
+    module's version root.
 
-    The second half is the one that matters. `api-docs/`, `backend/` and
-    `frontend/` sit inside the same module directory and belong to the tracks;
-    a regeneration that swept them would destroy work no factory stage can
-    reproduce."""
-    root = CFG.version_root(mod, version).resolve()
+    The partition half is the one that matters: `api-docs/` and a track's
+    execution state belong to the tracks; a regeneration that swept them would
+    destroy work no factory stage can reproduce."""
     p = p.resolve()
-    if root not in p.parents and p != root:
-        return False
-    for owned in (d.resolve() for d in CFG.foreign_partitions(mod)):
-        if owned == p or owned in p.parents:
-            return False
-    return True
+    part = CFG.partition_of(p, mod)
+    if part is not None:
+        return CFG.partition_writer(part) == CFG.FACTORY_WRITER
+    root = CFG.version_root(mod, version).resolve()
+    return root == p or root in p.parents
 
 
 def _stage_outputs(stage: Stage, mod: str, version: int) -> list[Path]:
@@ -849,7 +852,7 @@ def next_step(mod: str, version: int | None = None) -> tuple[str, list[str] | No
                     if not ((man.get("status") or {}).get("split") or {}).get(f"{track}/{plan}"):
                         return f"split track `{track}` (pass {k}) into packages", ["split", "--track", track, *mv]
             elif step == "tag":
-                if not _git("tag", "-l", CFG.tag_name(mod, v)).stdout.strip():
+                if not _project_tag(mod, v):
                     return f"tag `{CFG.tag_name(mod, v)}` — freeze v{v}", ["tag", *mv]
     return f"v{v} is complete — `gov.py version -m {mod} --new` starts a delta", None
 
@@ -947,13 +950,19 @@ def cmd_version(mod: str, new: bool, quiet: bool = False) -> int:
     return v
 
 
+def _project_tag(mod: str, version: int) -> str:
+    """The tag, if it exists — in the PROJECT repo. `{mod}-vN` is project
+    content; the tool repo never carries a project's tags."""
+    return _git("tag", "-l", CFG.tag_name(mod, version), cwd=CFG.project_checkout()).stdout.strip()
+
+
 def cmd_tag(mod: str, version: int) -> int:
     name = CFG.tag_name(mod, version)
-    if _git("tag", "-l", name).stdout.strip():
-        _say(f"tag {name} already exists")
+    if _project_tag(mod, version):
+        _say(f"tag {name} already exists in {CFG.project_checkout().name}")
         return OK
-    _git("tag", "-a", name, "-m", f"{mod.upper()} v{version}")
-    _say(f"tagged {name}")
+    _git("tag", "-a", name, "-m", f"{mod.upper()} v{version}", cwd=CFG.project_checkout())
+    _say(f"tagged {name} in {CFG.project_checkout().name}")
     return OK
 
 
@@ -993,16 +1002,14 @@ def _merge_published(src: Path, spec: dict, mod: str) -> str:
 
 def cmd_fetch_inputs(mod: str, version: int, pull: bool) -> int:
     missing = []
+    checkout = CFG.project_checkout()
+    if pull and (checkout / ".git").exists():
+        _git("pull", "--ff-only", cwd=checkout, check=False)
     for name, spec in CFG.inputs.items():
-        repo = spec["from_repo"]
-        # WHO authors it and WHERE it lands are two questions. A producer that
-        # publishes into the shared repo says so with `reads_from`; without it the
-        # path resolves against the producer's own checkout, as before.
-        host = CFG.repos[repo].get("reads_from", repo)
-        checkout = CFG.repo_checkout(host)
-        src = checkout / CFG.fmt(CFG.repos[repo]["publishes"][name], mod=mod)
-        if pull and (checkout / ".git").exists():
-            _git("pull", "--ff-only", cwd=checkout, check=False)
+        # the producing track publishes into a project partition (inputs.<name>.partition);
+        # WHO writes it is that partition's `writer`, WHERE is the project repo
+        host = CFG.partition_writer(spec["partition"])
+        src = CFG.partition_dir(spec["partition"], mod)
         if not src.exists():
             missing.append(f"{name} ← {src}")
             continue
@@ -1053,10 +1060,6 @@ def _record_input(name: str, mod: str, version: int, host: str, checkout: Path, 
     return meta
 
 
-def _shared_repo() -> str:
-    return CFG.shared_repo()
-
-
 def _partitions() -> dict[str, str]:
     return CFG.partitions()
 
@@ -1089,15 +1092,13 @@ def _sparse_patterns(track: str) -> list[str]:
     modules' backend governance."""
     mods = f"{CFG.paths['modules']}/*"
     pats = [f"{CFG.partitions()[p]}/**" for p in CFG.partitions()
-            if not CFG.partition_is_per_module(p)]
-    pats += [f"{CFG.paths['platform']}/*.md", f"{CFG.paths['decisions']}/**"]
+            if not CFG.partition_is_per_module(p) and CFG.partition_is_readable_by(p, track)]
+    pats += [CFG.project["file"], f"{CFG.paths['domain']}/**", f"{CFG.paths['platform']}/**", f"{CFG.paths['decisions']}/**"]
     m = CFG.paths["module"]
     pats += [f"{mods}/{m['manifest_file']}", f"{mods}/{m['state_dir']}/**", f"{mods}/{m['inputs_dir']}/**"]
     for s in CFG.all_stages():
         if s.track in (None, track):
             pats.append(f"{mods}/{s.folder}/**")
-    for pkg in CFG.tracks[track]["packages"].values():
-        pats.append(f"{mods}/{m['packages_dir']}/{pkg}/**")
     for part in CFG.partitions():
         if CFG.partition_is_per_module(part) and CFG.partition_is_readable_by(part, track):
             pats.append(CFG.fmt(CFG.partitions()[part], mod="*") + "/**")
@@ -1136,22 +1137,18 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
     It never rewrites what it does not own: the partitions are single-writer by
     design and this reports each one's state rather than reconciling them.
     """
-    host = _shared_repo()
-    shared = CFG.repo_checkout(host)
+    shared = CFG.project_checkout()
     if not (shared / ".git").exists():
-        _say(f"BLOCKED: shared checkout not found at {shared}\n"
-             f"  clone it, or set {CFG.repos[host]['checkout_env']} — and if this is a\n"
-             f"  fresh clone of a consumer, it is a submodule: `git submodule update --init`")
+        _say(f"BLOCKED: project checkout not found at {shared}\n"
+             f"  clone it, or set {CFG.project['checkout_env']}")
         return BLOCKED
 
-    # Which submodule is the shared one is decided by its URL, not by a folder
-    # name: each repo mounts it at a path of its own choosing, and matching on a
-    # name would silently match nothing in the repo that chose a different one.
-    url = (CFG.repos[host].get("url") or "").strip()
+    # Which submodule is the project one is decided by its URL (project.yaml →
+    # project.url), not by a folder name: each consumer mounts it at a path of
+    # its own choosing, and matching on a name would silently match nothing.
+    url = str((CFG.project_data.get("project") or {}).get("url") or "").strip()
     stale = []
     for name in CFG.repos:
-        if name == host:
-            continue
         try:
             co = CFG.repo_checkout(name)
         except Exception:
@@ -1182,7 +1179,7 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
             behind, ahead = counts
     dirty = [l for l in _git("status", "--porcelain", cwd=shared).stdout.splitlines() if l.strip()]
 
-    _say(f"shared @ {head}" + (f" · upstream {upstream} (behind {behind}, ahead {ahead})" if upstream else " · no upstream"))
+    _say(f"project {shared.name} @ {head}" + (f" · upstream {upstream} (behind {behind}, ahead {ahead})" if upstream else " · no upstream"))
     known = CFG.modules()
     for part in _partitions():
         if not _per_module(part):
@@ -1197,7 +1194,7 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
             line += f"   · no {part}: {', '.join(missing)}"
         _say(line)
     if dirty:
-        _say(f"  uncommitted in shared: {len(dirty)} path(s)")
+        _say(f"  uncommitted in the project: {len(dirty)} path(s)")
         for l in dirty[:8]:
             _say(f"    {l}")
 
@@ -1211,12 +1208,12 @@ def cmd_sync(push: bool = False, dry_run: bool = False) -> int:
         return OK
 
     if dry_run or not dirty:
-        _say("dry-run" if dry_run else "nothing to push — shared is clean")
+        _say("dry-run" if dry_run else "nothing to push — the project checkout is clean")
         return OK
     _git("add", "-A", cwd=shared)
     _git("commit", "-m", "sync from factory", cwd=shared)
     _git("push", cwd=shared)
-    _say(f"pushed shared @ {_git('rev-parse', '--short', 'HEAD', cwd=shared).stdout.strip()}")
+    _say(f"pushed {shared.name} @ {_git('rev-parse', '--short', 'HEAD', cwd=shared).stdout.strip()}")
     _say("now bump the submodule pointer in each consumer that should move")
     return OK
 
@@ -1246,10 +1243,11 @@ def _feedback_rows(mod: str | None = None) -> list[dict]:
     spec = CFG.feedback
     rows: list[dict] = []
     for track in CFG.tracks:
-        if track not in _partitions():
+        part = CFG.track_partition(track)
+        if part not in _partitions():
             continue
         for m in ([mod.upper()] if mod else CFG.modules()):
-            state = _shared_dir(track, m) / spec["file"]
+            state = _shared_dir(part, m) / spec["file"]
             if not state.exists():
                 continue
             data = read_json(state, {}) or {}
@@ -1367,38 +1365,36 @@ def cmd_feedback(mod: str | None = None, verbose: bool = False) -> int:
 
 
 def cmd_publish(name: str | None = None, dry_run: bool = False) -> int:
-    """Write every factory publication INTO each consumer repo that declares it.
+    """Write every factory publication INTO the project repo, where it declares
+    a home (`project.receives`).
 
-    A consumer reads only paths inside its own checkout — no file above a repo root,
-    no reach into a sibling repo's tree. The factory is the single writer; the consumer
-    copies are read-only mirrors, byte-identical by construction rather than by hand.
+    Every consumer mounts the project repo and reads the one copy there — no
+    file above a repo root, no reach into a sibling's tree, no copy to keep in
+    step. The factory is the single writer; what it does not own in the file
+    (`preserve`, `additive`) is carried over from the copy on disk.
     """
     names = [name] if name else list(CFG.publications)
     rc = OK
+    if not CFG.project_checkout().exists():
+        _say(f"BLOCKED: project checkout not found at {CFG.project_checkout()} (set ${CFG.project['checkout_env']})")
+        return BLOCKED
     for pub in names:
-        targets = {r: CFG.repo_receives(r, pub) for r in CFG.repos}
-        targets = {r: p for r, p in targets.items() if p}
-        if not targets:
-            _say(f"{pub}: no repo declares it under `receives` — nothing to publish")
+        path = CFG.project_receives(pub)
+        if path is None:
+            _say(f"{pub}: the project declares no home for it under `project.receives` — nothing to publish")
             continue
-        live = {r: p for r, p in targets.items() if CFG.repo_checkout(r).exists()}
-        for r in targets.keys() - live.keys():
-            _say(f"{pub}: SKIPPED {r} — checkout not found at {CFG.repo_checkout(r)} "
-                 f"(set ${CFG.repos[r]['checkout_env']})")
-            rc = BLOCKED
-        payload = publications.payload(pub, [read_json(p, {}) or {} for p in live.values()])
+        payload = publications.payload(pub, [read_json(path, {}) or {}])
         body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
-        for r, path in live.items():
-            before = path.read_text(encoding="utf-8") if path.exists() else None
-            if before == body:
-                _say(f"{pub} → {r}: unchanged")
-                continue
-            if dry_run:
-                _say(f"{pub} → {r}: WOULD WRITE {path} ({'new' if before is None else 'changed'})")
-                continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(body, encoding="utf-8")
-            _say(f"{pub} → {r}: wrote {path} ({'new' if before is None else 'updated'})")
+        before = path.read_text(encoding="utf-8") if path.exists() else None
+        if before == body:
+            _say(f"{pub}: unchanged")
+            continue
+        if dry_run:
+            _say(f"{pub}: WOULD WRITE {path} ({'new' if before is None else 'changed'})")
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+        _say(f"{pub}: wrote {path} ({'new' if before is None else 'updated'})")
     return rc
 
 
@@ -1470,7 +1466,7 @@ def cmd_status(mod: str) -> int:
     _say(f"{mod.upper()} · profile {CFG.profile_id} · versions {vs or '(none)'}")
     for v in vs:
         root = CFG.version_root(mod, v)
-        tag = "tagged" if _git("tag", "-l", CFG.tag_name(mod, v)).stdout.strip() else "untagged"
+        tag = "tagged" if _project_tag(mod, v) else "untagged"
         have = [s.id for s in CFG.stages if all(CFG.artifact_path(mod, s.id, a.artifact, v).exists() for a in s.produces if not a.optional and not a.dir) and any(not a.dir for a in s.produces)]
         inputs = [n for n, spec in CFG.inputs.items() if (CFG.inputs_dir(mod, v) / CFG.fmt(spec["file"], mod=mod)).exists()]
         gates = [p.stem for p in (CFG.state_dir(mod, v) / "approvals").glob("*.json")] if (CFG.state_dir(mod, v) / "approvals").exists() else []
@@ -1482,177 +1478,16 @@ def cmd_status(mod: str) -> int:
     return OK
 
 
-# ── domain scaffolding / reset ───────────────────────────────────────────────
-# `new-domain ID` resets stale project content (prior profiles/modules/decisions/
-# generated project docs), scaffolds profiles/ID.yaml, re-renders every doc
-# derived from the (now new) active profile — README.md, engines/*/SKILL.md,
-# standalone/*/SKILL.md, shared/START-HERE.md, any hand-written doc with a
-# RENDER block — so none of them keep echoing the prior domain, then drops
-# straight into the first stage of the pipeline — see
-# PROMPT-ADD-RESET-AND-START-TO-NEW-DOMAIN.
+# ── project scaffolding ──────────────────────────────────────────────────────
+# A project is a repo of its own: `project.yaml` (its facts — user-edited), its
+# profile(s), and the empty partitions the factory will fill. `new-project` lays
+# one down in a target directory and initialises git there; `new-domain` adds a
+# second profile to the current project. Neither touches factory.yaml: the tool
+# carries no project fact, so nothing in it has to be reset between projects.
 
-@dataclass
-class ResetPlan:
-    profile_files: list[Path]
-    profile_dirs: list[Path]
-    module_dirs: list[Path]
-    decision_entries: list[Path]
-    project_files: list[Path]
-
-
-def _protected_roots() -> list[Path]:
-    return [CFG.dir("tools"), CFG.root / "_archive-v5", CFG.root / "history"]
-
-
-def _under_any(path: Path, roots: list[Path]) -> bool:
-    return any(root == path or root in path.parents for root in roots)
-
-
-def _profile_files() -> list[Path]:
-    d = CFG.profiles_dir()
-    return sorted(p for p in d.glob("*.yaml") if p.name != "_schema.yaml") if d.exists() else []
-
-
-def _profile_dirs() -> list[Path]:
-    """Companion dirs of a profile (e.g. profiles/<id>/knowledge/ — schema §knowledge.files)."""
-    d = CFG.profiles_dir()
-    return sorted(p for p in d.iterdir() if p.is_dir()) if d.exists() else []
-
-
-def _module_dirs() -> list[Path]:
-    root = CFG.modules_root()
-    return sorted(p for p in root.iterdir() if p.is_dir()) if root.exists() else []
-
-
-def _decision_entries() -> list[Path]:
-    root = CFG.dir("decisions")
-    return sorted(root.iterdir()) if root.exists() else []
-
-
-def _project_generated_files() -> list[Path]:
-    """Every stage artifact with a bare `dir` (platform-level, e.g. domain-profile.md,
-    project-registry.md) — read from the stage table, never a literal filename list."""
-    seen: set[Path] = set()
-    for s in CFG.all_stages():
-        for a in s.produces:
-            if a.dir:
-                p = CFG.dir(a.dir) / a.filename("")
-                if p.exists():
-                    seen.add(p)
-    return sorted(seen)
-
-
-def _build_reset_plan() -> ResetPlan:
-    plan = ResetPlan(_profile_files(), _profile_dirs(), _module_dirs(), _decision_entries(), _project_generated_files())
-    protected = _protected_roots()
-    for p in (*plan.profile_files, *plan.profile_dirs, *plan.module_dirs, *plan.decision_entries, *plan.project_files):
-        if _under_any(p, protected):
-            raise RuntimeError(f"refusing to reset: {p} is inside a protected path")
-    return plan
-
-
-def _reset_summary(plan: ResetPlan) -> str:
-    proj_dirs = sorted({CFG.paths[a.dir] for s in CFG.all_stages() for a in s.produces if a.dir})
-    proj_label = "/".join(proj_dirs) + "/" if proj_dirs else "(none)/"
-    names = ", ".join(p.name for p in plan.project_files) if plan.project_files else "none"
-    bar = "═" * 56
-    return "\n".join([
-        bar,
-        "RESET — this will permanently delete:",
-        f"  {CFG.paths['profiles']}/*.yaml                 ({len(plan.profile_files)} files)",
-        f"  {CFG.paths['profiles']}/*/ (companion dirs)     ({len(plan.profile_dirs)} dirs)",
-        f"  {CFG.paths['modules']}/*                       ({len(plan.module_dirs)} module folders)",
-        f"  {CFG.paths['decisions']}/*                     ({len(plan.decision_entries)} entries)",
-        f"  {proj_label} generated content ({names})",
-        "Kept: governance-tools/, templates/, factory.yaml's own structure,",
-        "      _archive-v5/, history/, tests",
-        bar,
-    ])
-
-
-def _do_reset(plan: ResetPlan) -> None:
-    for p in plan.profile_files:
-        p.unlink(missing_ok=True)
-    for d in plan.profile_dirs:
-        shutil.rmtree(d, ignore_errors=True)
-    for d in plan.module_dirs:
-        shutil.rmtree(d, ignore_errors=True)
-    for e in plan.decision_entries:
-        if e.is_dir():
-            shutil.rmtree(e, ignore_errors=True)
-        else:
-            e.unlink(missing_ok=True)
-    for f in plan.project_files:
-        f.unlink(missing_ok=True)
-    # domain/platform/modules/decisions all nest under one folder named after the
-    # (still-active, pre-reload) profile's own identity — once its contents are gone,
-    # remove the now-empty folder too, so reset never leaves a stale <old-id>/ behind.
-    project_root = CFG.dir("domain")
-    if project_root.exists() and project_root != CFG.root:
-        try:
-            project_root.rmdir()
-        except OSError:
-            pass  # not empty (unexpected extra content) — leave it for the user to inspect
-
-
-def _git_dirty() -> bool:
-    r = _git("status", "--short", check=False)
-    if r.returncode != 0:      # not a git repo (or git unavailable) — be conservative
-        return True
-    return bool(r.stdout.strip())
-
-
-# -- factory.yaml instance-value reset (surgical text patch: factory.yaml is
-#    hand-maintained prose with heavy comments; a yaml.safe_load/dump round-trip
-#    would silently destroy all of it, so this only rewrites the value tokens) --
 
 def _yaml_scalar(value: str) -> str:
     return value if re.fullmatch(r"[A-Za-z0-9_-]+", value) else json.dumps(value)
-
-
-def _block_span(text: str, key: str, key_indent: str, child_indent: str) -> tuple[int, int]:
-    """(start, end) of the indented body directly under a `{key_indent}{key}:` line."""
-    m = re.search(rf"(?m)^{re.escape(key_indent)}{re.escape(key)}:[ \t]*\n", text)
-    if not m:
-        raise ValueError(f"{key!r} block not found")
-    start = end = m.end()
-    for lm in re.finditer(r"(?m)^(.*)\n", text[start:]):
-        line = lm.group(1)
-        if line.strip() == "" or line.startswith(child_indent):
-            end = start + lm.end()
-        else:
-            break
-    return start, end
-
-
-def _repo_block_span(repos_block: str, repo_name: str) -> tuple[int, int]:
-    return _block_span(repos_block, repo_name, "  ", "    ")
-
-
-def _replace_scalar(block: str, key: str, new_value: str) -> str:
-    pattern = re.compile(rf'(?m)^(\s*{re.escape(key)}:\s*)("[^"]*"|\S+)')
-    new_block, n = pattern.subn(lambda m: m.group(1) + new_value, block, count=1)
-    if n == 0:
-        raise ValueError(f"key {key!r} not found")
-    return new_block
-
-
-def _reset_factory_yaml_instance_values(pid: str) -> None:
-    """Clear repos.<name>.url/checkout_default to placeholders and point
-    factory.active_profile at the new domain — everything else untouched."""
-    path = CFG.root / "factory.yaml"
-    text = path.read_text(encoding="utf-8")
-    text = re.sub(r"(?m)^(  active_profile:\s*)\S+", rf"\g<1>{_yaml_scalar(pid)}", text, count=1)
-    repos_start, repos_end = _block_span(text, "repos", "", "  ")
-    repos_block = text[repos_start:repos_end]
-    for name in CFG.data["repos"]:
-        start, end = _repo_block_span(repos_block, name)
-        block = repos_block[start:end]
-        block = _replace_scalar(block, "url", '""')
-        block = _replace_scalar(block, "checkout_default", f'"../{name}"')
-        repos_block = repos_block[:start] + block + repos_block[end:]
-    text = text[:repos_start] + repos_block + text[repos_end:]
-    path.write_text(text, encoding="utf-8")
 
 
 def _sanitize_mod(pid: str) -> str:
@@ -1662,8 +1497,9 @@ def _sanitize_mod(pid: str) -> str:
     return m
 
 
-def _scaffold_profile(pid: str) -> Path:
-    dst = CFG.profiles_dir() / f"{pid}.yaml"
+def _scaffold_profile(pid: str, profiles: Path) -> Path:
+    """`<profiles>/<pid>.yaml` from `profiles/_schema.yaml` — every value a TODO."""
+    dst = profiles / f"{pid}.yaml"
     if dst.exists():
         raise FileExistsError(f"profile exists: {dst}")
     schema = CFG.profile_schema()
@@ -1684,38 +1520,127 @@ def _scaffold_profile(pid: str) -> Path:
                 out.append(f"{pad}{'# ' if opt else ''}{name}: {placeholder if not opt else ''}   # TODO {v}")
         return out
 
-    text = ["# profile scaffold generated by gov.py new-domain — fill every TODO, then gov.py lint --profile " + pid,
+    text = [f"# profile scaffold generated by gov.py new-project — fill every TODO, then gov.py lint --profile {pid}",
             f"schema_version: {schema.get('schema_version', CFG.data['schema_version'])}", *skel(schema)]
     text = [l.replace("id: TODO", f"id: {pid}") for l in text]
+    dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text("\n".join(text) + "\n", encoding="utf-8")
     return dst
 
 
-def cmd_new_domain(pid: str, *, yes: bool = False, module: str | None = None) -> int:
-    if _git_dirty():
-        _say("BLOCKED: uncommitted changes present — commit or stash first (new-domain permanently deletes prior project content).")
+def _project_yaml_text(pid: str, name: str, profile: str) -> str:
+    """The project's own facts, with every consumer repo the tracks name."""
+    p = CFG.project
+    lines = [
+        f"# {p['file']} — this project's facts. Edited by people; the factory READS it and never writes it.",
+        "project:",
+        f"  id: {_yaml_scalar(pid)}",
+        f"  name: {_yaml_scalar(name)}",
+        '  url: ""                          # this repo\'s own url — every consumer mounts it as a submodule and pins a commit',
+        f"profile: {_yaml_scalar(profile)}                     # {CFG.paths['profiles']}/<profile>.yaml in this repo ($GOV_PROFILE overrides)",
+        "repos:                             # the consumer repos, resolved relative to this checkout unless the env var is set",
+    ]
+    for track in CFG.tracks:
+        repo = CFG.track_repo(track)
+        env = CFG.fmt(p["consumer_env"], REPO=repo.upper())
+        default = CFG.fmt(p["consumer_default"], repo=repo)
+        lines.append(f'  {repo}: {{url: "", checkout_env: {env}, checkout_default: {json.dumps(default)}}}')
+    return "\n".join(lines) + "\n"
+
+
+def _project_gitignore_text() -> str:
+    m = CFG.paths["module"]
+    stem = CFG.fmt(CFG.naming["current_state_file"], artifact="")
+    return "\n".join([
+        "# macOS Finder metadata — never content", ".DS_Store", "",
+        f"# Derived caches: `gov.py state` rewrites these from the vN/ sources on every run.",
+        f"# Everything else under {m['state_dir']}/ IS tracked (approvals, gate and analyze records, briefs).",
+        f"**/{m['state_dir']}/{stem}*.md", f"**/{m['state_dir']}/traceability.md", f"**/{m['state_dir']}/state.json", "",
+        "# Implementer receipts — per-run, not governance", f"**/{CFG.paths['modules'].split('/')[-1]}/*/**/receipts/", "",
+    ])
+
+
+def _project_codeowners_text() -> str:
+    """The one-writer table (project.partitions) in the form GitHub enforces —
+    most specific wins, exactly as `CFG.partition_of` reads it."""
+    lines = ["# One writer per path — derived from factory.yaml → project.partitions by gov.py new-project.",
+             "# Most specific wins. Replace the placeholders with the maintainers of each writer.", "",
+             "*                                   @factory-maintainers"]
+    for part, spec in sorted(CFG.project["partitions"].items(), key=lambda kv: len(kv[1]["path"])):
+        if spec["writer"] == CFG.FACTORY_WRITER and "{MOD}" not in spec["path"]:
+            continue
+        path = "/" + spec["path"].replace("{MOD}", "*") + "/"
+        lines.append(f"{path:<36}@{spec['writer']}-maintainers")
+    return "\n".join(lines) + "\n"
+
+
+def cmd_new_project(target: Path, pid: str, name: str | None, profile: str | None, yes: bool = False) -> int:
+    """Scaffold a project repo in `target`: project.yaml, profiles/<profile>.yaml
+    from the schema, the empty partitions, .gitignore, CODEOWNERS, git init."""
+    target = Path(target).resolve()
+    profile = profile or pid
+    name = name or pid
+    if (target / CFG.project["file"]).exists():
+        _say(f"BLOCKED: {target / CFG.project['file']} exists — this is already a project repo")
         return BLOCKED
-    plan = _build_reset_plan()
-    _say(_reset_summary(plan))
-    if not yes:
-        try:
-            ans = input("Proceed? [y/N] ")
-        except EOFError:
-            ans = ""
-        if ans.strip().lower() != "y":
-            _say("Aborted: no changes made.")
-            return BLOCKED
-    _do_reset(plan)
-    _reset_factory_yaml_instance_values(pid)
-    dst = _scaffold_profile(pid)
-    CFG.reload()
-    _say(f"scaffolded {rel(dst)} · factory.yaml active_profile → {pid}")
-    rendered = rd.render_all()   # README.md, engines/*/SKILL.md, standalone/*/SKILL.md, shared/START-HERE.md
-    _say(f"re-rendered {len(rendered)} profile-derived doc(s) — no stale reference to the prior domain")
-    mod = module or _sanitize_mod(pid)
-    stage = CFG.stages[0]                 # the pipeline's first stage, run-order (factory.yaml stages:)
-    _say(f"continuing into `{stage.id}` for module {mod} …")
-    return run_stage(stage.id, mod, None, False, False)
+    if target.exists() and any(target.iterdir()) and not yes:
+        _say(f"BLOCKED: {target} is not empty — pass --yes to scaffold into it anyway")
+        return BLOCKED
+    target.mkdir(parents=True, exist_ok=True)
+    (target / CFG.project["file"]).write_text(_project_yaml_text(pid, name, profile), encoding="utf-8")
+    prof = _scaffold_profile(profile, target / CFG.paths["profiles"])
+    (target / CFG.paths["profiles"] / profile / "knowledge").mkdir(parents=True, exist_ok=True)
+    (target / CFG.paths["profiles"] / profile / "knowledge" / ".gitkeep").touch()
+    created = []
+    for key in CFG.external.get("keys") or ():
+        sub = CFG.paths[key]
+        if key == "profiles" or not isinstance(sub, str) or Path(sub).suffix:
+            continue                      # a file key (the overview) is rendered, not scaffolded
+        d = target / sub
+        d.mkdir(parents=True, exist_ok=True)
+        (d / ".gitkeep").touch()
+        created.append(sub)
+    for part, spec in CFG.project["partitions"].items():
+        sub = spec["path"].split("{MOD}")[0].rstrip("/")     # up to the per-module slot
+        d = target / sub
+        d.mkdir(parents=True, exist_ok=True)
+        (d / ".gitkeep").touch()
+        created.append(sub)
+    (target / ".gitignore").write_text(_project_gitignore_text(), encoding="utf-8")
+    (target / "CODEOWNERS").write_text(_project_codeowners_text(), encoding="utf-8")
+    (target / "README.md").write_text(
+        f"# {name}\n\nThe governance project repo of `{pid}`: `{CFG.project['file']}` (its facts), "
+        f"`{CFG.paths['profiles']}/` (its domain profile), and the partitions the governance factory "
+        f"fills — one writer per path (CODEOWNERS). Every consumer mounts this repo as a submodule "
+        f"and pins a commit.\n", encoding="utf-8")
+    if not (target / ".git").exists():
+        _git("init", "-q", cwd=target)
+        _git("add", "-A", cwd=target)
+        _git("-c", "user.email=factory@local", "-c", "user.name=governance-factory",
+             "commit", "-q", "-m", f"new-project: {pid} — scaffolded by the governance factory", cwd=target)
+    _say(f"scaffolded project `{pid}` at {target}")
+    _say(f"  {CFG.project['file']} · {rel(prof)} · {', '.join(sorted(set(created)))} · .gitignore · CODEOWNERS · git")
+    _say(f"next: fill every TODO in {prof.name}, then")
+    _say(f"  {CFG.project['checkout_env']}={target} gov.py lint --profile {profile}")
+    _say(f"  {CFG.project['checkout_env']}={target} gov.py run-stage {CFG.stages[0].id} -m {_sanitize_mod(pid)}")
+    return OK
+
+
+def cmd_new_domain(pid: str) -> int:
+    """Add a second profile to the CURRENT project (scaffolded from the schema).
+    Activating it is an edit to the project's project.yaml — the factory never
+    writes that file."""
+    if not CFG.project_file().exists():
+        _say(f"BLOCKED: no project at {CFG.project_checkout()} — scaffold one with gov.py new-project, or set {CFG.project['checkout_env']}")
+        return BLOCKED
+    try:
+        dst = _scaffold_profile(pid, CFG.profiles_dir())
+    except FileExistsError as e:
+        _say(f"BLOCKED: {e}")
+        return BLOCKED
+    _say(f"scaffolded {dst} in project `{CFG.project_data.get('project', {}).get('id', '?')}`")
+    _say(f"next: fill every TODO, `gov.py lint --profile {pid}`, then set `profile: {pid}` in {CFG.project_file().name} to activate it")
+    return OK
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────
@@ -1758,9 +1683,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dry-run", action="store_true"); p.add_argument("--strict", action="store_true"); p.add_argument("--fix-safe", action="store_true")
     sub.add_parser("render")
     p = sub.add_parser("lint"); p.add_argument("--profile")
+    p = sub.add_parser("new-project"); p.add_argument("dir"); p.add_argument("--id", required=True)
+    p.add_argument("--name", default=None); p.add_argument("--profile", default=None, help="profile id (default: the project id)")
+    p.add_argument("--yes", action="store_true", help="scaffold into a non-empty directory")
     p = sub.add_parser("new-domain"); p.add_argument("id")
-    p.add_argument("--yes", "--force", dest="yes", action="store_true", help="skip the confirmation prompt (the uncommitted-changes check still applies)")
-    p.add_argument("--module", "-m", default=None, help="initial module code for the domain-profile stage (default: derived from ID)")
     a = ap.parse_args(argv)
 
     if a.cmd == "run-stage":
@@ -1887,8 +1813,10 @@ def main(argv: list[str] | None = None) -> int:
         _say(counts_line(lint.counts(fs)))
         # the same blocking policy analyze gates on — one declaration, two readers
         return BLOCKED if blocks(fs) else OK
+    if a.cmd == "new-project":
+        return cmd_new_project(Path(a.dir), a.id, a.name, a.profile, yes=a.yes)
     if a.cmd == "new-domain":
-        return cmd_new_domain(a.id, yes=a.yes, module=a.module)
+        return cmd_new_domain(a.id)
     return OK
 
 

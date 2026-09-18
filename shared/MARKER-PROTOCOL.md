@@ -4,7 +4,7 @@
 Doc            : shared/MARKER-PROTOCOL.md
 Role           : the canonical marker specification; the toolkit (paths.tools/toolkit) is its executable form
 Loaded by      : plan-producing stages (stages/standalone with produces[*].plan), gov.py analyze (clause `markers`), gov.py split
-Generated parts: RENDER:markers · RENDER:phases:backend:exec · RENDER:phases:backend:test · RENDER:phases:frontend:exec · RENDER:phases:frontend:test
+Generated parts: RENDER:markers (the phase tables are project data — rendered into the project overview, `paths.overview`)
 Links          : GOVERNANCE-CORE.md · ARTIFACT-CONTRACTS.md · VERSIONING.md
 ```
 
@@ -68,47 +68,12 @@ Keys are canonical (`[A-Z0-9-]+`); display names may differ (`display`),
 package folders may differ (`folder`). An unknown key is **refused**
 (`markers.rules.unknown_phase`), never skipped (C3).
 
-Backend, execution plan:
-<!-- RENDER:phases:backend:exec -->
-| Key | Display | Folder | Split when | SUB labels |
-|---|---|---|---|---|
-| `CORE` | CORE | `CORE` | never | — |
-| `DATA-DOM` | DATA+DOM | `DATA-DOM` | — | `MASTER`, `TRANSACTIONAL`, `LOOKUP` |
-| `SVC-API` | SVC+API | `SVC-API` | API >= 8 (CRUD / SEARCH / INT) | `CRUD`, `SEARCH`, `INT` |
-| `DOC` | DOC | `DOC` | never | — |
-| `INT-C` | INT-C | `INT-C` | XM >= 5 (per target module) | — |
-| `INT-R` | INT-R | `INT-R` | XM >= 5 (per target module) | — |
-| `SEC-BE` | SEC-BE | `SEC-BE` | never | — |
-| `ALIGN-BE` | ALIGN-BE | `ALIGN-BE` | never | — |
-<!-- /RENDER:phases:backend:exec -->
+The keys themselves are **project data** — `profile.tracks.<track>.plans.<plan>.phases`
+of the active project's profile — and are rendered, per project, into that project's
+rendered overview (`factory.yaml → paths.overview`) by `gov.py render`. This tool document names none:
+a phase table here would be one project's, and the tool drives any project.
 
-Backend, test plan:
-<!-- RENDER:phases:backend:test -->
-| Key | Display | Folder | Split when | SUB labels |
-|---|---|---|---|---|
-| `TEST-PLAN-BE` | TEST-PLAN-BE | `TEST-PLAN-BE` | TC > 12 (RULE-SCENARIOS / API-SCENARIOS) | `RULE-SCENARIOS`, `API-SCENARIOS` |
-| `INT-XM` | INT-XM _(integration — populated for `--modules`/`--scope project`)_ | `INT-XM` | TC > 8 (per target module) | — |
-<!-- /RENDER:phases:backend:test -->
-
-Frontend, execution plan:
-<!-- RENDER:phases:frontend:exec -->
-| Key | Display | Folder | Split when | SUB labels |
-|---|---|---|---|---|
-| `F1` | F1 — Models & Types | `F1` | per screen | — |
-| `F2` | F2 — Data Hooks | `F2` | per screen | — |
-| `F3` | F3 — Forms & Validators | `F3` | per screen | — |
-| `F4` | F4 — Screens & Routes | `F4` | per screen | — |
-| `SEC-FE` | SEC-FE | `SEC-FE` | never | — |
-| `ALIGN-FE` | ALIGN-FE | `ALIGN-FE` | never | — |
-<!-- /RENDER:phases:frontend:exec -->
-
-Frontend, test plan:
-<!-- RENDER:phases:frontend:test -->
-| Key | Display | Folder | Split when | SUB labels |
-|---|---|---|---|---|
-| `TEST-PLAN-FE` | TEST-PLAN-FE | `TEST-PLAN-FE` | TC > 8 (UI-FLOWS / INT-FLOW) | `UI-FLOWS`, `INT-FLOW` |
-| `INT-UXD` | INT-UXD _(integration — populated for `--modules`/`--scope project`)_ | `INT-UXD` | TC > 8 (per source module) | — |
-<!-- /RENDER:phases:frontend:test -->
+<!-- the four RENDER:phases:<track>:<plan> blocks that stood here moved to the project overview -->
 
 ## 5. Rules (from `markers.rules`, non-negotiable)
 

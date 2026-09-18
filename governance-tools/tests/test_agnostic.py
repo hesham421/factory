@@ -72,7 +72,7 @@ TOY = {
 
 @pytest.fixture
 def toy(factory_root):
-    (factory_root / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    (CFG.profiles_dir() / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
     cfg = CFG.reload(profile_id="toy")
     assert cfg.profile_id == "toy"
     yield cfg
@@ -447,7 +447,7 @@ def test_a_profile_that_omits_a_stated_choice_is_a_lint_finding(toy):
         for part in leaf[:-1]:
             node = node[part]
         node.pop(leaf[-1])
-        path = toy.root / CFG.paths["profiles"] / "omitted.yaml"
+        path = CFG.profiles_dir() / "omitted.yaml"
         data["identity"]["id"] = "omitted"
         path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
         fs = lint.validate_profile(toy, toy.load_profile("omitted"))
@@ -459,7 +459,7 @@ def test_a_target_dialect_outside_the_declared_list_is_a_finding(toy):
     data = yaml.safe_load(yaml.safe_dump(TOY))
     data["identity"]["id"] = "wrongtarget"
     data["stack"]["db"]["target_dialect"] = "a-dialect-nobody-kept-rows-for"
-    (toy.root / CFG.paths["profiles"] / "wrongtarget.yaml").write_text(
+    (CFG.profiles_dir() / "wrongtarget.yaml").write_text(
         yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     fs = lint.validate_profile(toy, toy.load_profile("wrongtarget"))
     assert any("target_dialect" in f.path for f in fs)
@@ -479,7 +479,7 @@ def test_the_engines_emit_the_toy_answer_not_a_default(toy):
         assert "{{" not in out and "{%" not in out, "the brief still holds unrendered template syntax"
         assert TOY["stack"]["db"]["target_dialect"] in out, f"{sid} does not emit the toy's target dialect"
         # no dialect of the OTHER profile on disk may appear — read from it, never typed
-        other = toy.load_profile(toy.data["factory"]["active_profile"])
+        other = toy.load_profile(toy.project_data["profile"])
         for d in other.get("stack.db.dialects") or []:
             assert d not in out, f"{sid} leaks a dialect belonging to profile {other.id}"
         pkgen = TOY["stack"]["db"]["pk_generation"]
@@ -502,7 +502,7 @@ def test_no_engine_brief_restates_a_config_value_it_could_render(toy):
     from conftest import REAL_ROOT
     for d in ("engines", "standalone"):
         shutil.copytree(REAL_ROOT / d, toy.root / d)
-    other = toy.load_profile(toy.data["factory"]["active_profile"])
+    other = toy.load_profile(toy.project_data["profile"])
     # the other profile's distinctive stack values — read from it, never typed here
     foreign = set()
     def collect(v):
@@ -1227,7 +1227,7 @@ def test_the_cross_module_interface_is_rendered_not_offered(toy):
     assert "{{" not in out and "{%" not in out
     mine = TOY["conventions"]["module_interface"]
     assert f"profile.conventions.module_interface: {mine}" in out, "the toy's own answer is not rendered"
-    other = toy.load_profile(toy.data["factory"]["active_profile"]).get("conventions.module_interface")
+    other = toy.load_profile(toy.project_data["profile"]).get("conventions.module_interface")
     assert other and other != mine
     assert f"module_interface: {other}" not in out, "the brief carries the OTHER profile's answer"
     assert "DB foreign key | REST call" not in out, "the author is still offered a menu"
@@ -1650,7 +1650,7 @@ def test_every_label_a_clause_reads_is_one_the_engine_actually_renders(toy):
 def test_the_rendered_labels_are_the_toys_words_not_the_other_profiles(toy):
     """And they are the PROFILE's words: the other profile's labels appear nowhere."""
     out = _exec_brief(toy, "P3.1")
-    other = toy.load_profile(toy.data["factory"]["active_profile"]).get("plan_vocabulary") or {}
+    other = toy.load_profile(toy.project_data["profile"]).get("plan_vocabulary") or {}
     for key, mine in (CFG.profile.get("plan_vocabulary") or {}).items():
         theirs = other.get(key)
         if not theirs or theirs == mine or isinstance(theirs, list):

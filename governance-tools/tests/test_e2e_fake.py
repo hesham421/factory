@@ -36,20 +36,21 @@ def _init_repo(path):
 
 @pytest.fixture
 def auto(orch_root, tmp_path, monkeypatch):
-    """Toy profile, fake runner, the shared checkout as its own git repo (as in
-    the real layout), both consumer checkouts present."""
-    (orch_root / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
-    monkeypatch.setenv("GOV_PROFILE", "toy")
+    """A project repo scaffolded on the fly (`gov.py new-project`) carrying the
+    toy profile, the fake runner, both consumer checkouts present."""
     monkeypatch.setenv(CFG.runner["env"], "fake")
-    key = CFG.external["repo"]
-    shared = _init_repo(orch_root / CFG.repos[key]["checkout_default"])
-    monkeypatch.setenv(CFG.repos[key]["checkout_env"], str(shared))
+    project = tmp_path / "toy-governance"
+    assert gov.cmd_new_project(project, "toy", "Clinic Suite", None) == OK
+    (project / CFG.paths["profiles"] / "toy.yaml").write_text(yaml.safe_dump(TOY, sort_keys=False), encoding="utf-8")
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "the toy profile", cwd=project)
+    monkeypatch.setenv(CFG.project["checkout_env"], str(project))
+    monkeypatch.delenv("GOV_PROFILE", raising=False)
+    CFG.reload()
     _consumer(tmp_path, monkeypatch, "backend")
     _consumer(tmp_path, monkeypatch, "frontend")
-    CFG.reload(profile_id="toy")
     mod = next(iter(CFG.profile.vocabulary["module_prefixes"]))
     log: list[tuple[str, str, int]] = []
-    yield orch_root, shared, mod, log
+    yield orch_root, project.resolve(), mod, log
     dp.set_fake(None)
 
 
@@ -134,7 +135,7 @@ def test_full_pipeline_runs_with_no_operator(auto):
 
     # the backend publishes api-docs into the shared partition and commits there; fetch records that commit
     name, spec = next(iter(CFG.inputs.items()))
-    pub = shared / CFG.fmt(CFG.repos[spec["from_repo"]]["publishes"][name], mod=mod)
+    pub = CFG.partition_dir(spec["partition"], mod)
     pub.mkdir(parents=True, exist_ok=True)
     (pub / "index.md").write_text(fx.api_docs(mod), encoding="utf-8")
     _git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", cwd=shared)
@@ -152,7 +153,8 @@ def test_full_pipeline_runs_with_no_operator(auto):
     assert gov.main(["split", "--track", CFG.passes["2"]["track"], "-m", mod, "-v", "1"]) == OK
     assert gov.next_step(mod, 1)[1][0] == "tag"
     assert gov.cmd_tag(mod, 1) == OK
-    assert CFG.tag_name(mod, 1) in _git("tag", "-l", cwd=root).stdout
+    assert CFG.tag_name(mod, 1) in _git("tag", "-l", cwd=shared).stdout       # on the project repo
+    assert CFG.tag_name(mod, 1) not in _git("tag", "-l", cwd=root).stdout    # never on the tool
     assert gov.next_step(mod, 1)[1] is None
 
     # what the dialogues settled is in the decisions partition, and the whole module analyzes clean

@@ -1,0 +1,32 @@
+{{ marker }}
+# {{ profile.identity.display }} — project overview
+
+```
+Doc            : {{ factory.paths.overview }}
+Role           : the active profile in one page — what every stage, gate and consumer of THIS project builds against
+Generated from : {{ factory.project.file }} + {{ factory.paths.profiles }}/{{ profile.identity.id }}.yaml, by `gov.py render`
+Project id     : {{ profile.identity.id }}
+```
+
+{{ profile.identity.description }}
+
+## Profile
+<!-- RENDER:profile-summary -->
+<!-- /RENDER:profile-summary -->
+
+## Phase keys per track and plan
+
+Keys are canonical (`[A-Z0-9-]+`); display names may differ (`display`), package folders may
+differ (`folder`). The marker grammar (`shared/MARKER-PROTOCOL.md`) refuses an unknown key.
+{% for track in factory.tracks %}{% if track in profile.tracks %}{% for plan in profile.tracks[track].plans %}
+### `{{ track }}` · `{{ plan }}` → package `{{ factory.tracks[track].packages[plan] }}`
+<!-- RENDER:phases:{{ track }}:{{ plan }} -->
+<!-- /RENDER:phases:{{ track }}:{{ plan }} -->
+{% endfor %}{% endif %}{% endfor %}
+## Where this project's governance lives
+<!-- RENDER:project-layout -->
+<!-- /RENDER:project-layout -->
+
+## Who writes what
+<!-- RENDER:partitions -->
+<!-- /RENDER:partitions -->

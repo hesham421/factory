@@ -28,7 +28,9 @@ from findings import Finding
 # vocabulary and its order live in factory.yaml → analyze.severities
 from toolkit.common import sev
 
-_TEMPLATES = ("SKILL.md.j2", "command.md.j2", "README.md.j2", "START-HERE.md.j2")
+_TEMPLATES = ("SKILL.md.j2", "command.md.j2", "README.md.j2", "START-HERE.md.j2",
+              "PROJECT-OVERVIEW.md.j2", "GOVERNANCE-FACTORY-REFERENCE.md.j2")
+_REFERENCE = "GOVERNANCE-FACTORY-REFERENCE.md"      # the tool's own reference, at its root
 _RENDER_RX = re.compile(r"(<!-- RENDER:([A-Za-z0-9_:-]+) -->)(.*?)(<!-- /RENDER:\2 -->)", re.S)
 _FRONTMATTER_RX = re.compile(r"^---\n(.*?)\n---\n", re.S)
 
@@ -168,6 +170,29 @@ def block_profile_summary(cfg):
     ], ["Fact", "Value"])
 
 
+def block_partitions(cfg):
+    """The project repo's one-writer table (factory.yaml → project.partitions)."""
+    rows = []
+    for name, spec in cfg.project["partitions"].items():
+        readers = spec.get("readers", spec["writer"])
+        rows.append([f"`{name}`", f"`{spec['path']}`", f"`{spec['writer']}`",
+                     "all" if readers == "all" else ", ".join(f"`{r}`" for r in (readers if isinstance(readers, list) else [readers]))])
+    return _t(rows, ["Partition", "Path in the project repo", "Writer", "Readers"])
+
+
+def block_project_layout(cfg):
+    """Every path key that lives in the project repo, with its meaning."""
+    meaning = {"profiles": "the domain profile(s): `<id>.yaml` + `<id>/knowledge/`",
+               "domain": "`domain-profile.md` — the entry gate",
+               "platform": "`project-registry.md`, system tests, the rendered overview",
+               "modules": "`{MOD}/[vN/]` — every stage artifact, `_state/`, `_inputs/`, `manifest.json`",
+               "decisions": "`{MOD}/` — the ADR stream, dialogue decisions included",
+               "overview": "the rendered profile summary + phase tables"}
+    rows = [[f"`{cfg.project['file']}`", "the project's facts: profile id, consumer repos (user-edited)"]]
+    rows += [[f"`{cfg.paths[k]}`", meaning.get(k, "")] for k in (cfg.external.get("keys") or ())]
+    return _t(rows, ["Path", "What lives there"])
+
+
 def block_contracts_index(cfg):
     rows = []
     for c in contracts_from_doc(cfg):
@@ -184,7 +209,8 @@ def render_block(cfg: FactoryConfig, name: str) -> str:
         "stages": block_stages, "standalone": block_standalone, "gates": block_gates, "lanes": block_lanes,
         "ids": block_ids, "ears": block_ears, "markers": block_markers, "commands": block_commands,
         "review-rubric": block_review_rubric, "profile-summary": block_profile_summary,
-        "contracts-index": block_contracts_index,
+        "contracts-index": block_contracts_index, "partitions": block_partitions,
+        "project-layout": block_project_layout,
     }.get(name)
     if fn is None:
         raise KeyError(f"unknown RENDER block '{name}'")
@@ -219,7 +245,11 @@ def generated_files(cfg: FactoryConfig) -> dict[Path, str]:
     for c in cfg.commands:
         out[cfg.dir("commands") / f"{c['id']}.md"] = cmd.render(_ctx(cfg, command=c))
     out[cfg.root / "README.md"] = env.get_template("README.md.j2").render(_ctx(cfg, shared_docs=_shared_docs(cfg)))
+    out[cfg.root / _REFERENCE] = env.get_template("GOVERNANCE-FACTORY-REFERENCE.md.j2").render(_ctx(cfg, shared_docs=_shared_docs(cfg)))
     out[cfg.dir("shared") / "START-HERE.md"] = env.get_template("START-HERE.md.j2").render(_ctx(cfg))
+    # the one rendered file that IS project content: the profile summary and the
+    # phase tables, written into the project repo beside the analysis
+    out[cfg.dir("overview")] = env.get_template("PROJECT-OVERVIEW.md.j2").render(_ctx(cfg))
     return {p: fill_blocks(cfg, c) for p, c in out.items()}   # generated files may embed RENDER blocks too
 
 

@@ -30,4 +30,4 @@ description: {{ stage.title }} — {{ 'standalone stage (outside the governed li
 {% else %}4. Questions are allowed here and closed inside the dialogue with a recommended, researched answer; nothing is written to an external open-questions file.
 {% endif %}
 ## Load order
-`profiles/{{ profile.identity.id }}.yaml` (active profile) → {% for d in shared_docs %}`shared/{{ d }}`{% if not loop.last %} → {% endif %}{% endfor %} → `references/ENGINE.md`.
+the active project's profile (`{{ factory.paths.profiles }}/<id>.yaml` in the project repo, named by its `{{ factory.project.file }}`) → {% for d in shared_docs %}`shared/{{ d }}`{% if not loop.last %} → {% endif %}{% endfor %} → `references/ENGINE.md`.

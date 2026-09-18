@@ -3,10 +3,12 @@
 > ريبو رابع، مقسَّم داخلياً، الكتابة فيه **مباشرة**، الباك معزول عن الفرونت،
 > والمصنع يرى الطرفين.
 >
-> الحالة: **مُنفَّذ.** الريبو قائم على `https://github.com/hesham421/governance-shared.git`،
-> مركَّب submodule في المصنع (`governance-shared/`) وفي الطرفين، والتقسيم أدناه هو
-> ما يقرؤه `factory.yaml → repos.shared.partitions` فعلاً. §٥ و§٦ محدَّثان إلى ما نُفِّذ؛
-> ما تغيّر عن التصميم الأول مذكور في موضعه.
+> الحالة: **مُنفَّذ (v7).** الريبو قائم على `https://github.com/hesham421/governance-shared.git`
+> وهو **ريبو المشروع** (project repo) لمشروع ERP: يحمل `project.yaml` والبروفايل والتحليل
+> والحزم المسلَّمة وأقسام الطرفين. المصنع **أداة صرفة بلا مشروع** — لا يركّبه submodule؛
+> يشير إليه `$GOV_PROJECT_CHECKOUT` (الافتراضي: `../governance-shared` بجواره)، وتبديل
+> المشروع هو تغيير هذا المتغيّر لا غير. الطرفان يركّبانه submodule ويثبّتان commit.
+> التقسيم أدناه هو ما يقرؤه `factory.yaml → project.partitions` فعلاً.
 > يُقرأ بعد [SHARED-GOVERNANCE-PLAN.md](SHARED-GOVERNANCE-PLAN.md) §٧.
 
 ---
@@ -52,27 +54,33 @@
 والحزم والـ api-docs وحالة التنفيذ معاً — لا يمكن لأحدها أن ينزلق عن الآخر.
 
 ```
-governance-shared/
+governance-shared/                   ◄── ريبو المشروع (واحد لكل منتج)
 │
-├── platform/                    ◄── منشورات المصنع · الجميع يقرأ
-│   ├── rules/                       قواعد الحوكمة، تعريفات الذرّات، العقود
-│   ├── modules-registry.json        سجل الموديولات (مشتقّ من نظام الملفات)
-│   └── profile-summary.md           ملخّص البروفايل الفعّال
+├── project.yaml                     ✍ الإنسان   حقائق المشروع: البروفايل الفعّال، ريبوهات المستهلكين (المصنع يقرأ ولا يكتب)
+├── profiles/<id>.yaml + <id>/knowledge/   ✍ الإنسان   بروفايل المجال (يتحقّق منه المصنع بـ profiles/_schema.yaml عنده)
 │
-└── {profile_id}/                ◄── حوكمة البروفايل الفعّال  (paths.domain)
-    ├── domain-profile.md            ✍ المصنع
-    ├── project-registry.md          ✍ المصنع
-    ├── system-test-*.md             ✍ المصنع
-    ├── decisions/{MOD}/             ✍ المصنع   (ADR-*)
-    └── modules/{MOD}/
-        ├── P0 P0_5 P1 P2 P3_1 P3_2  ✍ المصنع   مجلدات المراحل
-        ├── test_gen/  api_verify/   ✍ المصنع
-        ├── _state/  _inputs/        ✍ المصنع
-        ├── packages/                ✍ المصنع   (المسارَان الأربعة)
-        ├── manifest.json            ✍ المصنع   سجلّ ما أنتجه المصنع
-        ├── api-docs/                ✍ الباك    (مولَّد من /v3/api-docs)
-        ├── backend/                 ✍ الباك    execution-state.json · test-api/
-        └── frontend/                ✍ الفرونت  execution-state.json
+├── platform/                        ◄── منشورات المصنع · الجميع يقرأ
+│   ├── rules/                           قواعد الحوكمة، تعريفات الذرّات، العقود
+│   ├── modules-registry.json            سجل الموديولات (مشتقّ من نظام الملفات)
+│   └── profile-summary.json             ملخّص البروفايل الفعّال
+│
+├── analysis/                        ◄── قسم التحليل  ✍ المصنع  (paths.domain/platform/modules/decisions)
+│   ├── domain/domain-profile.md
+│   ├── platform/                        project-registry.md · system-test-*.md · PROJECT-OVERVIEW.md (مولَّد)
+│   ├── decisions/{MOD}/                 ADR-* (ومنها قرارات الحوار)
+│   └── modules/{MOD}/[vN/]
+│       ├── P0 P0_5 P1 P2 P3_1 P3_2      مجلدات المراحل
+│       ├── test_gen/  api_verify/
+│       ├── _state/  _inputs/            (+ .meta.json: أيّ commit قُرئ عنده كل مُدخَل)
+│       └── manifest.json                فهرس الموديول + حالة تنفيذ المصنع نفسه
+│
+├── backend/modules/{MOD}/
+│   ├── api-docs/                    ✍ الباك    (مولَّد من /v3/api-docs) · يقرؤه المصنع والفرونت
+│   ├── packages/                    ✍ المصنع   الحزم المسلَّمة (backend-execution · backend-test)
+│   └── execution-state.json · test-api/   ✍ الباك
+└── frontend/modules/{MOD}/
+    ├── packages/                    ✍ المصنع   الحزم المسلَّمة (frontend-execution · frontend-test)
+    └── execution-state.json         ✍ الفرونت
 ```
 
 ### لماذا `platform/` منفصل عن `{profile_id}/`؟
@@ -103,17 +111,20 @@ governance-shared/
 
 | المسار | الكاتب الوحيد | القرّاء | الأداة المنتِجة |
 |---|---|---|---|
-| `platform/rules/` | **المصنع** | الجميع | `gov.py publish` |
-| `platform/modules-registry.json` | **المصنع** | الجميع | `gov.py publish` |
-| `{profile_id}/*.md` | **المصنع** | الجميع | مراحل المصنع |
-| `{profile_id}/decisions/*/` | **المصنع** | الجميع | مراحل المصنع |
-| `{profile_id}/modules/*/P*/` · `test_gen/` · `api_verify/` | **المصنع** | الجميع | مراحل المصنع |
-| `{profile_id}/modules/*/_state/` · `_inputs/` | **المصنع** | الجميع | `gov.py` |
-| `{profile_id}/modules/*/packages/` | **المصنع** | الطرف صاحب المسار | `gov.py split` |
-| `{profile_id}/modules/*/manifest.json` | **المصنع** | الجميع | `gov.py` |
-| `{profile_id}/modules/*/api-docs/` | **الباك** | المصنع · الفرونت | `generate-api-docs` |
-| `{profile_id}/modules/*/backend/` | **الباك** | المصنع | `generate-module-setup` · `orchestrate-module` |
-| `{profile_id}/modules/*/frontend/` | **الفرونت** | المصنع | `generate-frontend-module-setup` · `orchestrate-module` |
+| `project.yaml` · `profiles/` | **الإنسان** | المصنع | تحرير يدوي (`gov.py new-project` يبذرهما) |
+| `platform/rules/` · `platform/*.json` | **المصنع** | الجميع | `gov.py publish` |
+| `analysis/domain/` · `analysis/platform/` | **المصنع** | الجميع | مراحل المصنع · `gov.py render` (الـ overview) |
+| `analysis/decisions/*/` | **المصنع** | الجميع | مراحل المصنع · الحوار |
+| `analysis/modules/*/P*/` · `test_gen/` · `api_verify/` | **المصنع** | الجميع | مراحل المصنع |
+| `analysis/modules/*/_state/` · `_inputs/` · `manifest.json` | **المصنع** | الجميع | `gov.py` |
+| `backend/modules/*/packages/` | **المصنع** | الباك | `gov.py split` |
+| `frontend/modules/*/packages/` | **المصنع** | الفرونت | `gov.py split` |
+| `backend/modules/*/api-docs/` | **الباك** | المصنع · الفرونت | `generate-api-docs` |
+| `backend/modules/*/` (ما عدا الاثنين أعلاه) | **الباك** | المصنع | `generate-module-setup` · `orchestrate-module` |
+| `frontend/modules/*/` (ما عدا `packages/`) | **الفرونت** | المصنع | `generate-frontend-module-setup` · `orchestrate-module` |
+
+> **الأخصّ يفوز.** `packages/` قسم للمصنع **داخل** قسم الطرف؛ `CODEOWNERS` يقرأ الأعمق، وكذلك
+> المصنع حين يقرّر ما يحقّ له حذفه عند إعادة التوليد (`config.partition_of`).
 
 ### `execution-state.json` — كاتب واحد، وقد كان اثنين
 
@@ -140,12 +151,14 @@ governance-shared/
 
 ```
 *                                   @factory-maintainers
-/{profile_id}/modules/*/api-docs/   @backend-maintainers
-/{profile_id}/modules/*/backend/    @backend-maintainers
-/{profile_id}/modules/*/frontend/   @frontend-maintainers
+/backend/modules/*/                 @backend-maintainers
+/frontend/modules/*/                @frontend-maintainers
+/backend/modules/*/api-docs/        @backend-maintainers
+/backend/modules/*/packages/        @factory-maintainers
+/frontend/modules/*/packages/       @factory-maintainers
 ```
 
-الأخصّ يفوز: المصنع يملك كل شيء عدا ثلاثة مسارات فرعية لكل موديول.
+الأخصّ يفوز — يولّده `gov.py new-project` من `factory.yaml → project.partitions`.
 
 ---
 
@@ -196,9 +209,12 @@ def dir(self, key: str) -> Path:  return self.root / self.paths[key]
 
 | المستودع | المسار | ما يكتب |
 |---|---|---|
-| `factory/` | `governance-shared/` | كل شيء عدا الأقسام الثلاثة أدناه |
-| `backend/` | `governance/shared/` | `modules/*/api-docs/` · `modules/*/backend/` |
-| `frontend/` | `governance/shared/` | `modules/*/frontend/` |
+| `factory/` | **لا submodule** — `$GOV_PROJECT_CHECKOUT` (الافتراضي `../governance-shared`) | كل شيء عدا أقسام الطرفين |
+| `backend/` | `governance/shared/` | `backend/modules/*/` عدا `packages/` |
+| `frontend/` | `governance/shared/` | `frontend/modules/*/` عدا `packages/` |
+
+> **المصنع لم يعد يركّبه.** كان submodule داخل المصنع؛ وأداةٌ تحمل مشروعاً واحداً بداخلها
+> ليست أداةً لأيّ مشروع. صار المشروع checkout مجاوراً يشير إليه متغيّر واحد.
 
 **ثلاث نسخ فقط، لا رابعة.** كانت هناك نسخة مجاورة رابعة لا يثبّتها أحد، وقد
 أُزيلت — بعد أن أثبتت خطرها مرّتين في جلسة واحدة: كتابة ذهبت إليها بدل الـ
@@ -368,29 +384,30 @@ modules/{MOD}/{track}/execution-state.json
 
 ```yaml
 paths:
-  external:                              # المفاتيح التي تُحلّ على الريبو المشترك
-    repo: shared
-    keys: [domain, platform, modules, decisions]
+  external:                              # المفاتيح التي تُحلّ على ريبو المشروع
+    keys: [profiles, domain, platform, modules, decisions, overview]
 
-repos:
-  shared:
-    url: "https://github.com/hesham421/governance-shared.git"
-    checkout_env: GOV_SHARED_CHECKOUT
-    checkout_default: "governance-shared"          # submodule داخل المصنع
-    partitions:                                    # وعي المصنع بالتقسيم — جدول §٣ بصيغة تقرؤها الأدوات
-      platform: {path: "platform",                            writer: factory}
-      factory:  {path: "{profile_id}/modules/{MOD}",          writer: factory}
-      api-docs: {path: "{profile_id}/modules/{MOD}/api-docs", writer: backend, readers: all}
-      backend:  {path: "{profile_id}/modules/{MOD}/backend",  writer: backend}
-      frontend: {path: "{profile_id}/modules/{MOD}/frontend", writer: frontend}
+project:                                 # كيف يجد المصنع المشروع، وكيف يُقسَّم — بيانات لا كود
+  file: project.yaml
+  checkout_env: GOV_PROJECT_CHECKOUT
+  checkout_default: "../governance-shared"
+  partitions:                            # جدول §٣ بصيغة تقرؤها الأدوات — الأعمق يفوز
+    platform:          {path: "platform",                        writer: factory, readers: all}
+    analysis:          {path: "analysis/modules/{MOD}",          writer: factory}
+    api-docs:          {path: "backend/modules/{MOD}/api-docs",  writer: backend, readers: all}
+    backend-packages:  {path: "backend/modules/{MOD}/packages",  writer: factory, readers: [backend]}
+    frontend-packages: {path: "frontend/modules/{MOD}/packages", writer: factory, readers: [frontend]}
+    backend:           {path: "backend/modules/{MOD}",           writer: backend}
+    frontend:          {path: "frontend/modules/{MOD}",          writer: frontend}
 
-  backend:
-    reads_from: shared
-    publishes:
-      api-docs: "{profile_id}/modules/{MOD}/api-docs"   # داخل shared
-  frontend:
-    reads_from: shared
+tracks:
+  backend:  {repo: backend,  partition: backend,  delivery: backend-packages,  …}
+  frontend: {repo: frontend, partition: frontend, delivery: frontend-packages, …}
+inputs:
+  api-docs: {partition: api-docs, …}     # يقرؤه fetch-inputs من قسم الباك ويسجّل الـ commit
 ```
+
+وأما ريبوهات المستهلكين (url · checkout) فحقائق **مشروع**، في `project.yaml` لا في `factory.yaml`.
 
 **المصنع هو الوحيد الذي يقرأ القسمين.** وهذا صحيح معمارياً: هو الوحيد الذي
 يوفّق بين الـ SRS والـ api-docs وخطط الطرفين — وظيفته بالتعريف.

@@ -2,10 +2,11 @@
 # START HERE — the {{ factory.factory.name }} in one page
 
 **What it is.** An analysis factory: a raw idea goes in, reviewed and traceable analysis comes out — up to backend and frontend
-execution plans written into the shared governance repo the consumers read. It **stops there** ({{ factory.factory.boundary }}). The domain is data
-(`{{ factory.paths.profiles }}/<id>.yaml`); the active one is `{{ profile.identity.id }}`.
+execution plans written into the **project repo** every consumer mounts. It **stops there** ({{ factory.factory.boundary }}). The domain is data
+(`{{ factory.paths.profiles }}/<id>.yaml` in the project repo); the active one is named by the project's `{{ factory.project.file }}`, and the
+tool itself carries no project — `${{ factory.project.checkout_env }}` says which one it drives.
 
-**Where the truth lives.** `factory.yaml` (factory facts) + the profile (domain facts). Every table in the docs, every
+**Where the truth lives.** `factory.yaml` (factory facts) + the project's profile (domain facts). Every table in the docs, every
 `SKILL.md`, every command and this page are generated from them (`gov.py render`); `gov.py lint` refuses drift.
 
 **How a module moves.**

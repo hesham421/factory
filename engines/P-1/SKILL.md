@@ -24,4 +24,4 @@ description: Registry & Steering Builder — governed analysis stage, pass boots
 3. Artifacts are written to the module version folder; `gov.py analyze` runs the contracts; the stage commits (`{stage}: [{MOD}] v{version} — {summary}`).
 4. Ambiguity: non-breaking → ADR + continue; breaking → ADR `BLOCKED` + stop (`factory.ambiguity`). A `[QUESTION]` block from this stage is refused.
 ## Load order
-`profiles/erp.yaml` (active profile) → `shared/ARTIFACT-CONTRACTS.md` → `shared/CONSTITUTION.md` → `shared/GOVERNANCE-CORE.md` → `shared/MARKER-PROTOCOL.md` → `shared/QUALITY-RUBRIC.md` → `shared/REGISTRY-SCHEMA.md` → `shared/VERSIONING.md` → `shared/XM-PROTOCOL.md` → `references/ENGINE.md`.
+the active project's profile (`profiles/<id>.yaml` in the project repo, named by its `project.yaml`) → `shared/ARTIFACT-CONTRACTS.md` → `shared/CONSTITUTION.md` → `shared/GOVERNANCE-CORE.md` → `shared/MARKER-PROTOCOL.md` → `shared/QUALITY-RUBRIC.md` → `shared/REGISTRY-SCHEMA.md` → `shared/VERSIONING.md` → `shared/XM-PROTOCOL.md` → `references/ENGINE.md`.

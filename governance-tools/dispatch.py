@@ -116,7 +116,7 @@ def _state_bundle(stage: Stage, mod: str, version: int) -> list[tuple[str, str]]
 def _knowledge(stage: Stage) -> list[tuple[str, str]]:
     out = []
     for f in CFG.profile.knowledge_files:
-        p = CFG.root / f
+        p = CFG.project_checkout() / f          # the profile's knowledge lives beside it, in the project
         if p.exists():
             out.append((f, p.read_text(encoding="utf-8")))
     return out
@@ -323,11 +323,10 @@ def write_roots() -> list[Path]:
     automated stage write failed: the brief carried absolute paths (`rel()`
     falls back to them outside the root) and the check refused each one."""
     roots = [CFG.root.resolve()]
-    ext = CFG.external
-    if ext.get("keys"):
-        shared = CFG.repo_checkout(ext["repo"]).resolve()
-        if shared not in roots:
-            roots.append(shared)
+    if CFG.external.get("keys"):
+        project = CFG.project_checkout().resolve()
+        if project not in roots:
+            roots.append(project)
     return roots
 
 
