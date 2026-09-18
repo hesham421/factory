@@ -79,6 +79,29 @@ def _owning_checkout(path: Path) -> Path:
     return max(inside, key=lambda r: len(r.parts)) if inside else CFG.root
 
 
+def _is_submodule_of(root: Path, parent: Path) -> bool:
+    """Whether `root` is a real git submodule of `parent` — `.gitmodules` says so,
+    not mere directory nesting.
+
+    Blueprint v7 split the tool from the project it drives: a project checkout
+    now commonly sits nested under the tool's own root (`$GOV_PROJECT_CHECKOUT`,
+    default `governance-shared`) as an independent, gitignored clone — nested in
+    the filesystem, unrelated in git. `CFG.root in root.parents` alone cannot
+    tell those two shapes apart, and mistaking the second for the first sends a
+    `git add` at a path `parent`'s own `.gitignore` refuses, which fails the
+    whole commit outright — observed the day this check was added."""
+    gm = parent / ".gitmodules"
+    if not gm.exists():
+        return False
+    try:
+        rel = root.relative_to(parent).as_posix()
+    except ValueError:
+        return False
+    paths = _git("config", "--file", str(gm), "--get-regexp", r"^submodule\..*\.path$",
+                 cwd=parent, check=False)
+    return any(line.split(maxsplit=1)[-1] == rel for line in paths.stdout.splitlines())
+
+
 def _detached(root: Path) -> bool:
     """Whether a checkout is on a commit rather than a branch.
 
@@ -135,7 +158,7 @@ def _commit(paths: list[Path], message: str, no_commit: bool = False) -> str | N
         if not sha:
             continue
         shas.append(sha if root == CFG.root else f"{root.name}@{sha}")
-        if root != CFG.root and CFG.root in root.parents:      # submodule of this repo
+        if root != CFG.root and _is_submodule_of(root, CFG.root):
             ptr = _commit_in(CFG.root, [str(root.relative_to(CFG.root))], message)
             if ptr:
                 shas.append(ptr)
