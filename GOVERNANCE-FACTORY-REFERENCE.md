@@ -11,7 +11,7 @@
 
 A **pure, project-agnostic analysis factory**: this checkout is a stateless tool. It reads
 one **project repo** — named by `$GOV_PROJECT_CHECKOUT` (default
-`../governance-shared`) — and writes only there: the project's `project.yaml`
+`governance-shared`) — and writes only there: the project's `project.yaml`
 names the active domain profile; the profile is data (`profiles/<id>.yaml`, validated
 against this tool's `profiles/_schema.yaml`); the analysis, the decisions, the split packages and the
 tracks' own partitions are all in that repo, one writer per path. Switching projects is pointing the

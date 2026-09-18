@@ -6,8 +6,9 @@
 > الحالة: **مُنفَّذ (v7).** الريبو قائم على `https://github.com/hesham421/governance-shared.git`
 > وهو **ريبو المشروع** (project repo) لمشروع ERP: يحمل `project.yaml` والبروفايل والتحليل
 > والحزم المسلَّمة وأقسام الطرفين. المصنع **أداة صرفة بلا مشروع** — لا يركّبه submodule؛
-> يشير إليه `$GOV_PROJECT_CHECKOUT` (الافتراضي: `../governance-shared` بجواره)، وتبديل
-> المشروع هو تغيير هذا المتغيّر لا غير. الطرفان يركّبانه submodule ويثبّتان commit.
+> يقع clone مستقلاً داخل مجلده (`governance-shared/`، متجاهَل في git المصنع) أو حيث يشير
+> `$GOV_PROJECT_CHECKOUT`، وتبديل المشروع هو تغيير هذا المتغيّر لا غير. الطرفان يركّبانه
+> submodule ويثبّتان commit.
 > التقسيم أدناه هو ما يقرؤه `factory.yaml → project.partitions` فعلاً.
 > يُقرأ بعد [SHARED-GOVERNANCE-PLAN.md](SHARED-GOVERNANCE-PLAN.md) §٧.
 
@@ -209,12 +210,13 @@ def dir(self, key: str) -> Path:  return self.root / self.paths[key]
 
 | المستودع | المسار | ما يكتب |
 |---|---|---|
-| `factory/` | **لا submodule** — `$GOV_PROJECT_CHECKOUT` (الافتراضي `../governance-shared`) | كل شيء عدا أقسام الطرفين |
+| `factory/` | **لا submodule** — clone مستقل داخل المجلد (`governance-shared/`، يتجاهله git المصنع) أو `$GOV_PROJECT_CHECKOUT` | كل شيء عدا أقسام الطرفين |
 | `backend/` | `governance/shared/` | `backend/modules/*/` عدا `packages/` |
 | `frontend/` | `governance/shared/` | `frontend/modules/*/` عدا `packages/` |
 
 > **المصنع لم يعد يركّبه.** كان submodule داخل المصنع؛ وأداةٌ تحمل مشروعاً واحداً بداخلها
-> ليست أداةً لأيّ مشروع. صار المشروع checkout مجاوراً يشير إليه متغيّر واحد.
+> ليست أداةً لأيّ مشروع. صار المشروع clone مستقلاً يقع داخل مجلد المصنع للاطّلاع عليه
+> (يتجاهله git المصنع، فلا يحمله ولا يثبّته)، ويشير إليه متغيّر واحد حين يكون في مكان آخر.
 
 **ثلاث نسخ فقط، لا رابعة.** كانت هناك نسخة مجاورة رابعة لا يثبّتها أحد، وقد
 أُزيلت — بعد أن أثبتت خطرها مرّتين في جلسة واحدة: كتابة ذهبت إليها بدل الـ

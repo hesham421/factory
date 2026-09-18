@@ -6,7 +6,7 @@ domain profile. Output: reviewed, versioned, traceable analysis artifacts and **
 execution plans**, written into the **project repo** every consumer mounts. Boundary:
 **analysis-only** — it never implements, never audits implementations inside the line, never runs tests inside the line.
 
-This checkout carries no project: `$GOV_PROJECT_CHECKOUT` (default `../governance-shared`) names the
+This checkout carries no project: `$GOV_PROJECT_CHECKOUT` (default `governance-shared`) names the
 project repo it drives, and switching projects is pointing it elsewhere. Everything below is generated from
 `factory.yaml` by `gov.py render`; the constitution that governs the tool is `shared/CONSTITUTION.md`.
 
@@ -151,7 +151,7 @@ Every reasoning step (a stage, a gate review, a revise) is a brief `gov.py` buil
    - `test-gen` — claude:opus, effort `high`
 2. Environment — scoped to that shell (a project `.envrc`, a `direnv`, or the session), never `.zshrc`-global:
    ```
-   export GOV_PROJECT_CHECKOUT=/path/to/the/project/repo     # default: ../governance-shared
+   export GOV_PROJECT_CHECKOUT=/path/to/the/project/repo     # default: governance-shared
    export GOV_RUNNER=cmd
    export GOV_RUNNER_CMD='governance-tools/runner/claude_delegate.sh {brief} {lane} {model} {read_only_flag} {out}'
    ```

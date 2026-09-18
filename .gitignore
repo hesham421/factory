@@ -7,6 +7,12 @@ __pycache__/
 # macOS Finder metadata — never content
 .DS_Store
 
+# The project repo, kept INSIDE this folder for visibility but as a repo of its
+# own — never a submodule, never tracked here: the factory is a pure tool and
+# carries no project. `factory.yaml → project.checkout_default` points at it;
+# GOV_PROJECT_CHECKOUT points anywhere else.
+governance-shared/
+
 # Derived current-state — `_state/` mixes two things, and only these are caches.
 # `build_state()` rewrites every one of them from the v{N}/ sources on EVERY run
 # (`_prepare` calls it before any stage), so running pass 2 rewrote pass 1's files

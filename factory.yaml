@@ -340,7 +340,8 @@ tracks:
 project:
   file: project.yaml
   checkout_env: GOV_PROJECT_CHECKOUT
-  checkout_default: "../governance-shared"      # a sibling checkout — never inside this tool
+  checkout_default: "governance-shared"         # a checkout of its OWN inside this folder (git-ignored here,
+                                                # never a submodule) — kept in view, never carried by the tool
   # One entry per WRITER — GOVERNANCE-SHARED-DESIGN.md §3's ownership table in
   # the form the tools address. An entry carrying `{MOD}` is per-module; one
   # without it is not, and that is how the tools tell them apart rather than by
