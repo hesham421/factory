@@ -9,7 +9,8 @@
 #   · value-agreement · code-format · data-source · xref-resolve · refs-exist · paths-resolve
 #   · verdict-agrees · forward-refs · xref-surface · endpoint-agrees
 #   · count-agrees · required-writer · operation-resolves · bootstrap-complete
-#   · ambiguity · ac-measurable · crud-covered · feature-unwanted · screen-states · glossary
+#   · ambiguity · ac-measurable · crud-covered · feature-unwanted · screen-states
+#   · screen-composition · glossary
 # A clause's `severity` is a name from factory.analyze.severities, or a dotted
 # factory.yaml address that holds one (`analyze.maturity_severity`: one knob for
 # the whole maturity family).
@@ -173,6 +174,7 @@ contracts:
       - {id: C9.13, check: xref-surface,  args: {artifact: [frontend-execution-plan], locator: stack.backend.api.base_path, kinds: [API]}, severity: MAJOR}
       - {id: C9.14, check: languages,     args: {stage: P3.2},                                                        severity: MAJOR}
       - {id: C9.15, check: screen-states, args: {artifact: ui-ux-spec, kind: SCR, spec: analyze.maturity.screen_states}, severity: analyze.maturity_severity}
+      - {id: C9.17, check: screen-composition, args: {artifact: ui-ux-spec, kind: SCR, spec: analyze.maturity.screen_composition, when: "profile.conventions.screen_composition"}, severity: analyze.maturity_severity}
       - {id: C9.16, check: glossary,      args: {artifact: [flow-diagram, ui-ux-spec], glossary: vocabulary.glossary, synonyms: vocabulary.glossary_synonyms}, severity: analyze.maturity_severity}
       - {id: C9.12, check: verdict-agrees, args: {artifact: [frontend-execution-plan], spec: self_check, when: "profile.self_check"}, severity: CRITICAL}
   - id: C10
@@ -228,7 +230,7 @@ Links          : GOVERNANCE-CORE.md · MARKER-PROTOCOL.md · REGISTRY-SCHEMA.md 
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
 | `C7` | backend execution plan → split | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
-| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 16 |
+| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 17 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |
@@ -446,6 +448,7 @@ these are mechanical clauses here and not a checklist line there.
 | `crud-covered` | **maturity.** Every `entity` record is named by ≥1 `kind` record, and those records' `statement` lines together cover every operation group at the factory address `spec` (create / read / update / delete, as verb stems per language). A lifecycle no requirement states is one the plan invents. | `artifact`, `entity`, `kind`, `statement`, `spec` |
 | `feature-unwanted` | **maturity.** Every `group` record (a story) whose `kind` records (its feature group) exist has at least one of them stating the EARS `pattern` (`factory.ids.ears.patterns[pattern]`, the unwanted-behaviour form). A feature specified only on the happy path leaves the wrong input to the implementer. | `artifact`, `group`, `kind`, `statement`, `pattern` |
 | `screen-states` | **maturity.** Every `kind` record in `artifact` carries the line named by the factory address `spec` (`label`) and that line names every state in `spec.required` (empty · loading · error). | `artifact`, `kind`, `spec` |
+| `screen-composition` | **maturity.** Every `kind` record in `artifact` carries the line named by the factory address `spec` (`label`), that line names every word in `spec.required` (submits) and at least one placement from `spec.one_of` (none · inline · summary row · second level) — several where the screen's parts differ. Declared only where the profile declares the convention (`when`). | `artifact`, `kind`, `spec` |
 | `glossary` | **maturity.** The glossary at the profile address `glossary` is used verbatim in each `artifact`: a term written with other separators (joined, hyphenated, underscored), an acronym in another case, or a word the profile lists under `synonyms` for it, is one finding per artifact and variant, with the lines. A profile that declares no glossary carries no such clause. | `artifact`, `glossary`, `synonyms?` |
 
 The six **maturity** clauses do not check consistency between artifacts; they check whether

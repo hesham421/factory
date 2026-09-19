@@ -533,10 +533,32 @@ analyze:
                ar: [تعديل, يعدل, تحديث, يحدث, تغيير, يغير, "إعادة تسمية", تصحيح, يصحح, ضبط, يضبط, اعتماد, يعتمد]}
       delete: {en: [delete, remove, deactivate, archive, cancel, void, reverse, close, revoke, disable, retire, withdraw, purge, expire],
                ar: [حذف, يحذف, تعطيل, يعطل, إلغاء, يلغي, أرشفة, يؤرشف, إغلاق, يغلق, عكس, يعكس, سحب, يسحب, إبطال, يبطل]}
+    # A line of a screen block that the engine renders and a check reads back.
+    # `label` names the line, `required` the words it must carry, `one_of` the
+    # placements it must name AT LEAST ONE of — a screen whose parts differ names
+    # several, and a line that names none has not decided — `what` completes the
+    # message when the line is absent, `noun` the word the message ends on.
     # the line of a screen block that lists its states (engines/P3.2 renders it), and what it must name
     screen_states:
       label: States
       required: [empty, loading, error]
+      what: "its empty, loading and error states are"
+      noun: state
+    # the line that names WHERE a screen's secondary detail sits and how many
+    # times the screen saves. One screen, one job, one submit: a screen opened to
+    # create or edit ONE record that grows a SECOND job inline — an entity picker,
+    # a repeating child-row editor, a permissions matrix, an attachment list — and
+    # a second save beside the first is the shape that shipped an administrator
+    # who set a subject's assignments, pressed the screen's own Save, and left
+    # with nothing assigned, warned by nothing. The spec had no line on which
+    # that could have been said, so it was decided at implementation time, once
+    # per screen, by whoever got there first. `none` is the honest answer for a
+    # report, a search or a confirmation, and it is still an answer.
+    screen_composition:
+      label: Composition
+      required: [submits]
+      one_of: [none, inline, "summary row", "second level"]
+      what: "where its secondary detail sits and how many times it saves is"
   # ── Coverage — the traceability ratios every report carries ──────────────
   # Computed from the traceability matrix `gov.py state` writes, so the report,
   # the gate record and the module's execution state (manifest.json → status)

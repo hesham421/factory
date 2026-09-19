@@ -238,7 +238,7 @@ an engine reads. A frozen version is tagged `{mod}-v{version}` **in the project 
 | `C6` | SRS + database → backend execution plan | `P1+P2` | `P3.1` | `srs`, `registry-srs`, `db-script`, `registry-db` | 9 |
 | `C7` | backend execution plan → split | `P3.1` | `split` | `backend-execution-plan`, `registry-exec-be`, `srs` | 24 |
 | `C8` | real API docs (consumer repo input) → frontend | `api-docs` | `P3.2` | `api-docs` | 4 |
-| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 16 |
+| `C9` | frontend design + execution plan → split | `P3.2` | `split` | `flow-diagram`, `ui-ux-spec`, `frontend-execution-plan`, `registry-exec-fe` | 17 |
 | `C10` | acceptance criteria → test generation (standalone) | `P1` | `test-gen` | `srs`, `registry-srs`, `backend-execution-plan`, `frontend-execution-plan`, `registry-db`, `registry-exec-fe` | 6 |
 | `C11` | real API docs (+ manifest) → API verification (standalone) | `api-docs` | `api-verify` | `api-docs`, `test-execution-manifest` | 3 |
 | `C12` | delta version (change manifest) → every stage | `versioning` | `any` | `change-manifest` | 3 |

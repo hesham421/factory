@@ -135,6 +135,56 @@ def test_a_screen_without_its_states_is_a_finding_and_the_engine_line_clears_it(
     assert not _by_check(an.run(mod, 1, scope="stage:P3.2"), "screen-states")
 
 
+def test_a_screen_that_never_says_where_its_secondary_detail_sits_is_a_finding(
+        orch_root, mod, tmp_path, monkeypatch):
+    """C9.17. A screen opened to edit ONE record grows a second job inline — a
+    picker, a repeating child-row editor — and a second save beside the first,
+    and the user who presses the first leaves without the second. The spec had no
+    line on which that could be said; now a screen without one is a finding, and
+    a screen with one that commits to no placement is a finding too."""
+    _consumer(tmp_path, monkeypatch, "backend")
+    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
+    fx.write_input("api-docs", mod)
+    fx.write_stage("P3.2", mod)
+    scr, spec = fx.mid("SCR", mod, 1), CFG.analyze["maturity"]["screen_composition"]
+    hits = _by_check(an.run(mod, 1, scope="stage:P3.2"), "screen-composition")
+    assert len(hits) == 1 and scr in hits[0].message
+
+    ux = CFG.artifact_path(mod, "P3.2", "ui-ux-spec", 1)
+    heading = f"### {scr} — main screen"
+    def _line(body):
+        ux.write_text(ux.read_text(encoding="utf-8").replace(
+            heading, f"{heading}\n  {spec['label']}   : {body}", 1), encoding="utf-8")
+        return _by_check(an.run(mod, 1, scope="stage:P3.2"), "screen-composition")
+    original = ux.read_text(encoding="utf-8")
+
+    # the line is there and names the required word, but commits to no placement
+    hits = _line(f"{spec['required'][0]}: one")
+    assert len(hits) == 1 and "chooses none of" in hits[0].message
+
+    # a placement with no submit count is the other half of the same silence
+    ux.write_text(original, encoding="utf-8")
+    hits = _line(str(spec["one_of"][1]))
+    assert len(hits) == 1 and spec["required"][0] in hits[0].message
+
+    # both, and the screen has committed
+    ux.write_text(original, encoding="utf-8")
+    assert not _line(f"secondary detail → {spec['one_of'][1]} · {spec['required'][0]}: one")
+
+
+def test_a_profile_that_does_not_declare_the_convention_is_not_charged_for_it(
+        orch_root, mod, tmp_path, monkeypatch):
+    """`when:` — the clause is the project's to adopt. A profile without
+    `conventions.screen_composition` gets no finding and no rendered line, so the
+    toolkit stays agnostic (the same guarantee `composite_screen` already has)."""
+    _consumer(tmp_path, monkeypatch, "backend")
+    _run_pass1(orch_root, mod, tmp_path, monkeypatch)
+    fx.write_input("api-docs", mod)
+    fx.write_stage("P3.2", mod)
+    monkeypatch.delitem(CFG.profile.data["conventions"], "screen_composition")
+    assert not _by_check(an.run(mod, 1, scope="stage:P3.2"), "screen-composition")
+
+
 def test_the_one_knob_retunes_every_maturity_clause(orch_root, mod):
     _p1(mod)
     top = CFG.analyze["severities"][0]

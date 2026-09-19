@@ -1880,31 +1880,56 @@ def _c_feature_unwanted(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
     return out
 
 
-def _c_screen_states(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
-    """A screen that does not say what it shows when there is nothing, while it
-    waits, and when the call fails. `spec` names the line (`label`) and the
-    states it must list (`required`) — the engine renders that line, this reads it."""
-    spec = ctx.factory_need(c["spec"], "the states a screen must declare")
+def _c_screen_line(ctx: Ctx, c: dict, sev: str, check: str) -> list[Finding]:
+    """A line of a screen block the engine renders and this reads back. `spec`
+    names the line (`label`), the words it must carry (`required`), the
+    placements it must name at least one of (`one_of` — a screen whose parts differ
+    legitimately names several), and the wording of the
+    message when it is missing (`what`, `noun`). One mechanism: the states a
+    screen shows and the composition it commits to are the same question asked of
+    a different line, and a second copy of this loop would drift from the first."""
+    spec = ctx.factory_need(c["spec"], f"what a screen's `{check}` line must declare")
     text = ctx.text(c["artifact"])
     if text is None:
         return []
+    noun = f" {spec['noun']}" if spec.get("noun") else ""
     out, seen = [], 0
     for r in idmodel.by_prefix(idmodel.records(text), c["kind"]):
         seen += 1
         lines = _labelled(r.text, [spec["label"]])
         if not lines:
-            out.append(Finding(sev, "", "screen-states",
-                               f"`{r.id}` declares no `{spec['label']}` line — its empty, loading and error "
-                               f"states are left to the implementer", c["artifact"], r.line))
+            out.append(Finding(sev, "", check,
+                               f"`{r.id}` declares no `{spec['label']}` line — {spec['what']} "
+                               f"left to the implementer", c["artifact"], r.line))
             continue
         joined = " ".join(lines).lower()
-        missing = [s for s in spec["required"] if not re.search(r"(?<!\w)" + re.escape(str(s).lower()) + r"(?!\w)", joined)]
+        named = lambda w: re.search(r"(?<!\w)" + re.escape(str(w).lower()) + r"(?!\w)", joined)
+        missing = [s for s in spec.get("required", []) if not named(s)]
         if missing:
-            out.append(Finding(sev, "", "screen-states",
-                               f"`{r.id}` `{spec['label']}` names no {' / '.join(missing)} state",
+            out.append(Finding(sev, "", check,
+                               f"`{r.id}` `{spec['label']}` names no {' / '.join(missing)}{noun}",
+                               c["artifact"], r.line))
+        choices = spec.get("one_of") or []
+        if choices and not any(named(w) for w in choices):
+            out.append(Finding(sev, "", check,
+                               f"`{r.id}` `{spec['label']}` chooses none of "
+                               f"{' | '.join(str(w) for w in choices)}",
                                c["artifact"], r.line))
     ctx.saw(seen)
     return out
+
+
+def _c_screen_states(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A screen that does not say what it shows when there is nothing, while it
+    waits, and when the call fails."""
+    return _c_screen_line(ctx, c, sev, "screen-states")
+
+
+def _c_screen_composition(ctx: Ctx, c: dict, sev: str) -> list[Finding]:
+    """A screen that does not say where its secondary detail sits or how many
+    times it saves — the silence that lets one surface grow a second job and a
+    second save, and lose the work done in the first."""
+    return _c_screen_line(ctx, c, sev, "screen-composition")
 
 
 def _variant_rx(term: str) -> re.Pattern:
@@ -1992,7 +2017,8 @@ CHECKS = {
     "count-agrees": _c_count_agrees, "required-writer": _c_required_writer,
     "operation-resolves": _c_operation_resolves, "bootstrap-complete": _c_bootstrap_complete,
     "ambiguity": _c_ambiguity, "ac-measurable": _c_ac_measurable, "crud-covered": _c_crud_covered,
-    "feature-unwanted": _c_feature_unwanted, "screen-states": _c_screen_states, "glossary": _c_glossary,
+    "feature-unwanted": _c_feature_unwanted, "screen-states": _c_screen_states,
+    "screen-composition": _c_screen_composition, "glossary": _c_glossary,
 }
 
 # Checks that report how many subjects they examined (ctx.saw). Only these appear
@@ -2003,7 +2029,7 @@ for _fn in (_c_traces, _c_orphans, _c_registry_agree, _c_forward_refs,
             _c_endpoint_agrees, _c_ears, _c_count_agrees, _c_required_writer,
             _c_operation_resolves, _c_bootstrap_complete,
             _c_ambiguity, _c_ac_measurable, _c_crud_covered, _c_feature_unwanted,
-            _c_screen_states, _c_glossary):
+            _c_screen_states, _c_screen_composition, _c_glossary):
     _fn.counts_subjects = True
 
 

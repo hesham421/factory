@@ -179,6 +179,7 @@ conventions:
                                              # module did both and every endpoint answered forbidden to
                                              # every caller, the administrator included.
   composite_screen: true
+  screen_composition: true                 # one screen, one job, one submit (C9.17)
   numbering: "document numbers come from the platform numbering engine; never generated in a module"
   lookups: "all LOV values runtime-loaded from the lookup module; no hardcoded enums in APIs or field specs"
   workflow_engine: forbidden

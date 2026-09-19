@@ -118,10 +118,45 @@ One block per `SCR-*`, fields and permissions copied from the SRS (no additions,
 UI pattern        : <from the SRS screen entry — do not change>
 Sub-views         : {% if conv.get('composite_screen') %}Search · Entry (· Detail · Wizard) under this ONE SCR{% else %}as the SRS declares{% endif %}
 Fields shown      : <every SRS field of the owning ENT — label per language ({{ langs.all | join('/') }}), read-only flags>
-Permissions       : <SRS matrix rows for this screen — reference only>{% if sec %} — names follow `{{ sec.permission_pattern }}`, gateway `{{ sec.gateway_action }}`{% endif %}
+{% if conv.get('screen_composition') %}Composition       : <secondary detail → none | inline | summary row + second level> · submits: one
+{% endif %}Permissions       : <SRS matrix rows for this screen — reference only>{% if sec %} — names follow `{{ sec.permission_pattern }}`, gateway `{{ sec.gateway_action }}`{% endif %}
 Cross-module data : <field → UXD-{{ MOD }}-<seq> (owner module)> | none
 States            : empty · loading · error (generic — catalog codes are Part B's) · offline (if the SRS says so)
 ```
+{% if conv.get('screen_composition') %}
+### A.4 One screen, one job, one submit — the `Composition` line
+
+`profile.conventions.screen_composition` is set, so every `SCR-*` block commits to a placement.
+A screen opened to create or edit ONE record has ONE save. Secondary detail — an entity picker,
+a repeating child-row editor, a permissions matrix, an attachment list, a tag selector — is a
+SECOND job, and this line says where it goes:
+
+- `none` — the screen has no secondary detail (a report, a search, a confirmation). Still an answer.
+- `inline` — only when it is SHORTER than the primary field group and adds no save of its own.
+- `summary row + second level` — otherwise. The record's surface keeps a label, an edit trigger and
+  a capped preview; the picking happens in a second-level view opened from that row. Four
+  properties that view must have, stated here because each one failed in the field:
+  1. it RETURNS A VALUE and never saves — confirm feeds the screen's own form state, cancel
+     discards a local draft, and the ONE save stays where the screen's primary action already is;
+  2. its open state lives where the rest of the application's navigation state lives, so going back
+     closes it, dismissing closes only it, and a deep link opens it;
+  3. it carries no scroll region of its own — the list scrolls with the body it sits in;
+  4. it renders as a SIBLING of the first level, never inside its element.
+
+A screen whose parts differ names more than one: a full-page form can hold its child collection
+`inline` and still open a `second level` for a picker over an unbounded set. Name each part.
+
+Never two saves on one screen; never a height-capped scrolling region inside a surface that already
+scrolls; never an inline control taller than the fields beside it. These three are one defect wearing
+three faces, and the third is the one a user loses work to: an administrator set a subject's
+assignments in an inline picker that carried its own save, pressed the screen's Save, and left
+believing both had been saved.
+
+Collapsing two saves into one can leave a single action owning TWO calls (update the record, then
+replace its child set). Part B (RF2) declares them ORDERED — the second sent only after the first
+succeeded, so a rejected update cannot leave the record carrying children never saved with it — and
+declares that the second is not sent at all when the child set is unchanged.
+{% endif %}
 
 ### A.5 Cross-module display dependencies — `UXD-*`
 
@@ -231,7 +266,11 @@ queries only (server-state library: {% if libs.get('server-state') %}`{{ libs.ge
 Guard        : every route element guarded by its permission{% if sec %} (`{{ sec.permission_pattern }}` from the SRS matrix — never invented here){% endif %}
 Facade       : the RF2 facade of this screen · pages never call queries directly
 Cross-module : UXD-* cited for every foreign-data field (missing → ADR, never minted here)
-```
+{% if conv.get('screen_composition') %}Composition  : the spec's `Composition` line resolved to components — a `second level` is its own
+               component, a SIBLING of the first, opened from navigation state and never from a
+               boolean the screen holds; its value returns to the screen's form state
+Saves        : ONE. When it owns two calls, they are ordered and the second is skipped unchanged
+{% endif %}```
 
 **RF5 — Security (frontend half).**{% if sec %} Per `SCR-*`: navigation guard (no `{{ sec.gateway_action }}` → unauthorized redirect) and UI behaviour per action ({% for a in sec.actions %}no {{ a }} → its affordance hidden / read-only{% if not loop.last %}; {% endif %}{% endfor %}); forbidden responses shown as the localized catalog message. Permission names are the backend registry's — never redeclared.{% else %} No security model in the profile: write "no permission model — screens open per the SRS" and cite the REQs.{% endif %}
 
@@ -268,7 +307,8 @@ result for that check, copied; a clause the report says examined nothing is writ
 {{ sc.block }} — {{ MOD }} v{{ ver }}
 row           backing check   assertion
 SCREENS       orphans         every SCR is referenced by a plan block
-UXD           orphans         every UXD is cited by a plan block — this is where a UX decision closes
+{% if conv.get('screen_composition') %}COMPOSITION   screen-composition  every SCR names where its secondary detail sits and that it saves once
+{% endif %}UXD           orphans         every UXD is cited by a plan block — this is where a UX decision closes
 TRACES        traces          every PHASE/SUB carries traces=, every UXD traces to its REQ/AC, every SCR to its REQ/UXD
 API           traces          every API this plan cites is defined in the fetched api-docs — never in the backend plan's contract draft
 FOREIGN       xref-surface    every reference to another module's surface resolves in that module's own artifacts

@@ -139,6 +139,17 @@ conventions?:                               # OPTIONAL — absent = not applied 
                                              # is the project's (a role, a group, a principal type) —
                                              # engines render it, never spell it.
   composite_screen?: "bool"                 # Search + Entry (+Master/Detail, Wizard) = ONE SCR-ID
+  screen_composition?: "bool"               # ONE screen, ONE job, ONE submit. With composite_screen
+                                            # on, a screen legitimately carries several sub-views —
+                                            # and nothing then said what happens when one of them is
+                                            # a SECOND job (an entity picker, a repeating child-row
+                                            # editor, a permissions matrix). Set here, every screen
+                                            # block states where its secondary detail sits and how
+                                            # many times the screen saves, and C9.17 can falsify the
+                                            # answer. Absent = not applied: the spec stays silent and
+                                            # the placement is decided at implementation time, which
+                                            # is how a screen shipped whose inline picker saved
+                                            # separately from the screen's own Save.
   numbering?: "str"                         # numbering-engine rule
   lookups?: "str"                           # lookup/LOV rule (runtime-loaded, no hardcoded enums …)
   workflow_engine?: "(forbidden|allowed)"
